@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"icarus-auth-ms/internal/models"
 	"database/sql"
 	"errors"
 	"fmt"
+	"icarus-auth-ms/internal/models"
 	"log"
 	"strings"
 	"time"
@@ -78,12 +78,12 @@ func (r *SQLRepository) SeedDefaultRBAC() error {
 		if r.driver == "postgres" {
 			_, err = r.db.Exec(`
 				INSERT INTO user_tenant_module_roles (id, user_id, tenant_id, module_id, role_id) 
-				VALUES ($1, $2, $3, $4, $5)`, 
+				VALUES ($1, $2, $3, $4, $5)`,
 				"seed-user-admin-role", adminUserID, "system-tenant", "icarus-auth-ms", "icarus-auth-ms:admin")
 		} else {
 			_, err = r.db.Exec(`
 				INSERT INTO user_tenant_module_roles (id, user_id, tenant_id, module_id, role_id) 
-				VALUES (?, ?, ?, ?, ?)`, 
+				VALUES (?, ?, ?, ?, ?)`,
 				"seed-user-admin-role", adminUserID, "system-tenant", "icarus-auth-ms", "icarus-auth-ms:admin")
 		}
 		if err != nil {
@@ -309,13 +309,13 @@ func (r *SQLRepository) AssignUserRoles(userID int64, roles []string) error {
 			_, err = tx.Exec(`
 				INSERT INTO user_tenant_module_roles (id, user_id, tenant_id, module_id, role_id) 
 				VALUES ($1, $2, $3, $4, $5)
-				ON CONFLICT (user_id, tenant_id, module_id) DO UPDATE SET role_id = EXCLUDED.role_id`, 
+				ON CONFLICT (user_id, tenant_id, module_id) DO UPDATE SET role_id = EXCLUDED.role_id`,
 				id, userID, "system-tenant", moduleID, roleID)
 		} else {
 			_, err = tx.Exec(`
 				INSERT INTO user_tenant_module_roles (id, user_id, tenant_id, module_id, role_id) 
 				VALUES (?, ?, ?, ?, ?)
-				ON CONFLICT (user_id, tenant_id, module_id) DO UPDATE SET role_id = excluded.role_id`, 
+				ON CONFLICT (user_id, tenant_id, module_id) DO UPDATE SET role_id = excluded.role_id`,
 				id, userID, "system-tenant", moduleID, roleID)
 		}
 		if err != nil {
@@ -521,12 +521,12 @@ func (r *SQLRepository) AssignClientRoles(clientID string, roles []string) error
 		if r.driver == "postgres" {
 			_, err = tx.Exec(`
 				INSERT INTO client_tenant_module_roles (id, client_id, tenant_id, module_id, role_id) 
-				VALUES ($1, $2, $3, $4, $5)`, 
+				VALUES ($1, $2, $3, $4, $5)`,
 				id, clientID, "system-tenant", "icarus-auth-ms", roleID)
 		} else {
 			_, err = tx.Exec(`
 				INSERT INTO client_tenant_module_roles (id, client_id, tenant_id, module_id, role_id) 
-				VALUES (?, ?, ?, ?, ?)`, 
+				VALUES (?, ?, ?, ?, ?)`,
 				id, clientID, "system-tenant", "icarus-auth-ms", roleID)
 		}
 		if err != nil {
@@ -667,12 +667,12 @@ func (r *SQLRepository) CreateRole(moduleID, appCode, name, description, roleTyp
 	if r.driver == "postgres" {
 		_, err = r.db.Exec(`
 			INSERT INTO roles (id, module_id, tenant_id, app_code, name, description, is_system_role, type) 
-			VALUES ($1, $2, NULL, $3, $4, $5, 0, $6)`, 
+			VALUES ($1, $2, NULL, $3, $4, $5, 0, $6)`,
 			id, moduleID, appCode, name, description, roleType)
 	} else {
 		_, err = r.db.Exec(`
 			INSERT INTO roles (id, module_id, tenant_id, app_code, name, description, is_system_role, type) 
-			VALUES (?, ?, NULL, ?, ?, ?, 0, ?)`, 
+			VALUES (?, ?, NULL, ?, ?, ?, 0, ?)`,
 			id, moduleID, appCode, name, description, roleType)
 	}
 	return err
@@ -687,12 +687,12 @@ func (r *SQLRepository) CreateScopedRole(id, moduleID string, tenantID *string, 
 	if r.driver == "postgres" {
 		_, err = r.db.Exec(`
 			INSERT INTO roles (id, module_id, tenant_id, app_code, name, description, is_system_role, type) 
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, 
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 			id, moduleID, tenantID, appCode, name, description, isSystem, roleType)
 	} else {
 		_, err = r.db.Exec(`
 			INSERT INTO roles (id, module_id, tenant_id, app_code, name, description, is_system_role, type) 
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, 
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 			id, moduleID, tenantID, appCode, name, description, isSystem, roleType)
 	}
 	return err
@@ -724,7 +724,7 @@ func (r *SQLRepository) UpdateRole(id, description, roleType string, isActive bo
 			roleID = resolvedID
 		}
 	}
-	
+
 	var name string
 	if r.driver == "postgres" {
 		_ = r.db.QueryRow("SELECT name FROM roles WHERE id = $1", roleID).Scan(&name)
@@ -1183,13 +1183,13 @@ func (r *SQLRepository) SyncModule(code, name, baseURL string, perms []models.Pe
 		_, err = tx.Exec(`
 			INSERT INTO modules (id, code, name, base_url, is_active) 
 			VALUES ($1, $2, $3, $4, 1)
-			ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, base_url = EXCLUDED.base_url`, 
+			ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, base_url = EXCLUDED.base_url`,
 			moduleID, code, name, baseURL)
 	} else {
 		_, err = tx.Exec(`
 			INSERT INTO modules (id, code, name, base_url, is_active) 
 			VALUES (?, ?, ?, ?, 1)
-			ON CONFLICT (id) DO UPDATE SET name = excluded.name, base_url = excluded.base_url`, 
+			ON CONFLICT (id) DO UPDATE SET name = excluded.name, base_url = excluded.base_url`,
 			moduleID, code, name, baseURL)
 	}
 	if err != nil {
@@ -1267,7 +1267,7 @@ func (r *SQLRepository) SyncModule(code, name, baseURL string, perms []models.Pe
 	// Insert default roles and their permission mappings
 	for _, dr := range defaultRoles {
 		roleID := moduleID + ":" + dr.Name
-		
+
 		// Delete existing role mapping (to handle updates)
 		if r.driver == "postgres" {
 			_, _ = tx.Exec("DELETE FROM role_permissions WHERE role_id = $1", roleID)
@@ -1280,12 +1280,12 @@ func (r *SQLRepository) SyncModule(code, name, baseURL string, perms []models.Pe
 		if r.driver == "postgres" {
 			_, err = tx.Exec(`
 				INSERT INTO roles (id, module_id, tenant_id, name, description, is_system_role) 
-				VALUES ($1, $2, NULL, $3, $4, 1)`, 
+				VALUES ($1, $2, NULL, $3, $4, 1)`,
 				roleID, moduleID, dr.Name, dr.Description)
 		} else {
 			_, err = tx.Exec(`
 				INSERT INTO roles (id, module_id, tenant_id, name, description, is_system_role) 
-				VALUES (?, ?, NULL, ?, ?, 1)`, 
+				VALUES (?, ?, NULL, ?, ?, 1)`,
 				roleID, moduleID, dr.Name, dr.Description)
 		}
 		if err != nil {
@@ -1319,12 +1319,12 @@ func (r *SQLRepository) SyncModule(code, name, baseURL string, perms []models.Pe
 		if r.driver == "postgres" {
 			_, err = tx.Exec(`
 				INSERT INTO app_centric_role_templates (id, module_id, name, description) 
-				VALUES ($1, $2, $3, $4)`, 
+				VALUES ($1, $2, $3, $4)`,
 				templateID, moduleID, acr.Name, acr.Description)
 		} else {
 			_, err = tx.Exec(`
 				INSERT INTO app_centric_role_templates (id, module_id, name, description) 
-				VALUES (?, ?, ?, ?)` , 
+				VALUES (?, ?, ?, ?)`,
 				templateID, moduleID, acr.Name, acr.Description)
 		}
 		if err != nil {
@@ -1360,13 +1360,13 @@ func (r *SQLRepository) SyncModule(code, name, baseURL string, perms []models.Pe
 				_, err = tx.Exec(`
 					INSERT INTO user_tenant_module_roles (id, user_id, tenant_id, module_id, role_id) 
 					VALUES ($1, $2, $3, $4, $5)
-					ON CONFLICT (user_id, tenant_id, module_id) DO UPDATE SET role_id = EXCLUDED.role_id`, 
+					ON CONFLICT (user_id, tenant_id, module_id) DO UPDATE SET role_id = EXCLUDED.role_id`,
 					id, userID, "system-tenant", moduleID, roleID)
 			} else {
 				_, err = tx.Exec(`
 					INSERT INTO user_tenant_module_roles (id, user_id, tenant_id, module_id, role_id) 
 					VALUES (?, ?, ?, ?, ?)
-					ON CONFLICT (user_id, tenant_id, module_id) DO UPDATE SET role_id = excluded.role_id`, 
+					ON CONFLICT (user_id, tenant_id, module_id) DO UPDATE SET role_id = excluded.role_id`,
 					id, userID, "system-tenant", moduleID, roleID)
 			}
 			if err != nil {
@@ -1448,7 +1448,6 @@ func (r *SQLRepository) GetModuleOwners(moduleCode string) ([]string, error) {
 	return owners, nil
 }
 
-
 // CreateTenant creates a new tenant.
 func (r *SQLRepository) CreateTenant(id, code, name, status string) error {
 	var err error
@@ -1456,13 +1455,13 @@ func (r *SQLRepository) CreateTenant(id, code, name, status string) error {
 		_, err = r.db.Exec(`
 			INSERT INTO tenants (id, code, name, status) 
 			VALUES ($1, $2, $3, $4)
-			ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, status = EXCLUDED.status`, 
+			ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, status = EXCLUDED.status`,
 			id, code, name, status)
 	} else {
 		_, err = r.db.Exec(`
 			INSERT INTO tenants (id, code, name, status) 
 			VALUES (?, ?, ?, ?)
-			ON CONFLICT (id) DO UPDATE SET name = excluded.name, status = excluded.status`, 
+			ON CONFLICT (id) DO UPDATE SET name = excluded.name, status = excluded.status`,
 			id, code, name, status)
 	}
 	return err
@@ -1610,13 +1609,13 @@ func (r *SQLRepository) OnboardApplicationToModule(moduleID, appCode string) err
 			_, err = tx.Exec(`
 				INSERT INTO roles (id, module_id, tenant_id, app_code, name, description, is_system_role, is_active) 
 				VALUES ($1, $2, NULL, $3, $4, $5, 1, 1)
-				ON CONFLICT (id) DO UPDATE SET is_active = 1, description = EXCLUDED.description`, 
+				ON CONFLICT (id) DO UPDATE SET is_active = 1, description = EXCLUDED.description`,
 				roleID, moduleID, appCode, roleName, tr.description)
 		} else {
 			_, err = tx.Exec(`
 				INSERT INTO roles (id, module_id, tenant_id, app_code, name, description, is_system_role, is_active) 
 				VALUES (?, ?, NULL, ?, ?, ?, 1, 1)
-				ON CONFLICT (id) DO UPDATE SET is_active = 1, description = excluded.description`, 
+				ON CONFLICT (id) DO UPDATE SET is_active = 1, description = excluded.description`,
 				roleID, moduleID, appCode, roleName, tr.description)
 		}
 		if err != nil {
@@ -1802,7 +1801,7 @@ func (r *SQLRepository) GetModuleAppCentricRoles(moduleID string) ([]models.Role
 		if err != nil {
 			return nil, err
 		}
-		
+
 		var perms []string
 		for pRows.Next() {
 			var p string
@@ -1824,6 +1823,3 @@ func (r *SQLRepository) GetModuleAppCentricRoles(moduleID string) ([]models.Role
 	}
 	return templates, nil
 }
-
-
-

@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"icarus-auth-ms/internal/models"
 	"encoding/json"
+	"icarus-auth-ms/internal/models"
 	"net/http"
 	"strings"
 )
@@ -325,10 +325,8 @@ func (s *HandlerServer) InternalGetModuleRolesAndTemplatesHandler(w http.Respons
 	}
 
 	s.respondWithJSON(w, http.StatusOK, map[string]interface{}{
-		"default_roles":    defaultRoles,
+		"default_roles":     defaultRoles,
 		"app_centric_roles": appCentricRoles,
-		"owners":           owners,
+		"owners":            owners,
 	})
 }
-
-

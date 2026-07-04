@@ -1,11 +1,11 @@
 package handler
 
 import (
+	"icarus-admin-ms/internal/models"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"icarus-admin-ms/internal/models"
 	"strings"
 )
 
@@ -53,7 +53,7 @@ func (s *HandlerServer) GatewayHandler(w http.ResponseWriter, r *http.Request) {
 	var matchedPermission *models.Permission
 	for i := range permissions {
 		p := &permissions[i]
-		methodMatch := p.Method == "*" || strings.ToUpper(p.Method) == "ANY" || strings.ToUpper(p.Method) == strings.ToUpper(r.Method)
+		methodMatch := p.Method == "*" || strings.EqualFold(p.Method, "ANY") || strings.EqualFold(p.Method, r.Method)
 		if methodMatch && matchesPattern(path, p.PathPattern) {
 			matchedPermission = p
 			break

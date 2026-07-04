@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"icarus-admin-ms/internal/models"
+	"net/http"
 )
 
 type OnboardModuleRequest struct {

@@ -2,10 +2,10 @@ package handler
 
 import (
 	"encoding/json"
-	"log"
-	"net/http"
 	"icarus-admin-ms/internal/crypto"
 	"icarus-admin-ms/internal/repository"
+	"log"
+	"net/http"
 	"time"
 )
 
@@ -55,7 +55,6 @@ func (s *HandlerServer) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /admin/modules/{id}/applications", s.AdminRequired(s.AdminOnboardApplicationHandler))
 	mux.HandleFunc("DELETE /admin/modules/{id}/applications/{appCode}", s.AdminRequired(s.AdminOffboardApplicationHandler))
 }
-
 
 // LoggerMiddleware logs requests and latency.
 func (s *HandlerServer) LoggerMiddleware(next http.Handler) http.Handler {
