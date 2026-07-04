@@ -1,0 +1,130 @@
+<div class="assets-view">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Assets Portfolio</h1>
+      <p class="page-subtitle">Track, edit, and bulk-import your asset holdings</p>
+    </div>
+    <div class="actions">
+      <button class="btn-ghost" (click)="isAdding.update(v => !v)">
+        {{ isAdding() ? 'Cancel' : '+ Add Asset' }}
+      </button>
+      <label class="btn-primary csv-upload-label">
+        ↑ Import CSV
+        <input type="file" accept=".csv" (change)="onFileSelected($event)" style="display: none;" />
+      </label>
+    </div>
+  </header>
+
+  <!-- ── CSV Import Feedback Banner ── -->
+  @if (importResult()) {
+    <div class="import-feedback-card card" role="alert">
+      <h3>Import Completed</h3>
+      <p>Successfully imported <strong>{{ importResult()?.imported }}</strong> assets. Skipped {{ importResult()?.skipped }} rows.</p>
+      @if (importResult()?.errors && importResult()!.errors!.length > 0) {
+        <div class="import-errors">
+          <h4>Validation Failures:</h4>
+          <ul>
+            @for (err of importResult()?.errors; track err.row) {
+              <li>Row {{ err.row }}: Field <code>{{ err.field }}</code> - {{ err.message }}</li>
+            }
+          </ul>
+        </div>
+      }
+      <button class="btn-ghost btn-sm" (click)="importResult.set(null)">Dismiss</button>
+    </div>
+  }
+
+  @if (uploadError()) {
+    <div class="error-banner" role="alert">
+      <span>⚠</span> {{ uploadError() }}
+      <button class="btn-ghost btn-sm" (click)="uploadError.set(null)">Dismiss</button>
+    </div>
+  }
+
+  <!-- ── Interactive Add Asset Form ── -->
+  @if (isAdding()) {
+    <section class="card add-form-section">
+      <h3>Add New Asset</h3>
+      <form [formGroup]="assetForm" (ngSubmit)="onAddSubmit()" class="add-form">
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="name">Asset Name *</label>
+            <input id="name" type="text" formControlName="name" placeholder="e.g. Apple Inc. or DBS Savings" />
+            @if (assetForm.controls.name.touched && assetForm.controls.name.invalid) {
+              <span class="field-error">Name is required</span>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="ticker">Ticker</label>
+            <input id="ticker" type="text" formControlName="ticker" placeholder="e.g. AAPL or D05.SI" />
+          </div>
+
+          <div class="form-group">
+            <label for="asset_class">Asset Class *</label>
+            <select id="asset_class" formControlName="asset_class">
+              <option value="cash">Cash</option>
+              <option value="equity">Equity (Stock/ETF)</option>
+              <option value="bond">Bond / Fixed Income</option>
+              <option value="real_estate">Real Estate</option>
+              <option value="crypto">Cryptocurrency</option>
+              <option value="commodity">Commodity</option>
+              <option value="alternative">Alternative Investment</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="quantity">Quantity *</label>
+            <input id="quantity" type="text" formControlName="quantity" placeholder="0.00" />
+            @if (assetForm.controls.quantity.touched && assetForm.controls.quantity.invalid) {
+              <span class="field-error">Invalid quantity</span>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="unit_cost">Unit Cost / Price *</label>
+            <input id="unit_cost" type="text" formControlName="unit_cost" placeholder="0.00" />
+            @if (assetForm.controls.unit_cost.touched && assetForm.controls.unit_cost.invalid) {
+              <span class="field-error">Invalid unit cost</span>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="currency">Currency *</label>
+            <input id="currency" type="text" formControlName="currency" placeholder="SGD" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-3">
+            <label for="notes">Notes</label>
+            <input id="notes" type="text" formControlName="notes" placeholder="Notes or description..." />
+          </div>
+
+          <div class="form-group btn-align">
+            <button type="submit" class="btn-primary">Add Portfolio Asset</button>
+          </div>
+        </div>
+      </form>
+    </section>
+  }
+
+  <!-- ── AG Grid Sheet Editing ── -->
+  <section class="grid-container card">
+    <div class="grid-header">
+      <h2>Assets Spreadsheet</h2>
+      <span class="grid-instructions">💡 Double-click any cell to edit details inline. Press Enter to save.</span>
+    </div>
+    <ag-grid-angular
+      style="width: 100%; height: 500px;"
+      [class]="finance.loading() ? 'ag-theme-alpine-dark opacity-50' : 'ag-theme-alpine-dark'"
+      [columnDefs]="columnDefs"
+      [defaultColDef]="defaultColDef"
+      [rowData]="finance.assets()"
+      (gridReady)="onGridReady($event)"
+      (cellValueChanged)="onCellValueChanged($event)"
+    />
+  </section>
+</div>

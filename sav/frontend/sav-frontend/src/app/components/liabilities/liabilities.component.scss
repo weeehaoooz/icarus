@@ -1,0 +1,229 @@
+.liabilities-view {
+  padding: 32px;
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.page-subtitle {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+}
+
+/* ── Add Form Section ── */
+.add-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
+}
+
+.form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  &.flex-2 { flex: 2; }
+  &.flex-3 { flex: 3; }
+
+  label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+  }
+
+  input, select {
+    padding: 10px 12px;
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    color: var(--color-text-primary);
+    font-size: 13px;
+    transition: all 0.2s ease;
+
+    &:focus {
+      outline: none;
+      border-color: var(--color-accent);
+    }
+  }
+}
+
+.btn-align {
+  justify-content: flex-end;
+}
+
+.field-error {
+  font-size: 11px;
+  color: var(--color-danger);
+}
+
+/* ── Liabilities Cards Grid ── */
+.liabilities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 24px;
+}
+
+.liability-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.loan-name {
+  font-size: 18px;
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+
+  &:hover {
+    color: var(--color-danger);
+  }
+}
+
+.balance-area {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+
+  .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+}
+
+.balance-display-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.balance-val {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.edit-balance-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+}
+
+/* ── Quick Edit Wrapper ── */
+.quick-edit-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.quick-edit-input {
+  padding: 8px 12px;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-accent);
+  border-radius: 6px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 600;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.quick-edit-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Metrics List ── */
+.metrics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.metric-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  border-bottom: 1px dashed var(--color-border);
+  padding-bottom: 8px;
+
+  &:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+}
+
+.m-label {
+  color: var(--color-text-secondary);
+}
+
+.m-val {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px;
+  color: var(--color-text-secondary);
+
+  h3 { font-size: 18px; font-weight: 600; }
+  p { font-size: 14px; margin-top: 8px; }
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 11px;
+}

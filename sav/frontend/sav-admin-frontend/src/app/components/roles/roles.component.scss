@@ -1,0 +1,128 @@
+.roles-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.split-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  align-items: start;
+  transition: var(--transition);
+  
+  &.has-active-panel {
+    grid-template-columns: 1.2fr 1fr;
+  }
+  
+  @media (max-width: 1200px) {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.table-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  min-height: 400px;
+}
+
+.perms-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 320px;
+}
+
+.detail-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 24px;
+  position: sticky;
+  top: 40px;
+  animation: slideIn 0.2s ease-out;
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+    
+    .panel-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    
+    .close-btn {
+      font-size: 1.25rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      
+      &:hover {
+        color: var(--text-main);
+      }
+    }
+  }
+}
+
+.permission-selection-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+  max-height: 350px;
+  overflow-y: auto;
+  padding-right: 8px;
+  
+  .permission-selection-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+    padding: 10px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+    
+    &:hover {
+      border-color: var(--border-color-hover);
+    }
+    
+    .perm-name {
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: var(--secondary);
+    }
+    
+    .perm-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+  }
+}
+
+.panel-error {
+  padding: 10px 14px;
+  background: var(--danger-glow);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  color: var(--danger);
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

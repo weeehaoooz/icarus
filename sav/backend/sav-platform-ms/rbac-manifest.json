@@ -1,0 +1,106 @@
+{
+  "code": "finance",
+  "name": "Personal Finance Service",
+  "base_url": "http://localhost:8083",
+  "permissions": [
+    {
+      "action": "finance:summary:read",
+      "path_pattern": "/api/v1/finance/summary",
+      "method": "GET",
+      "description": "Read portfolio summary"
+    },
+    {
+      "action": "finance:assets:read",
+      "path_pattern": "/api/v1/finance/assets",
+      "method": "GET",
+      "description": "List assets"
+    },
+    {
+      "action": "finance:assets:write",
+      "path_pattern": "/api/v1/finance/assets",
+      "method": "POST",
+      "description": "Create asset"
+    },
+    {
+      "action": "finance:assets:patch",
+      "path_pattern": "/api/v1/finance/assets/*",
+      "method": "PATCH",
+      "description": "Update asset"
+    },
+    {
+      "action": "finance:assets:delete",
+      "path_pattern": "/api/v1/finance/assets/*",
+      "method": "DELETE",
+      "description": "Delete asset"
+    },
+    {
+      "action": "finance:assets:import",
+      "path_pattern": "/api/v1/finance/assets/import",
+      "method": "POST",
+      "description": "Bulk import assets"
+    },
+    {
+      "action": "finance:liabilities:read",
+      "path_pattern": "/api/v1/finance/liabilities",
+      "method": "GET",
+      "description": "List liabilities"
+    },
+    {
+      "action": "finance:liabilities:write",
+      "path_pattern": "/api/v1/finance/liabilities",
+      "method": "POST",
+      "description": "Create liability"
+    },
+    {
+      "action": "finance:liabilities:patch",
+      "path_pattern": "/api/v1/finance/liabilities/*",
+      "method": "PATCH",
+      "description": "Update liability"
+    },
+    {
+      "action": "finance:liabilities:delete",
+      "path_pattern": "/api/v1/finance/liabilities/*",
+      "method": "DELETE",
+      "description": "Delete liability"
+    },
+    {
+      "action": "finance:insights:read",
+      "path_pattern": "/api/v1/finance/insights",
+      "method": "GET",
+      "description": "List insights"
+    },
+    {
+      "action": "finance:insights:recompute",
+      "path_pattern": "/api/v1/finance/insights/recompute",
+      "method": "POST",
+      "description": "Recompute insights"
+    },
+    {
+      "action": "finance:prices:read",
+      "path_pattern": "/api/v1/finance/prices",
+      "method": "GET",
+      "description": "Fetch live equity prices"
+    }
+  ],
+  "default_roles": [
+    {
+      "name": "FinanceUser",
+      "description": "Allows standard access to personal finance tracking",
+      "permissions": [
+        "finance:summary:read",
+        "finance:assets:read",
+        "finance:assets:write",
+        "finance:assets:patch",
+        "finance:assets:delete",
+        "finance:assets:import",
+        "finance:liabilities:read",
+        "finance:liabilities:write",
+        "finance:liabilities:patch",
+        "finance:liabilities:delete",
+        "finance:insights:read",
+        "finance:insights:recompute",
+        "finance:prices:read"
+      ]
+    }
+  ]
+}

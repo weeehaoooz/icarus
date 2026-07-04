@@ -1,0 +1,7 @@
+# Exclude compiled binaries
+retire-server
+
+# Exclude git and OS-specific files
+.git
+.gitignore
+.DS_Store

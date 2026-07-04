@@ -1,0 +1,79 @@
+<div class="shell" [class.collapsed]="sidebarCollapsed()">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <span class="logo-icon">✦</span>
+        @if (!sidebarCollapsed()) {
+          <span class="logo-text">Icarus</span>
+        }
+      </div>
+      <button class="collapse-btn" (click)="toggleSidebar()" aria-label="Toggle sidebar">
+        {{ sidebarCollapsed() ? '›' : '‹' }}
+      </button>
+    </div>
+
+    <nav class="sidebar-nav" aria-label="Main navigation">
+      @for (item of navItems; track item.path) {
+        <a
+          [routerLink]="item.path"
+          routerLinkActive="active"
+          class="nav-item"
+          [title]="sidebarCollapsed() ? item.label : ''"
+          [attr.aria-label]="item.label"
+        >
+          <span class="nav-icon" aria-hidden="true">
+            @switch (item.path) {
+              @case ('/dashboard') {
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-layout-dashboard"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="10" rx="1"/><rect width="7" height="5" x="3" y="14" rx="1"/></svg>
+              }
+              @case ('/assets') {
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wallet"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9M3 5h16"/></svg>
+              }
+              @case ('/liabilities') {
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-credit-card"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+              }
+              @case ('/insights') {
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sparkles"><path d="M12 3v16M8 5L5 8M16 5l3 3M4 12h16M5 16l3 3M19 12l-3-3"/></svg>
+              }
+              @case ('/settings') {
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+              }
+            }
+          </span>
+          @if (!sidebarCollapsed()) {
+            <span class="nav-label">{{ item.label }}</span>
+          }
+        </a>
+      }
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="nav-item theme-btn" (click)="theme.toggle()" [title]="theme.isDark() ? 'Switch to light' : 'Switch to dark'" aria-label="Toggle theme">
+        <span class="nav-icon" aria-hidden="true">
+          @if (theme.isDark()) {
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          } @else {
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-moon"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+          }
+        </span>
+        @if (!sidebarCollapsed()) {
+          <span class="nav-label">{{ theme.isDark() ? 'Light mode' : 'Dark mode' }}</span>
+        }
+      </button>
+      <button class="nav-item logout-btn" (click)="auth.logout()" title="Sign out" aria-label="Sign out">
+        <span class="nav-icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-out"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        </span>
+        @if (!sidebarCollapsed()) {
+          <span class="nav-label">Sign out</span>
+        }
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main-content" id="main-content">
+    <router-outlet />
+  </main>
+</div>

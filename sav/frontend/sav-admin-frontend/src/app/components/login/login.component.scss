@@ -1,0 +1,61 @@
+.login-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: var(--bg-main);
+  padding: 20px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 40px;
+  box-shadow: var(--shadow-lg);
+}
+
+.login-header {
+  margin-bottom: 32px;
+  text-align: center;
+
+  .brand-title {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--text-main);
+    margin-bottom: 8px;
+    
+    // Minimalist text accent (flat violet, no complex gradient)
+    span {
+      color: var(--primary);
+    }
+  }
+
+  .brand-subtitle {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+  }
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: var(--danger-glow);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  color: var(--danger);
+  font-size: 0.875rem;
+  margin-bottom: 24px;
+  
+  span {
+    font-weight: bold;
+  }
+}
+
+.login-btn {
+  width: 100%;
+  margin-top: 12px;
+}

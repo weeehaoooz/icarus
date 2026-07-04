@@ -1,0 +1,260 @@
+<header class="roles-header">
+  <div>
+    <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.02em;">Roles & Permissions Policy</h1>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">Define access levels, map atomic permissions, and enforce RBAC rules</p>
+  </div>
+  @if (activePanel() !== 'create') {
+    <button (click)="openCreatePanel()" class="btn btn-primary">
+      <svg class="lucide-icon" viewBox="0 0 24 24" style="margin-right: 6px;"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Create Role
+    </button>
+  }
+</header>
+
+<div class="split-layout" [class.has-active-panel]="activePanel() !== null">
+  <!-- Left Side: Roles Table -->
+  <div class="table-panel glass-panel animate-fade-in">
+    <div class="table-container">
+      <table class="custom-table" aria-label="Roles list table">
+        <thead>
+          <tr>
+            <th>Role Name</th>
+            <th>Module</th>
+            <th>App Scope</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Nested Roles</th>
+            <th>Permissions Assigned</th>
+            <th style="width: 100px; text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (role of roles(); track role.id || role.name) {
+            <tr 
+              [class.selected]="selectedRole()?.id === role.id"
+              (click)="openEditPanel(role)"
+              style="cursor: pointer;"
+            >
+              <td style="font-weight: 700; color: var(--primary);">
+                {{ role.name }}
+                @if (role.name === 'admin' && role.module_id === 'auth-ms') {
+                  <span class="badge badge-primary" style="margin-left: 8px;">System Protected</span>
+                }
+                @if (role.is_active === false) {
+                  <span class="badge" style="margin-left: 8px; font-size: 0.7rem; background: var(--danger, #dc3545); color: white; padding: 2px 6px;">Disabled</span>
+                }
+              </td>
+              <td>
+                <span class="badge badge-secondary" style="font-family: monospace;">{{ role.module_id || 'auth-ms' }}</span>
+              </td>
+              <td>
+                @if (role.app_code) {
+                  <span class="badge badge-primary" style="font-family: monospace; letter-spacing: 0.02em;">{{ role.app_code }}</span>
+                } @else {
+                  <span style="color: var(--text-muted); font-size: 0.85rem;">Global</span>
+                }
+              </td>
+              <td>
+                <span class="badge" [class.badge-secondary]="role.type === 'LDAP'" [class.badge-primary]="role.type === 'Custom'">
+                  {{ role.type || 'Custom' }}
+                </span>
+              </td>
+              <td>{{ role.description || 'No description provided.' }}</td>
+              <td>
+                @if (role.nested_roles && role.nested_roles.length > 0) {
+                  <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                    @for (nr of role.nested_roles; track nr) {
+                      <span class="badge badge-secondary" style="font-size: 0.8rem; background: var(--border-color); color: var(--text-color);">{{ nr }}</span>
+                    }
+                  </div>
+                } @else {
+                  <span style="color: var(--text-muted); font-size: 0.85rem;">None</span>
+                }
+              </td>
+              <td>
+                <span class="badge badge-secondary">{{ (role.permissions || []).length }} Permissions</span>
+              </td>
+              <td style="text-align: right;" (click)="$event.stopPropagation()">
+                @if (!(role.name === 'admin' && role.module_id === 'auth-ms')) {
+                  <button (click)="deleteRole(role, $event)" class="icon-btn delete" title="Delete Role">
+                    <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                  </button>
+                } @else {
+                  <span style="font-size: 0.85rem; color: var(--text-muted); padding-right: 8px;">-</span>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 48px;">
+                No roles configured in the system.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Right Side: Details/Permissions Checkbox Drawer -->
+  @if (activePanel(); as panelType) {
+    <div class="detail-panel glass-panel animate-fade-in" role="region" aria-label="Role Policy Editor">
+      <header class="panel-header">
+        <h2 class="panel-title">
+          {{ panelType === 'edit' ? 'Modify Role Policy' : 'Create Access Role' }}
+        </h2>
+        <button (click)="closePanel()" class="close-btn" aria-label="Close policy editor">✕</button>
+      </header>
+
+      @if (panelError()) {
+        <div class="panel-error" role="alert">
+          {{ panelError() }}
+        </div>
+      }
+
+      <form (ngSubmit)="saveRole()">
+        <div class="form-group">
+          <label class="form-label" for="roleName">Role Name</label>
+          <input 
+            type="text" 
+            id="roleName" 
+            [(ngModel)]="formData.name" 
+            name="name" 
+            class="form-input" 
+            required 
+            placeholder="e.g. support-technician"
+            [disabled]="panelType === 'edit'"
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="moduleSelect">Module</label>
+          <select 
+            id="moduleSelect" 
+            [(ngModel)]="formData.module_id" 
+            name="module_id" 
+            class="form-input"
+            required
+            (change)="onModuleChange($event)"
+            [disabled]="panelType === 'edit'"
+          >
+            <option value="auth-ms">System Identity (auth-ms)</option>
+            @for (mod of modules(); track mod.id) {
+              <option [value]="mod.code">{{ mod.name }} ({{ mod.code }})</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="appScopeSelect">Application Scope (Optional)</label>
+          <select 
+            id="appScopeSelect" 
+            [(ngModel)]="formData.app_code" 
+            name="app_code" 
+            class="form-input"
+            [disabled]="panelType === 'edit'"
+          >
+            <option value="">Global Module Role (No App Scope)</option>
+            @for (app of applications(); track app.id) {
+              <option [value]="app.code">{{ app.name }} ({{ app.code }})</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="description">Description</label>
+          <input 
+            type="text" 
+            id="description" 
+            [(ngModel)]="formData.description" 
+            name="description" 
+            class="form-input" 
+            placeholder="Describe role scope..."
+          />
+        </div>
+
+        <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-top: 16px; margin-bottom: 16px;">
+          <input
+            type="checkbox"
+            id="roleActive"
+            [(ngModel)]="formData.is_active"
+            name="is_active"
+            class="form-checkbox"
+            style="cursor: pointer;"
+          />
+          <label class="form-label" for="roleActive" style="margin-bottom: 0; cursor: pointer;">Role is Active</label>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="roleType">Role Type</label>
+          <select 
+            id="roleType" 
+            [(ngModel)]="formData.type" 
+            name="type" 
+            class="form-input"
+            required
+          >
+            <option value="Custom">Custom</option>
+            <option value="LDAP">LDAP</option>
+          </select>
+        </div>
+
+        @if (availableRolesToNest().length > 0) {
+          <div class="form-group">
+            <label class="form-label">Map Nested Roles</label>
+            <div class="permission-selection-grid">
+              @for (otherRole of availableRolesToNest(); track otherRole.name) {
+                <label class="permission-selection-item">
+                  <input 
+                    type="checkbox" 
+                    [checked]="isRoleNestedSelected(otherRole.name)" 
+                    (change)="toggleNestedRole(otherRole.name)" 
+                    class="form-checkbox"
+                    style="margin-top: 2px;"
+                  />
+                  <div>
+                    <span class="perm-name">{{ otherRole.name }}</span>
+                    <p class="perm-desc">{{ otherRole.description || 'No description provided.' }}</p>
+                  </div>
+                </label>
+              }
+            </div>
+          </div>
+        }
+
+        <div class="form-group">
+          <label class="form-label">Map Atomic Permissions</label>
+          <div class="permission-selection-grid">
+            @for (perm of filteredPermissions(); track perm.id) {
+              <label class="permission-selection-item">
+                <input 
+                  type="checkbox" 
+                  [checked]="isPermissionSelected(perm.action)" 
+                  (change)="togglePermission(perm.action)" 
+                  class="form-checkbox"
+                  style="margin-top: 2px;"
+                />
+                <div>
+                  <span class="perm-name">{{ perm.action }}</span>
+                  <p class="perm-desc">{{ perm.description }}</p>
+                </div>
+              </label>
+            } @empty {
+              <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 12px; font-size: 0.85rem;">
+                No permissions registered for this module.
+              </div>
+            }
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+          <button type="button" (click)="closePanel()" class="btn btn-secondary">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="formData.name === 'admin' && panelType === 'edit'">
+            Save Policy
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+</div>

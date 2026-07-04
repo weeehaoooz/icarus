@@ -1,0 +1,124 @@
+<div class="dashboard">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Wealth Dashboard</h1>
+      <p class="page-subtitle">Real-time overview of your capital and liabilities</p>
+    </div>
+    @if (finance.summary(); as summary) {
+      <div class="as-of-badge">As of {{ summary.as_of | date:'medium' }}</div>
+    }
+  </header>
+
+  @if (finance.loading()) {
+    <div class="loading-state">
+      <span class="spinner"></span> Loading financial data...
+    </div>
+  } @else {
+    @if (finance.summary(); as summary) {
+      <!-- ── KPI Summary Cards ── -->
+      <section class="kpi-grid">
+        <div class="kpi-card net-worth">
+          <div class="kpi-label">Net Worth</div>
+          <div class="kpi-value" [class.negative]="summary.net_worth.startsWith('-')">
+            {{ formatCurrency(summary.net_worth) }}
+          </div>
+          <div class="kpi-subtext">Total assets minus outstanding debt</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">Total Assets</div>
+          <div class="kpi-value text-success">{{ formatCurrency(summary.total_assets) }}</div>
+          <div class="kpi-subtext">Cash, equities, bonds, real estate</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">Total Liabilities</div>
+          <div class="kpi-value text-danger">{{ formatCurrency(summary.total_liabilities) }}</div>
+          <div class="kpi-subtext">Mortgages, personal loans, card debt</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">Debt-to-Equity</div>
+          <div class="kpi-value">{{ formatRatio(summary.debt_to_equity_ratio) }}x</div>
+          <div class="kpi-subtext" [style.color]="parseFloat(summary.debt_to_equity_ratio) > 0.5 ? 'var(--color-danger)' : 'var(--color-text-secondary)'">
+            {{ parseFloat(summary.debt_to_equity_ratio) > 0.5 ? 'High Leverage Warning' : 'Healthy Leverage' }}
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Insights & Allocations split ── -->
+      <div class="dashboard-split">
+        <!-- Allocations -->
+        <section class="card allocation-section">
+          <h2>Asset Allocation</h2>
+          <p class="section-subtitle">Portfolio breakdown by asset class</p>
+
+          <div class="allocation-list">
+            @for (slice of summary.allocation; track slice.asset_class) {
+              <div class="allocation-row">
+                <div class="row-header">
+                  <span class="class-label">{{ slice.asset_class | titlecase }}</span>
+                  <span class="class-values">
+                    <strong>{{ formatPercent(slice.pct) }}</strong>
+                    <span class="muted-val">({{ formatCurrency(slice.value) }})</span>
+                  </span>
+                </div>
+                <div class="progress-bar-bg">
+                  <div
+                    class="progress-bar"
+                    [style.width]="formatPercent(slice.pct)"
+                    [class]="slice.asset_class"
+                  ></div>
+                </div>
+              </div>
+            } @empty {
+              <div class="empty-state">No assets recorded yet. Go to <a routerLink="/assets">Assets</a> to add one.</div>
+            }
+          </div>
+        </section>
+
+        <!-- Dynamic Insights -->
+        <section class="card insights-section">
+          <div class="insights-header">
+            <h2>Active Insights</h2>
+            @if (finance.insights().length > 0) {
+              <span class="badge info">{{ finance.insights().length }} pending</span>
+            }
+          </div>
+          <p class="section-subtitle">AI-generated capital deployment & risk alerts</p>
+
+          <div class="insight-list">
+            @for (ins of finance.insights(); track ins.id) {
+              <div class="insight-item" [class]="ins.severity">
+                <div class="insight-content">
+                  <div class="insight-title-row">
+                    <span class="badge" [class]="ins.severity">{{ ins.severity | uppercase }}</span>
+                    <h3>{{ ins.title }}</h3>
+                  </div>
+                  <p class="insight-body">{{ ins.body }}</p>
+                </div>
+                @if (ins.action_url) {
+                  <a [routerLink]="ins.action_url" class="insight-action-btn">Optimize →</a>
+                }
+              </div>
+            } @empty {
+              <div class="no-insights">
+                <span class="success-icon">✓</span>
+                <h3>All systems look healthy</h3>
+                <p>No optimization alerts or risk warnings detected at this time.</p>
+              </div>
+            }
+          </div>
+        </section>
+      </div>
+    } @else {
+      <div class="empty-state card">
+        <h3>Welcome to Icarus Wealth</h3>
+        <p>Start tracking your assets and liabilities to calculate your net worth and get insights.</p>
+        <div style="margin-top: 16px;">
+          <a class="btn-primary" routerLink="/assets">Add Assets</a>
+        </div>
+      </div>
+    }
+  }
+</div>

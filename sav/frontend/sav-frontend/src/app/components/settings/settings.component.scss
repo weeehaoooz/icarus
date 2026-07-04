@@ -1,0 +1,224 @@
+.settings-container {
+  padding: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.page-subtitle {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+
+  @media (max-width: 992px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 28px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--color-border-hover);
+  }
+
+  &.security-section {
+    grid-column: span 2;
+
+    @media (max-width: 992px) {
+      grid-column: span 1;
+    }
+  }
+}
+
+.section-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 16px;
+
+  .icon {
+    font-size: 24px;
+    background: var(--color-accent-muted);
+    color: var(--color-accent);
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    flex-shrink: 0;
+  }
+
+  h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  .section-subtitle {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    margin-top: 2px;
+  }
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+
+  @media (max-width: 576px) {
+    flex-direction: column;
+    gap: 16px;
+  }
+}
+
+.form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+  }
+
+  .form-control {
+    padding: 11px 14px;
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    color: var(--color-text-primary);
+    font-size: 13px;
+    width: 100%;
+    transition: all 0.2s ease;
+
+    &[disabled] {
+      opacity: 0.6;
+      cursor: not-allowed;
+      background: var(--color-bg-primary);
+    }
+
+    &:focus:not([disabled]) {
+      outline: none;
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 2px var(--color-accent-muted);
+    }
+  }
+
+  .select-control {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ba3be'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 16px;
+    padding-right: 40px;
+    cursor: pointer;
+  }
+
+  .help-text {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    line-height: 1.4;
+    margin-top: 2px;
+  }
+
+  .error-text {
+    font-size: 11px;
+    color: var(--color-danger);
+    margin-top: 2px;
+  }
+}
+
+.form-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+/* ── Alerts ── */
+.alert {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: fadeIn 0.2s ease-out;
+
+  &.alert-success {
+    background: var(--color-success-muted);
+    border: 1px solid rgba(52, 211, 153, 0.2);
+    color: var(--color-success);
+  }
+
+  &.alert-danger {
+    background: var(--color-danger-muted);
+    border: 1px solid rgba(248, 113, 113, 0.2);
+    color: var(--color-danger);
+  }
+}
+
+/* ── Spinner ── */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 0.8s ease-in-out infinite;
+
+  &.inline {
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

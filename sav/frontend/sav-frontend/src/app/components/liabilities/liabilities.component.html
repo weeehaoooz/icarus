@@ -1,0 +1,167 @@
+<div class="liabilities-view">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Liabilities & Debt</h1>
+      <p class="page-subtitle">Track interest rates, terms, and pay down outstanding loans</p>
+    </div>
+    <button class="btn-ghost" (click)="isAdding.update(v => !v)">
+      {{ isAdding() ? 'Cancel' : '+ Add Liability' }}
+    </button>
+  </header>
+
+  <!-- ── Interactive Add Form ── -->
+  @if (isAdding()) {
+    <section class="card add-form-section">
+      <h3>Add New Liability</h3>
+      <form [formGroup]="liabilityForm" (ngSubmit)="onAddSubmit()" class="add-form">
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="name">Lender / Loan Name *</label>
+            <input id="name" type="text" formControlName="name" placeholder="e.g. DBS Home Loan or Citi Credit Card" />
+            @if (liabilityForm.controls.name.touched && liabilityForm.controls.name.invalid) {
+              <span class="field-error">Name is required</span>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="liability_type">Type *</label>
+            <select id="liability_type" formControlName="liability_type">
+              <option value="mortgage">Mortgage</option>
+              <option value="personal_loan">Personal Loan</option>
+              <option value="auto_loan">Auto Loan</option>
+              <option value="student_loan">Student Loan</option>
+              <option value="credit_card">Credit Card</option>
+              <option value="margin_loan">Margin Loan</option>
+              <option value="other">Other Debt</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="principal">Principal Amount *</label>
+            <input id="principal" type="text" formControlName="principal" placeholder="0.00" />
+          </div>
+
+          <div class="form-group">
+            <label for="outstanding_amt">Outstanding Amount *</label>
+            <input id="outstanding_amt" type="text" formControlName="outstanding_amt" placeholder="0.00" />
+            @if (liabilityForm.controls.outstanding_amt.touched && liabilityForm.controls.outstanding_amt.invalid) {
+              <span class="field-error">Invalid outstanding amount</span>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="interest_rate">Interest Rate (% APR) *</label>
+            <input id="interest_rate" type="text" formControlName="interest_rate" placeholder="e.g. 3.5" />
+            @if (liabilityForm.controls.interest_rate.touched && liabilityForm.controls.interest_rate.invalid) {
+              <span class="field-error">Invalid rate</span>
+            }
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="interest_type">Interest Type *</label>
+            <select id="interest_type" formControlName="interest_type">
+              <option value="fixed">Fixed Rate</option>
+              <option value="variable">Variable / Floating Rate</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="monthly_payment">Monthly Payment *</label>
+            <input id="monthly_payment" type="text" formControlName="monthly_payment" placeholder="0.00" />
+          </div>
+
+          <div class="form-group">
+            <label for="term_months">Term (Months)</label>
+            <input id="term_months" type="number" formControlName="term_months" placeholder="360" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="lender">Lender Bank</label>
+            <input id="lender" type="text" formControlName="lender" placeholder="e.g. Citibank" />
+          </div>
+
+          <div class="form-group flex-2">
+            <label for="notes">Notes</label>
+            <input id="notes" type="text" formControlName="notes" placeholder="Notes or description..." />
+          </div>
+
+          <div class="form-group btn-align">
+            <button type="submit" class="btn-primary">Add Liability</button>
+          </div>
+        </div>
+      </form>
+    </section>
+  }
+
+  <!-- ── Liability Cards List ── -->
+  <section class="liabilities-grid">
+    @for (loan of finance.liabilities(); track loan.id) {
+      <div class="card liability-card">
+        <div class="card-header">
+          <div>
+            <span class="badge info">{{ loan.liability_type | uppercase }}</span>
+            <h2 class="loan-name">{{ loan.name }}</h2>
+          </div>
+          <button class="delete-btn" (click)="deleteLiability(loan.id)" aria-label="Delete liability">×</button>
+        </div>
+
+        <div class="card-body">
+          <!-- Outstanding Balance Area with Quick Edit -->
+          <div class="balance-area">
+            <div class="label">Outstanding Balance</div>
+            @if (isEditing() === loan.id) {
+              <div class="quick-edit-wrapper">
+                <input #newAmtInput type="text" [value]="loan.outstanding_amt" class="quick-edit-input" />
+                <div class="quick-edit-actions">
+                  <button class="btn-primary btn-sm" (click)="saveQuickEdit(loan.id, newAmtInput.value)">Save</button>
+                  <button class="btn-ghost btn-sm" (click)="cancelQuickEdit()">Cancel</button>
+                </div>
+              </div>
+            } @else {
+              <div class="balance-display-row">
+                <div class="balance-val">{{ formatCurrency(loan.outstanding_amt) }}</div>
+                <button class="btn-ghost edit-balance-btn" (click)="startQuickEdit(loan.id, loan.outstanding_amt)">Update</button>
+              </div>
+            }
+          </div>
+
+          <!-- Technical metrics list -->
+          <div class="metrics-list">
+            <div class="metric-row">
+              <span class="m-label">Interest Rate</span>
+              <span class="m-val">{{ formatPercent(loan.interest_rate) }} ({{ loan.interest_type }})</span>
+            </div>
+
+            <div class="metric-row">
+              <span class="m-label">Monthly Payment</span>
+              <span class="m-val">{{ formatCurrency(loan.monthly_payment) }}</span>
+            </div>
+
+            <div class="metric-row">
+              <span class="m-label">Principal</span>
+              <span class="m-val">{{ formatCurrency(loan.principal) }}</span>
+            </div>
+
+            @if (loan.lender) {
+              <div class="metric-row">
+                <span class="m-label">Lender</span>
+                <span class="m-val">{{ loan.lender }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    } @empty {
+      <div class="empty-state card flex-fill">
+        <h3>No liabilities logged</h3>
+        <p>Your debt profile is completely clear. Congratulations!</p>
+      </div>
+    }
+  </section>
+</div>

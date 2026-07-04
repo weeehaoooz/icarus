@@ -1,0 +1,27 @@
+{
+  "code": "retire-calc",
+  "name": "Retirement Calculator Service",
+  "base_url": "http://localhost:8082",
+  "permissions": [
+    {
+      "action": "calculate",
+      "path_pattern": "/calculate",
+      "method": "POST",
+      "description": "Ability to run retirement calculations"
+    }
+  ],
+  "default_roles": [
+    {
+      "name": "RetirementUser",
+      "description": "Allows running retirement calculations",
+      "permissions": ["calculate"]
+    }
+  ],
+  "app_centric_roles": [
+    {
+      "name": "AppCalculator",
+      "description": "Allows app-scoped calculator access",
+      "permissions": ["calculate"]
+    }
+  ]
+}

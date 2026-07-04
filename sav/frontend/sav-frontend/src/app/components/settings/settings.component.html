@@ -1,0 +1,177 @@
+<div class="settings-container">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Account Settings</h1>
+      <p class="page-subtitle">Manage your personal profile, security credentials, and platform preferences</p>
+    </div>
+  </header>
+
+  <div class="settings-grid">
+    <!-- Profile Section -->
+    <section class="card settings-section">
+      <div class="section-header">
+        <span class="icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </span>
+        <div>
+          <h2>Personal Profile</h2>
+          <p class="section-subtitle">Update your personal contact details</p>
+        </div>
+      </div>
+
+      <form [formGroup]="profileForm" (ngSubmit)="onUpdateProfile()">
+        @if (profileSuccess()) {
+          <div class="alert alert-success" role="alert">
+            {{ profileSuccess() }}
+          </div>
+        }
+        @if (profileError()) {
+          <div class="alert alert-danger" role="alert">
+            {{ profileError() }}
+          </div>
+        }
+
+        <div class="form-group">
+          <label for="username">Username (Read-only)</label>
+          <input type="text" id="username" formControlName="username" class="form-control" />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="first_name">First Name</label>
+            <input type="text" id="first_name" formControlName="first_name" class="form-control" placeholder="Enter first name" />
+          </div>
+
+          <div class="form-group">
+            <label for="last_name">Last Name</label>
+            <input type="text" id="last_name" formControlName="last_name" class="form-control" placeholder="Enter last name" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" formControlName="email" class="form-control" placeholder="Enter email address" />
+          @if (profileForm.controls.email.touched && profileForm.controls.email.invalid) {
+            <span class="error-text">Please enter a valid email address</span>
+          }
+        </div>
+
+        <div class="form-footer">
+          <button type="submit" class="btn-primary" [disabled]="loadingProfile()">
+            @if (loadingProfile()) {
+              <span class="spinner inline"></span> Saving...
+            } @else {
+              Save Profile
+            }
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Preferences Section -->
+    <section class="card settings-section">
+      <div class="section-header">
+        <span class="icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-coins"><circle cx="8" cy="8" r="6"/><circle cx="18" cy="18" r="4"/><path d="M12 18a6 6 0 0 0-6-6M12 6a6 6 0 0 1 6 6"/></svg>
+        </span>
+        <div>
+          <h2>Platform Preferences</h2>
+          <p class="section-subtitle">Configure reporting base currency for financial views</p>
+        </div>
+      </div>
+
+      <form [formGroup]="currencyForm" (ngSubmit)="onUpdateCurrency()">
+        @if (currencySuccess()) {
+          <div class="alert alert-success" role="alert">
+            {{ currencySuccess() }}
+          </div>
+        }
+        @if (currencyError()) {
+          <div class="alert alert-danger" role="alert">
+            {{ currencyError() }}
+          </div>
+        }
+
+        <div class="form-group">
+          <label for="base_currency">Reporting Base Currency</label>
+          <select id="base_currency" formControlName="base_currency" class="form-control select-control">
+            @for (curr of currencies; track curr.code) {
+              <option [value]="curr.code">{{ curr.name }}</option>
+            }
+          </select>
+          <p class="help-text">This updates the reporting currency used to display totals across your dashboard, assets, and liabilities.</p>
+        </div>
+
+        <div class="form-footer">
+          <button type="submit" class="btn-primary" [disabled]="loadingCurrency()">
+            @if (loadingCurrency()) {
+              <span class="spinner inline"></span> Saving...
+            } @else {
+              Update Currency
+            }
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Security Section -->
+    <section class="card settings-section security-section">
+      <div class="section-header">
+        <span class="icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </span>
+        <div>
+          <h2>Security Credentials</h2>
+          <p class="section-subtitle">Update your password to keep your account secure</p>
+        </div>
+      </div>
+
+      <form [formGroup]="passwordForm" (ngSubmit)="onChangePassword()">
+        @if (passwordSuccess()) {
+          <div class="alert alert-success" role="alert">
+            {{ passwordSuccess() }}
+          </div>
+        }
+        @if (passwordError()) {
+          <div class="alert alert-danger" role="alert">
+            {{ passwordError() }}
+          </div>
+        }
+
+        <div class="form-group">
+          <label for="old_password">Current Password</label>
+          <input type="password" id="old_password" formControlName="old_password" class="form-control" placeholder="••••••••" />
+          @if (passwordForm.controls.old_password.touched && passwordForm.controls.old_password.invalid) {
+            <span class="error-text">Current password is required</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="new_password">New Password</label>
+          <input type="password" id="new_password" formControlName="new_password" class="form-control" placeholder="Minimum 6 characters" />
+          @if (passwordForm.controls.new_password.touched && passwordForm.controls.new_password.invalid) {
+            <span class="error-text">Password must be at least 6 characters</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="confirm_password">Confirm New Password</label>
+          <input type="password" id="confirm_password" formControlName="confirm_password" class="form-control" placeholder="••••••••" />
+          @if (passwordForm.controls.confirm_password.touched && passwordForm.controls.confirm_password.invalid) {
+            <span class="error-text">Please confirm your new password</span>
+          }
+        </div>
+
+        <div class="form-footer">
+          <button type="submit" class="btn-primary" [disabled]="loadingPassword()">
+            @if (loadingPassword()) {
+              <span class="spinner inline"></span> Updating...
+            } @else {
+              Change Password
+            }
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+</div>

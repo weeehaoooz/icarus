@@ -1,0 +1,282 @@
+.dashboard-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--bg-main);
+}
+
+.sidebar {
+  width: 260px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px 20px;
+  position: fixed;
+  height: 100vh;
+  left: 0;
+  top: 0;
+  z-index: 100;
+  overflow-y: auto;
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 28px;
+  padding-left: 8px;
+  flex-shrink: 0;
+
+  .brand-icon {
+    width: 28px;
+    height: 28px;
+    background: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    color: var(--text-inverse);
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+  }
+
+  .brand-name {
+    font-family: var(--font-heading);
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-main);
+    letter-spacing: -0.02em;
+
+    span {
+      color: var(--primary);
+    }
+  }
+}
+
+/* ─── Nav Body ────────────────────────────────────────────── */
+.nav-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-grow: 1;
+}
+
+/* ─── Section Groups ──────────────────────────────────────── */
+.nav-section {
+  margin-bottom: 4px;
+
+  /* Label row */
+  .nav-section-label {
+    display: block;
+    padding: 10px 12px 6px;
+    font-family: var(--font-heading);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    opacity: 0.6;
+    user-select: none;
+  }
+
+  /* Dim the whole Platform section slightly */
+  &.nav-section--platform {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid var(--border-color);
+
+    .nav-section-label {
+      opacity: 0.45;
+    }
+
+    .nav-link:not(.active):not(:hover),
+    .sub-menu-toggle:not(.active-parent):not(:hover) {
+      opacity: 0.65;
+    }
+  }
+}
+
+/* ─── Nav List ────────────────────────────────────────────── */
+.nav-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  .nav-item {
+    display: block;
+  }
+
+  .nav-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-family: var(--font-heading);
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: var(--transition);
+    border: 1px solid transparent;
+
+    &:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.03);
+      opacity: 1 !important; /* override platform dimming on hover */
+    }
+
+    &.active {
+      color: var(--text-main);
+      background: var(--primary-glow);
+      border-color: rgba(20, 184, 166, 0.15);
+    }
+
+    /* Accent variant for Modules */
+    &.nav-link--accent {
+      .nav-accent-dot {
+        display: block;
+        margin-left: auto;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--primary);
+        opacity: 0.8;
+        flex-shrink: 0;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+      }
+
+      &:hover .nav-accent-dot,
+      &.active .nav-accent-dot {
+        opacity: 1;
+        transform: scale(1.2);
+      }
+
+      &.active {
+        /* slightly stronger left accent for Modules */
+        border-left: 2px solid var(--primary);
+      }
+    }
+  }
+}
+
+/* ─── User Profile Card ───────────────────────────────────── */
+.user-profile-card {
+  margin-top: auto;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+
+  .user-info {
+    display: flex;
+    flex-direction: column;
+
+    .user-name {
+      font-family: var(--font-heading);
+      font-weight: 600;
+      font-size: 0.875rem;
+      color: var(--text-main);
+    }
+
+    .user-role {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 2px;
+    }
+  }
+
+  .logout-btn {
+    flex: 1;
+    font-size: 0.75rem;
+    padding: 6px 12px;
+  }
+
+  .user-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+/* ─── Main Content ────────────────────────────────────────── */
+.main-content {
+  margin-left: 260px;
+  flex-grow: 1;
+  padding: 40px;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* ─── Settings Sub-Menu ───────────────────────────────────── */
+.sub-menu-toggle {
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  outline: none;
+
+  &.active-parent {
+    color: var(--text-main);
+    opacity: 1 !important;
+  }
+}
+
+.arrow-icon {
+  transition: transform 0.2s ease;
+  &.rotated {
+    transform: rotate(180deg);
+  }
+}
+
+.sub-nav-list {
+  list-style: none;
+  padding-left: 28px;
+  margin-top: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: slideDown 0.18s ease-out;
+}
+
+.sub-nav-link {
+  display: block;
+  padding: 7px 12px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: var(--transition);
+  border-left: 2px solid transparent;
+
+  &:hover {
+    color: var(--text-main);
+    border-left-color: var(--border-color-hover);
+    opacity: 1 !important;
+  }
+
+  &.active {
+    color: var(--primary);
+    font-weight: 600;
+    border-left-color: var(--primary);
+    opacity: 1 !important;
+  }
+}
+
+/* ─── Animations ──────────────────────────────────────────── */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS user_preferences (
+    user_id TEXT PRIMARY KEY,
+    base_currency TEXT NOT NULL DEFAULT 'SGD',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);

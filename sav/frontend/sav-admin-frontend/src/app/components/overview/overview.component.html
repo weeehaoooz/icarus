@@ -1,0 +1,78 @@
+<header class="overview-header">
+  <h1 class="overview-title">SAV Advisor Dashboard</h1>
+  <p class="overview-subtitle">Manage customer platform accounts, portfolios, and advisor allocations</p>
+</header>
+
+<div class="stats-grid">
+  <div class="stat-card glass-panel">
+    <div class="stat-icon users" aria-hidden="true">
+      <svg class="lucide-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    </div>
+    <div class="stat-info">
+      <span class="stat-value">{{ totalUsers() }}</span>
+      <span class="stat-label">Total Users</span>
+    </div>
+  </div>
+
+  <div class="stat-card glass-panel">
+    <div class="stat-icon clients" aria-hidden="true">
+      <svg class="lucide-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px;"><path d="M20 16V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12"/><path d="M2 20h20"/><path d="M12 20v-4"/></svg>
+    </div>
+    <div class="stat-info">
+      <span class="stat-value">{{ totalClients() }}</span>
+      <span class="stat-label">Registered Clients</span>
+    </div>
+  </div>
+
+  <div class="stat-card glass-panel">
+    <div class="stat-icon roles" aria-hidden="true">
+      <svg class="lucide-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px;"><path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+    </div>
+    <div class="stat-info">
+      <span class="stat-value">{{ totalRoles() }}</span>
+      <span class="stat-label">Access Roles</span>
+    </div>
+  </div>
+</div>
+
+<div class="info-section">
+  <div class="info-card glass-panel">
+    <h2 class="card-title" style="display: flex; align-items: center; gap: 8px;">
+      <svg class="lucide-icon" viewBox="0 0 24 24" style="color: var(--primary);"><path d="M20 13c0 5-3.5 7.5-7.66 9.7a1 1 0 0 1-.68 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.8 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+      Security Status Overview
+    </h2>
+    <div class="system-details">
+      <div class="detail-row">
+        <span class="detail-label">Auth Microservice Address</span>
+        <span class="detail-value">http://localhost:8080</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Active Connection Driver</span>
+        <span class="detail-value"><span class="badge badge-primary">sqlite / auth.db</span></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Token Algorithm</span>
+        <span class="detail-value">RS256 (RSA Signature)</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Access Token Validity</span>
+        <span class="detail-value">5 Minutes (Auto-Rotating)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="info-card glass-panel">
+    <h2 class="card-title">⚡ Quick Actions</h2>
+    <div class="actions-container">
+      <button routerLink="/dashboard/users" class="btn btn-primary">
+        <svg class="lucide-icon" viewBox="0 0 24 24" style="margin-right: 6px;"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Create New User
+      </button>
+      <button routerLink="/dashboard/clients" class="btn btn-secondary" style="color: var(--secondary); border-color: rgba(52, 211, 153, 0.2);">
+        <svg class="lucide-icon" viewBox="0 0 24 24" style="margin-right: 6px;"><path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg> Register Client Credentials
+      </button>
+      <button routerLink="/dashboard/roles" class="btn btn-secondary">
+        <svg class="lucide-icon" viewBox="0 0 24 24" style="margin-right: 6px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Edit Permission Policy
+      </button>
+    </div>
+  </div>
+</div>

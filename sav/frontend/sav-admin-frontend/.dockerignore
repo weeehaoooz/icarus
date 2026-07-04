@@ -1,0 +1,11 @@
+# Exclude dependencies and builds
+node_modules/
+dist/
+.angular/
+
+# Exclude IDE and OS files
+.vscode/
+.editorconfig
+.DS_Store
+.git
+.gitignore

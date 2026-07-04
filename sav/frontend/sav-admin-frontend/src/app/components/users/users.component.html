@@ -1,0 +1,243 @@
+<header class="users-header">
+  <div>
+    <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.02em;">Users Management</h1>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">View, register, and assign access roles to system operators
+    </p>
+  </div>
+  @if (activePanel() !== 'create') {
+  <button (click)="openCreatePanel()" class="btn btn-primary">
+    <svg class="lucide-icon" viewBox="0 0 24 24" style="margin-right: 6px;">
+      <path d="M5 12h14" />
+      <path d="M12 5v14" />
+    </svg> Add User
+  </button>
+  }
+</header>
+
+<div class="search-bar">
+  <div class="search-wrapper" [class.is-searching]="isSearching()">
+    <!-- Search Icon -->
+    <span class="search-icon" aria-hidden="true">
+      <svg class="lucide-icon" viewBox="0 0 24 24" style="width:15px;height:15px;">
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.3-4.3" />
+      </svg>
+    </span>
+
+    <!-- Input -->
+    <input type="search" id="users-search" class="search-input"
+      placeholder="Search users by name, email, or username..." [value]="searchQuery()" (input)="onSearchInput($event)"
+      autocomplete="off" aria-label="Search users" />
+
+    <!-- Suffix: spinner when searching, clear × when text present -->
+    <span class="search-suffix">
+      @if (isSearching()) {
+      <span class="search-spinner" aria-label="Searching…" role="status"></span>
+      } @else if (searchQuery()) {
+      <button class="search-clear-btn" type="button" (click)="clearSearch()" aria-label="Clear search">✕</button>
+      }
+    </span>
+  </div>
+</div>
+
+
+<div class="split-layout" [class.has-active-panel]="activePanel() !== null">
+  <!-- Left Side: High Density Table -->
+  <div class="table-panel glass-panel animate-fade-in">
+    <div class="table-container">
+      <table class="custom-table" aria-label="Users high-density data table">
+        <thead>
+          <tr>
+            <th style="width: 40px; text-align: center;">
+              <input type="checkbox" class="form-checkbox" [checked]="isAllSelected()"
+                (change)="toggleSelectAll($event)" aria-label="Select all users on this page" />
+            </th>
+            <th style="width: 80px;">ID</th>
+            <th>Username</th>
+            <th>Full Name</th>
+            <th>Email</th>
+            <th>Roles</th>
+            <th>Groups</th>
+            <th style="width: 100px; text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (user of filteredUsers(); track user.id) {
+          <tr [class.selected]="selectedUser()?.id === user.id" (click)="openEditPanel(user)" style="cursor: pointer;">
+            <td style="text-align: center;" (click)="$event.stopPropagation()">
+              <input type="checkbox" class="form-checkbox" [checked]="selectedIds().has(user.id)"
+                (change)="toggleSelect(user.id, $event)" [aria-label]="'Select user ' + user.username" />
+            </td>
+            <td>{{ user.id }}</td>
+            <td style="font-weight: 700; color: var(--primary);">{{ user.username }}</td>
+            <td>{{ user.first_name }} {{ user.last_name }}</td>
+            <td>{{ user.email || '-' }}</td>
+            <td>
+              <div class="roles-container">
+                @for (role of (user.roles || []).slice(0, 3); track role) {
+                <span class="badge badge-primary">{{ role }}</span>
+                }
+                @if ((user.roles || []).length > 3) {
+                <span class="badge badge-secondary" [title]="(user.roles || []).slice(3).join(', ')">+{{ (user.roles ||
+                  []).length - 3
+                  }} more</span>
+                }
+                @if ((user.roles || []).length === 0) {
+                <span style="color: var(--text-muted); font-size: 0.8rem; font-style: italic;">None</span>
+                }
+              </div>
+            </td>
+            <td>
+              <div class="roles-container">
+                @for (group of user.groups; track group.name) {
+                <span class="badge" [class.badge-secondary]="group.type === 'LDAP'"
+                  [class.badge-primary]="group.type === 'Custom'">
+                  {{ group.name }}
+                </span>
+                } @empty {
+                <span style="color: var(--text-muted); font-size: 0.8rem; font-style: italic;">None</span>
+                }
+              </div>
+            </td>
+            <td style="text-align: right;" (click)="$event.stopPropagation()">
+              <button (click)="deleteUser(user.id, $event)" class="icon-btn delete" title="Delete Operator Account">
+                <svg class="lucide-icon" viewBox="0 0 24 24">
+                  <path d="M3 6h18" />
+                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                  <line x1="10" x2="10" y1="11" y2="17" />
+                  <line x1="14" x2="14" y1="11" y2="17" />
+                </svg>
+              </button>
+            </td>
+          </tr>
+          } @empty {
+          <tr>
+            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 48px;">
+              No system operators match the filter criteria.
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Right Side: Split-screen Detail/Edit Panel -->
+  @if (activePanel(); as panelType) {
+  <div class="detail-panel glass-panel animate-fade-in" role="region" aria-label="Operator Detail Configuration">
+    <header class="panel-header">
+      <h2 class="panel-title">
+        {{ panelType === 'edit' ? 'Operator Policy Configuration' : 'Create Operator Account' }}
+      </h2>
+      <button (click)="closePanel()" class="close-btn" aria-label="Close configuration panel">✕</button>
+    </header>
+
+    @if (panelError()) {
+    <div class="panel-error" role="alert">
+      {{ panelError() }}
+    </div>
+    }
+
+    <form (ngSubmit)="saveUser()">
+      <div class="form-group">
+        <label class="form-label" for="username">Username</label>
+        <input type="text" id="username" [(ngModel)]="formData.username" name="username" class="form-input" required
+          [disabled]="panelType === 'edit'" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="email">Email Address</label>
+        <input type="email" id="email" [(ngModel)]="formData.email" name="email" class="form-input" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="firstName">First Name</label>
+        <input type="text" id="firstName" [(ngModel)]="formData.firstName" name="firstName" class="form-input" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="lastName">Last Name</label>
+        <input type="text" id="lastName" [(ngModel)]="formData.lastName" name="lastName" class="form-input" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">
+          Password {{ panelType === 'edit' ? '(leave blank to retain current)' : '' }}
+        </label>
+        <input type="password" id="password" [(ngModel)]="formData.password" name="password" class="form-input"
+          [required]="panelType === 'create'" autocomplete="new-password" />
+      </div>
+
+      <div class="form-group">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+          <label class="form-label" style="margin-bottom: 0;">Access Roles ({{ formData.roles.length }})</label>
+          <button type="button" (click)="openRoleModal()" class="manage-roles-btn">
+            Manage Roles
+          </button>
+        </div>
+        <div class="assigned-roles-preview-box">
+          @for (role of formData.roles; track role) {
+          <span class="badge badge-primary">{{ role }}</span>
+          } @empty {
+          <span style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">No roles assigned. Click
+            "Manage Roles" to add.</span>
+          }
+        </div>
+      </div>
+
+      <!-- LDAP Groups (Read-only) -->
+      @if (selectedUser() && hasLDAPGroups()) {
+      <div class="form-group">
+        <label class="form-label">LDAP Groups (Read-only)</label>
+        <div class="roles-container" style="margin-top: 8px;">
+          @for (group of getLDAPGroups(); track group.name) {
+          <span class="badge badge-secondary">{{ group.name }}</span>
+          }
+        </div>
+        <span class="field-hint" style="margin-top: 4px; display: block;">LDAP groups are synchronized from Active
+          Directory on authentication.</span>
+      </div>
+      }
+
+      <div
+        style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+        <button type="button" (click)="closePanel()" class="btn btn-secondary">
+          Cancel
+        </button>
+        <button type="submit" class="btn btn-primary">
+          Save Changes
+        </button>
+      </div>
+    </form>
+  </div>
+  }
+</div>
+
+<!-- Sticky Bottom Bulk Actions Toolbar -->
+@if (selectedIds().size > 0) {
+<div class="bulk-actions-bar animate-fade-in" role="toolbar" aria-label="Bulk actions toolbar">
+  <div class="bulk-info">
+    Selected <strong>{{ selectedIds().size }}</strong> operator accounts
+  </div>
+
+  <div class="bulk-actions">
+    <!-- Role assign selector -->
+    <select #roleSelect (change)="bulkAssignRole(roleSelect.value); roleSelect.value = ''" class="form-input"
+      style="width: 180px; padding: 6px 10px; font-size: 0.8rem; background: #0c101d;">
+      <option value="">-- ASSIGN ROLE --</option>
+      @for (role of availableRoles(); track role.name) {
+      <option [value]="role.name">{{ role.name }}</option>
+      }
+    </select>
+
+    <button (click)="bulkDelete()" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;">
+      Delete Selected
+    </button>
+
+    <button (click)="clearSelection()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;">
+      Clear
+    </button>
+  </div>
+</div>
+}

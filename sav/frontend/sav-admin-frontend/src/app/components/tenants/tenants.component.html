@@ -1,0 +1,176 @@
+<header class="clients-header">
+  <div>
+    <h1>Tenant Management</h1>
+    <p style="color: var(--text-muted); font-size: 0.875rem; margin-top: 4px;">
+      Register and manage organizational tenants. Deleting a tenant cascades to all roles and assignments.
+    </p>
+  </div>
+  <button (click)="openCreatePanel()" class="btn btn-primary">
+    <svg class="lucide-icon" viewBox="0 0 24 24" style="margin-right: 6px;"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Add Tenant
+  </button>
+</header>
+
+<div class="search-bar">
+  <div class="search-wrapper" [class.is-searching]="isSearching()">
+    <span class="search-icon" aria-hidden="true">
+      <svg class="lucide-icon" viewBox="0 0 24 24" style="width:15px;height:15px;">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+      </svg>
+    </span>
+    <input
+      type="search"
+      id="tenants-search"
+      class="search-input"
+      placeholder="Search by name, code, status..."
+      [value]="searchQuery()"
+      (input)="onSearchInput($event)"
+      autocomplete="off"
+      aria-label="Search tenants"
+    />
+    <span class="search-suffix">
+      @if (isSearching()) {
+        <span class="search-spinner" aria-label="Searching…" role="status"></span>
+      } @else if (searchQuery()) {
+        <button class="search-clear-btn" type="button" (click)="clearSearch()" aria-label="Clear search">✕</button>
+      }
+    </span>
+  </div>
+</div>
+
+<div class="split-layout" [class.has-active-panel]="activePanel() !== null">
+  <div class="table-panel glass-panel table-container">
+    <table class="custom-table">
+      <thead>
+        <tr>
+          <th style="width: 40px; text-align: center;">
+            <input
+              type="checkbox"
+              [checked]="isAllSelected()"
+              (change)="toggleSelectAll($event)"
+              class="form-checkbox"
+            />
+          </th>
+          <th>Name</th>
+          <th>Tenant Code</th>
+          <th>Status</th>
+          <th>Onboarded At</th>
+          <th style="width: 100px; text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (tenant of filteredTenants(); track tenant.id) {
+          <tr 
+            (click)="openEditPanel(tenant)" 
+            style="cursor: pointer;"
+            [class.selected]="selectedIds().has(tenant.id)"
+          >
+            <td style="text-align: center;" (click)="$event.stopPropagation()">
+              <input
+                type="checkbox"
+                [checked]="selectedIds().has(tenant.id)"
+                (change)="toggleSelect(tenant.id, $event)"
+                class="form-checkbox"
+              />
+            </td>
+            <td>
+              <strong style="color: var(--primary);">{{ tenant.name }}</strong>
+            </td>
+            <td>
+              <code style="color: var(--text-muted);">{{ tenant.code }}</code>
+            </td>
+            <td>
+              <span class="badge" 
+                [class.badge-primary]="tenant.status === 'active'"
+                [class.badge-secondary]="tenant.status !== 'active'"
+              >
+                {{ tenant.status }}
+              </span>
+            </td>
+            <td>{{ tenant.created_at | date:'short' }}</td>
+            <td style="text-align: right;" (click)="$event.stopPropagation()">
+              <button (click)="openEditPanel(tenant)" class="icon-btn" title="Edit Tenant">
+                <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              </button>
+              <button (click)="deleteTenant(tenant.id, $event)" class="icon-btn delete" title="Delete Tenant">
+                <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+              </button>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">
+              No tenants onboarded yet. Click "Add Tenant" to get started.
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (activePanel(); as panel) {
+    <div class="detail-panel glass-panel">
+      <div class="panel-header">
+        <h2 class="panel-title">
+          {{ panel === 'create' ? 'Add New Tenant' : 'Edit Tenant' }}
+        </h2>
+        <button (click)="closePanel()" class="close-btn" aria-label="Close panel">✕</button>
+      </div>
+
+      @if (panelError()) {
+        <div class="panel-error">
+          <svg class="lucide-icon" viewBox="0 0 24 24" style="margin-right: 6px; color: var(--danger);"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> {{ panelError() }}
+        </div>
+      }
+
+      <form (ngSubmit)="saveTenant()" #tenantForm="ngForm">
+        <div class="form-group">
+          <label class="form-label" for="tenant-code">Tenant Code</label>
+          <input
+            id="tenant-code"
+            name="code"
+            [(ngModel)]="formData.code"
+            required
+            [disabled]="panel === 'edit'"
+            placeholder="e.g. AcmeCorp"
+            class="form-input"
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="tenant-name">Tenant Name</label>
+          <input
+            id="tenant-name"
+            name="name"
+            [(ngModel)]="formData.name"
+            required
+            placeholder="e.g. Acme Corporation"
+            class="form-input"
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="tenant-status">Status</label>
+          <select
+            id="tenant-status"
+            name="status"
+            [(ngModel)]="formData.status"
+            required
+            class="form-input"
+            style="background: var(--bg-card); color: var(--text-main);"
+          >
+            <option value="active">Active</option>
+            <option value="suspended">Suspended</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+
+        <div class="panel-actions" style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
+          <button type="button" (click)="closePanel()" class="btn btn-secondary">Cancel</button>
+          <button type="submit" [disabled]="!tenantForm.form.valid" class="btn btn-primary">
+            {{ panel === 'create' ? 'Create' : 'Save Changes' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+</div>

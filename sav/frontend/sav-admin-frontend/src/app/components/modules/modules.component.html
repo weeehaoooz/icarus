@@ -1,0 +1,720 @@
+<header class="clients-header">
+  <div>
+    <h1>Module Governance</h1>
+    <p style="color: var(--text-muted); font-size: 0.875rem; margin-top: 4px;">
+      Register backend services and API portals for route routing, permission mapping, and access policies.
+    </p>
+  </div>
+  <button (click)="openCreatePanel()" class="btn btn-primary">
+    <svg class="lucide-icon" viewBox="0 0 24 24" style="margin-right: 6px;"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Register Module
+  </button>
+</header>
+
+<div class="search-bar">
+  <div class="search-wrapper" [class.is-searching]="isSearching()">
+    <span class="search-icon" aria-hidden="true">
+      <svg class="lucide-icon" viewBox="0 0 24 24" style="width:15px;height:15px;">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+      </svg>
+    </span>
+    <input
+      type="search"
+      id="modules-search"
+      class="search-input"
+      placeholder="Search by name, code, base URL..."
+      [value]="searchQuery()"
+      (input)="onSearchInput($event)"
+      autocomplete="off"
+      aria-label="Search modules"
+    />
+    <span class="search-suffix">
+      @if (isSearching()) {
+        <span class="search-spinner" aria-label="Searching…" role="status"></span>
+      } @else if (searchQuery()) {
+        <button class="search-clear-btn" type="button" (click)="clearSearch()" aria-label="Clear search">✕</button>
+      }
+    </span>
+  </div>
+</div>
+
+<div class="split-layout" [class.has-active-panel]="activePanel() !== null">
+  <div class="table-panel glass-panel table-container">
+    <table class="custom-table">
+      <thead>
+        <tr>
+          <th style="width: 40px; text-align: center;">
+            <input
+              type="checkbox"
+              [checked]="isAllSelected()"
+              (change)="toggleSelectAll($event)"
+              class="form-checkbox"
+            />
+          </th>
+          <th>Name</th>
+          <th>Module Code</th>
+          <th>Base URL</th>
+          <th>Status</th>
+          <th>Onboarded At</th>
+          <th style="width: 100px; text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (module of filteredModules(); track module.id) {
+          <tr 
+            (click)="openEditPanel(module)" 
+            style="cursor: pointer;"
+            [class.selected]="selectedIds().has(module.id)"
+          >
+            <td style="text-align: center;" (click)="$event.stopPropagation()">
+              <input
+                type="checkbox"
+                [checked]="selectedIds().has(module.id)"
+                (change)="toggleSelect(module.id, $event)"
+                class="form-checkbox"
+              />
+            </td>
+            <td>
+              <strong style="color: var(--primary);">{{ module.name }}</strong>
+            </td>
+            <td>
+              <code style="color: var(--text-muted);">{{ module.code }}</code>
+            </td>
+            <td>
+              <code style="color: var(--text-muted);">{{ module.base_url }}</code>
+            </td>
+            <td>
+              <span class="badge" 
+                [class.badge-primary]="module.is_active"
+                [class.badge-secondary]="!module.is_active"
+              >
+                {{ module.is_active ? 'Active' : 'Inactive' }}
+              </span>
+            </td>
+            <td>{{ module.created_at | date:'short' }}</td>
+            <td style="text-align: right;" (click)="$event.stopPropagation()">
+              <button (click)="openEditPanel(module)" class="icon-btn" title="Edit Module">
+                <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              </button>
+              <button (click)="deleteModule(module.id, $event)" class="icon-btn delete" title="Delete Module">
+                <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+              </button>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
+              No modules registered yet. Click "Register Module" to get started.
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (activePanel(); as panel) {
+    <div class="detail-panel glass-panel">
+      <div class="panel-header">
+        <h2 class="panel-title">
+          {{ panel === 'create' ? 'Register New Module' : 'Edit Module Settings' }}
+        </h2>
+        <button (click)="closePanel()" class="close-btn" aria-label="Close panel">✕</button>
+      </div>
+
+      @if (panelError()) {
+        <div class="panel-error">
+          <svg class="lucide-icon" viewBox="0 0 24 24" style="margin-right: 6px; color: var(--danger);"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> {{ panelError() }}
+        </div>
+      }
+
+      @if (panel === 'edit') {
+        <div class="panel-tabs" role="tablist" aria-label="Edit panel sections">
+          <button
+            type="button"
+            role="tab"
+            [attr.aria-selected]="editPanelTab() === 'settings'"
+            class="panel-tab"
+            [class.active]="editPanelTab() === 'settings'"
+            (click)="editPanelTab.set('settings')"
+          >
+            Settings
+          </button>
+          <button
+            type="button"
+            role="tab"
+            [attr.aria-selected]="editPanelTab() === 'policies'"
+            class="panel-tab"
+            [class.active]="editPanelTab() === 'policies'"
+            (click)="editPanelTab.set('policies')"
+          >
+            Policies
+          </button>
+          <button
+            type="button"
+            role="tab"
+            [attr.aria-selected]="editPanelTab() === 'roles'"
+            class="panel-tab"
+            [class.active]="editPanelTab() === 'roles'"
+            (click)="editPanelTab.set('roles')"
+          >
+            Active Roles
+          </button>
+        </div>
+      }
+
+      <form (ngSubmit)="saveModule()" #moduleForm="ngForm">
+        
+        <!-- Tab 1: Settings (Basic Info + Application Onboarding) -->
+        @if (panel === 'create' || editPanelTab() === 'settings') {
+          <div class="tab-content-group">
+            <div class="form-group">
+              <label class="form-label" for="module-code">Module Code</label>
+              <input
+                id="module-code"
+                name="code"
+                [(ngModel)]="formData.code"
+                required
+                [disabled]="panel === 'edit'"
+                placeholder="e.g. core-api"
+                class="form-input"
+              />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="module-name">Module Name</label>
+              <input
+                id="module-name"
+                name="name"
+                [(ngModel)]="formData.name"
+                required
+                placeholder="e.g. Core API Portal"
+                class="form-input"
+              />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="module-baseUrl">Base URL</label>
+              <input
+                id="module-baseUrl"
+                name="baseUrl"
+                [(ngModel)]="formData.baseUrl"
+                required
+                placeholder="e.g. http://localhost:8082"
+                class="form-input"
+              />
+            </div>
+
+            <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-top: 16px;">
+              <input
+                type="checkbox"
+                id="module-isActive"
+                name="isActive"
+                [(ngModel)]="formData.isActive"
+                class="form-checkbox"
+              />
+              <label class="form-label" for="module-isActive" style="margin-bottom: 0; cursor: pointer;">Module is Active</label>
+            </div>
+
+            @if (panel === 'edit') {
+              <div style="border-top: 1px solid var(--border-color); margin-top: 24px; padding-top: 16px;">
+                <h3 style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); margin-bottom: 12px;">Onboarded Applications</h3>
+                <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; background: rgba(255,255,255,0.01); border: 1px solid var(--border-color); border-radius: 0; padding: 12px;">
+                  @if (availableAppsToOnboard().length > 0) {
+                    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                      <select 
+                        [(ngModel)]="onboardAppCode" 
+                        name="onboardAppCode" 
+                        class="form-input" 
+                        style="flex: 1; padding: 6px 10px; font-size: 0.85rem;"
+                      >
+                        <option value="">Select App to Onboard...</option>
+                        @for (app of availableAppsToOnboard(); track app.id) {
+                          <option [value]="app.code">{{ app.name }} ({{ app.code }})</option>
+                        }
+                      </select>
+                      <button 
+                        type="button" 
+                        (click)="onboardApplication()" 
+                        [disabled]="!onboardAppCode" 
+                        class="btn btn-primary" 
+                        style="padding: 6px 12px; font-size: 0.85rem;"
+                      >
+                        Onboard
+                      </button>
+                    </div>
+                  }
+
+                  <div style="display: flex; flex-direction: column; gap: 6px;">
+                    @for (appCode of onboardedApps(); track appCode) {
+                      <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 0; border: 1px solid rgba(255,255,255,0.05);">
+                        <span style="font-family: monospace; font-size: 0.85rem; color: var(--primary); font-weight: 600;">{{ appCode }}</span>
+                        <button 
+                          type="button" 
+                          (click)="offboardApplication(appCode)" 
+                          class="icon-btn delete" 
+                          title="Offboard Application"
+                          style="padding: 2px;"
+                        >
+                          <svg class="lucide-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                      </div>
+                    } @empty {
+                      <span style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 8px 0;">No application teams onboarded yet.</span>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Tab 2: Policies (Permissions & Role definition config) -->
+        @if (panel === 'create' || editPanelTab() === 'policies') {
+          <div class="tab-content-group">
+            <div class="config-section">
+              <div class="config-section-header">
+                <span class="config-section-title">Access Policy Configuration</span>
+              </div>
+
+              <!-- Main Tabs: Visual | JSON -->
+              <div class="config-tabs" role="tablist" aria-label="Configuration mode">
+                <button
+                  type="button"
+                  role="tab"
+                  id="tab-visual"
+                  aria-controls="panel-visual"
+                  [attr.aria-selected]="activeConfigTab() === 'visual'"
+                  class="config-tab"
+                  [class.active]="activeConfigTab() === 'visual'"
+                  (click)="switchConfigTab('visual')"
+                >
+                  <svg class="lucide-icon" viewBox="0 0 24 24" style="width:14px;height:14px;margin-right:5px;"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+                  Visual Editor
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  id="tab-json"
+                  aria-controls="panel-json"
+                  [attr.aria-selected]="activeConfigTab() === 'json'"
+                  class="config-tab"
+                  [class.active]="activeConfigTab() === 'json'"
+                  (click)="switchConfigTab('json')"
+                >
+                  <svg class="lucide-icon" viewBox="0 0 24 24" style="width:14px;height:14px;margin-right:5px;"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                  Manifest JSON
+                </button>
+              </div>
+
+              @if (configTabError()) {
+                <div class="config-tab-error">
+                  <svg class="lucide-icon" viewBox="0 0 24 24" style="width:13px;height:13px;margin-right:6px;flex-shrink:0;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  {{ configTabError() }}
+                </div>
+              }
+
+              <!-- Visual Editor Panel -->
+              @if (activeConfigTab() === 'visual') {
+                <div id="panel-visual" role="tabpanel" aria-labelledby="tab-visual" class="visual-editor">
+                  <div class="visual-subtabs">
+                    <button type="button" class="visual-subtab" [class.active]="activeVisualSubTab() === 'default_roles'" (click)="switchVisualSubTab('default_roles')">
+                      System Roles
+                      @if (defaultRoles().length > 0) {
+                        <span class="subtab-count">{{ defaultRoles().length }}</span>
+                      }
+                    </button>
+                    <button type="button" class="visual-subtab" [class.active]="activeVisualSubTab() === 'app_centric_roles'" (click)="switchVisualSubTab('app_centric_roles')">
+                      App Roles
+                      @if (appCentricRoles().length > 0) {
+                        <span class="subtab-count">{{ appCentricRoles().length }}</span>
+                      }
+                    </button>
+                    <button type="button" class="visual-subtab" [class.active]="activeVisualSubTab() === 'permissions'" (click)="switchVisualSubTab('permissions')">
+                      Permissions
+                      @if (permissions().length > 0) {
+                        <span class="subtab-count">{{ permissions().length }}</span>
+                      }
+                    </button>
+                  </div>
+
+                  <!-- Permissions Sub-panel -->
+                  @if (activeVisualSubTab() === 'permissions') {
+                    <div class="visual-subpanel">
+                      <p class="subpanel-hint"><span>Define the capability actions for this module. Roles reference permissions by their <strong>action key</strong> — path and method are optional metadata for documentation.</span></p>
+
+                      <div class="inline-form">
+                        <!-- Primary fields: what this permission IS -->
+                        <div class="inline-form-row">
+                          <div class="form-group inline-form-field flex-2">
+                            <label class="form-label" for="perm-action">Action Key <span class="required-star">*</span></label>
+                            <input
+                              id="perm-action"
+                              name="perm-action-input"
+                              [(ngModel)]="newPermission.action"
+                              placeholder="e.g. read, create, calculate"
+                              class="form-input"
+                            />
+                          </div>
+                          <div class="form-group inline-form-field flex-3">
+                            <label class="form-label" for="perm-desc">Description</label>
+                            <input
+                              id="perm-desc"
+                              name="perm-desc-input"
+                              [(ngModel)]="newPermission.description"
+                              placeholder="What this permission allows"
+                              class="form-input"
+                            />
+                          </div>
+                        </div>
+
+                        <!-- Optional metadata divider -->
+                        <div class="perm-optional-divider">
+                          <span>OPTIONAL METADATA</span>
+                        </div>
+
+                        <!-- Secondary fields: where this permission MAPS -->
+                        <div class="inline-form-row">
+                          <div class="form-group inline-form-field flex-3">
+                            <label class="form-label perm-optional-label" for="perm-path">
+                              Path Pattern
+                              <span
+                                class="perm-optional-info"
+                                data-tooltip="Maps this action to an API endpoint path (e.g. /api/v1/resource). Informational only — auth decisions use the action key, not the path."
+                                aria-label="Maps this action to an API endpoint path. Informational only."
+                                tabindex="0"
+                              >ⓘ</span>
+                            </label>
+                            <input
+                              id="perm-path"
+                              name="perm-path-input"
+                              [(ngModel)]="newPermission.path_pattern"
+                              placeholder="e.g. /api/v1/resource/*"
+                              class="form-input perm-optional-input"
+                            />
+                          </div>
+                          <div class="form-group inline-form-field flex-1">
+                            <label class="form-label perm-optional-label" for="perm-method">
+                              HTTP Method
+                              <span
+                                class="perm-optional-info"
+                                data-tooltip="The HTTP method this action corresponds to. Informational only — not used in auth enforcement."
+                                aria-label="The HTTP method this action corresponds to. Informational only."
+                                tabindex="0"
+                              >ⓘ</span>
+                            </label>
+                            <select id="perm-method" name="perm-method-select" [(ngModel)]="newPermission.method" class="form-input perm-optional-input">
+                              @for (m of httpMethods; track m) {
+                                <option [value]="m">{{ m }}</option>
+                              }
+                            </select>
+                          </div>
+                        </div>
+
+                        <div class="inline-form-actions">
+                          @if (editingPermIndex() !== null) {
+                            <button type="button" class="btn btn-primary btn-sm" (click)="saveEditPermission()" [disabled]="!newPermission.action.trim()">Save</button>
+                            <button type="button" class="btn btn-secondary btn-sm" (click)="cancelEditPermission()">Cancel</button>
+                          } @else {
+                            <button type="button" class="btn btn-primary btn-sm" (click)="addPermission()" [disabled]="!newPermission.action.trim()">
+                              <svg class="lucide-icon" viewBox="0 0 24 24" style="width:12px;height:12px;"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                              Add Permission
+                            </button>
+                          }
+                        </div>
+                      </div>
+
+                      @if (permissions().length > 0) {
+                        <div class="entries-list">
+                          @for (perm of permissions(); track perm.action; let i = $index) {
+                            <div class="entry-item" [class.is-editing]="editingPermIndex() === i">
+                              <div class="entry-main">
+                                <div class="entry-primary">
+                                  <span class="entry-action-key">{{ perm.action }}</span>
+                                  <span class="method-badge method-{{ perm.method.toLowerCase() }}">{{ perm.method }}</span>
+                                </div>
+                                <div class="entry-secondary">
+                                  @if (perm.path_pattern) {
+                                    <code class="entry-path">{{ perm.path_pattern }}</code>
+                                  }
+                                  @if (perm.description) {
+                                    <span class="entry-desc">{{ perm.description }}</span>
+                                  }
+                                </div>
+                              </div>
+                              <div class="entry-actions">
+                                <button type="button" class="icon-btn" title="Edit" (click)="startEditPermission(i)">
+                                  <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                </button>
+                                <button type="button" class="icon-btn delete" title="Remove" (click)="removePermission(i)">
+                                  <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                </button>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      } @else {
+                        <div class="entries-empty">No permissions defined yet. Add one above.</div>
+                      }
+                    </div>
+                  }
+
+                  <!-- System Roles Sub-panel -->
+                  @if (activeVisualSubTab() === 'default_roles') {
+                    <div class="visual-subpanel">
+                      <p class="subpanel-hint">System roles are module-wide and assigned directly to users. Select which permissions each role grants.</p>
+                      
+                      <div class="inline-form">
+                        <div class="inline-form-row">
+                          <div class="form-group inline-form-field flex-2">
+                            <label class="form-label" for="dr-name">Role Name <span class="required-star">*</span></label>
+                            <input id="dr-name" name="dr-name-input" [(ngModel)]="newDefaultRole.name" placeholder="e.g. Viewer, Editor, Admin" class="form-input" />
+                          </div>
+                          <div class="form-group inline-form-field flex-3">
+                            <label class="form-label" for="dr-desc">Description</label>
+                            <input id="dr-desc" name="dr-desc-input" [(ngModel)]="newDefaultRole.description" placeholder="What this role allows" class="form-input" />
+                          </div>
+                        </div>
+                        @if (permissionActions().length > 0) {
+                          <div class="form-group">
+                            <label class="form-label">Permissions</label>
+                            <div class="permissions-checklist">
+                              @for (action of permissionActions(); track action) {
+                                <label class="perm-check-item">
+                                  <input
+                                    type="checkbox"
+                                    class="form-checkbox"
+                                    [checked]="isPermissionChecked(newDefaultRole.permissions, action)"
+                                    (change)="toggleRolePermission(newDefaultRole.permissions, action)"
+                                  />
+                                  <span class="perm-check-label">{{ action }}</span>
+                                </label>
+                              }
+                            </div>
+                          </div>
+                        } @else {
+                          <p class="subpanel-hint" style="margin: 0 0 12px 0;">
+                            <svg class="lucide-icon" viewBox="0 0 24 24" style="width:13px;height:13px;margin-right:4px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            Define permissions first (in the Permissions tab) to assign them to roles.
+                          </p>
+                        }
+                        <div class="inline-form-actions">
+                          @if (editingDefaultRoleIndex() !== null) {
+                            <button type="button" class="btn btn-primary btn-sm" (click)="saveEditDefaultRole()" [disabled]="!newDefaultRole.name.trim()">Save</button>
+                            <button type="button" class="btn btn-secondary btn-sm" (click)="cancelEditDefaultRole()">Cancel</button>
+                          } @else {
+                            <button type="button" class="btn btn-primary btn-sm" (click)="addDefaultRole()" [disabled]="!newDefaultRole.name.trim()">
+                              <svg class="lucide-icon" viewBox="0 0 24 24" style="width:12px;height:12px;"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                              Add Role
+                            </button>
+                          }
+                        </div>
+                      </div>
+
+                      @if (defaultRoles().length > 0) {
+                        <div class="entries-list">
+                          @for (role of defaultRoles(); track role.name; let i = $index) {
+                            <div class="entry-item" [class.is-editing]="editingDefaultRoleIndex() === i">
+                              <div class="entry-main">
+                                <div class="entry-primary">
+                                  <span class="entry-action-key">{{ role.name }}</span>
+                                  <span class="badge badge-secondary" style="font-size:0.7rem;">{{ role.permissions.length }} Perm{{ role.permissions.length !== 1 ? 's' : '' }}</span>
+                                </div>
+                                <div class="entry-secondary">
+                                  @if (role.description) {
+                                    <span class="entry-desc">{{ role.description }}</span>
+                                  }
+                                  @if (role.permissions.length > 0) {
+                                    <div class="perm-tags">
+                                      @for (perm of role.permissions; track perm) {
+                                        <span class="perm-tag">{{ perm }}</span>
+                                      }
+                                    </div>
+                                  }
+                                </div>
+                              </div>
+                              <div class="entry-actions">
+                                <button type="button" class="icon-btn" title="Edit" (click)="startEditDefaultRole(i)">
+                                  <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                </button>
+                                <button type="button" class="icon-btn delete" title="Remove" (click)="removeDefaultRole(i)">
+                                  <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                </button>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      } @else {
+                        <div class="entries-empty">No system roles defined yet. Add one above.</div>
+                      }
+                    </div>
+                  }
+
+                  <!-- App Centric Roles Sub-panel -->
+                  @if (activeVisualSubTab() === 'app_centric_roles') {
+                    <div class="visual-subpanel">
+                      <p class="subpanel-hint">App roles are templates used when an application team is onboarded to this module, creating scoped roles per application.</p>
+                      
+                      <div class="inline-form">
+                        <div class="inline-form-row">
+                          <div class="form-group inline-form-field flex-2">
+                            <label class="form-label" for="ar-name">Role Name <span class="required-star">*</span></label>
+                            <input id="ar-name" name="ar-name-input" [(ngModel)]="newAppCentricRole.name" placeholder="e.g. AppViewer, AppEditor" class="form-input" />
+                          </div>
+                          <div class="form-group inline-form-field flex-3">
+                            <label class="form-label" for="ar-desc">Description</label>
+                            <input id="ar-desc" name="ar-desc-input" [(ngModel)]="newAppCentricRole.description" placeholder="What this role allows within an app scope" class="form-input" />
+                          </div>
+                        </div>
+                        @if (permissionActions().length > 0) {
+                          <div class="form-group">
+                            <label class="form-label">Permissions</label>
+                            <div class="permissions-checklist">
+                              @for (action of permissionActions(); track action) {
+                                <label class="perm-check-item">
+                                  <input
+                                    type="checkbox"
+                                    class="form-checkbox"
+                                    [checked]="isPermissionChecked(newAppCentricRole.permissions, action)"
+                                    (change)="toggleRolePermission(newAppCentricRole.permissions, action)"
+                                  />
+                                  <span class="perm-check-label">{{ action }}</span>
+                                </label>
+                              }
+                            </div>
+                          </div>
+                        } @else {
+                          <p class="subpanel-hint" style="margin: 0 0 12px 0;">
+                            <svg class="lucide-icon" viewBox="0 0 24 24" style="width:13px;height:13px;margin-right:4px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            Define permissions first (in the Permissions tab) to assign them to roles.
+                          </p>
+                        }
+                        <div class="inline-form-actions">
+                          @if (editingAppRoleIndex() !== null) {
+                            <button type="button" class="btn btn-primary btn-sm" (click)="saveEditAppRole()" [disabled]="!newAppCentricRole.name.trim()">Save</button>
+                            <button type="button" class="btn btn-secondary btn-sm" (click)="cancelEditAppRole()">Cancel</button>
+                          } @else {
+                            <button type="button" class="btn btn-primary btn-sm" (click)="addAppCentricRole()" [disabled]="!newAppCentricRole.name.trim()">
+                              <svg class="lucide-icon" viewBox="0 0 24 24" style="width:12px;height:12px;"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                              Add Role
+                            </button>
+                          }
+                        </div>
+                      </div>
+
+                      @if (appCentricRoles().length > 0) {
+                        <div class="entries-list">
+                          @for (role of appCentricRoles(); track role.name; let i = $index) {
+                            <div class="entry-item" [class.is-editing]="editingAppRoleIndex() === i">
+                              <div class="entry-main">
+                                <div class="entry-primary">
+                                  <span class="entry-action-key">{{ role.name }}</span>
+                                  <span class="badge badge-primary" style="font-size:0.7rem;">APP-SCOPED</span>
+                                  <span class="badge badge-secondary" style="font-size:0.7rem;">{{ role.permissions.length }} Perm{{ role.permissions.length !== 1 ? 's' : '' }}</span>
+                                </div>
+                                <div class="entry-secondary">
+                                  @if (role.description) {
+                                    <span class="entry-desc">{{ role.description }}</span>
+                                  }
+                                  @if (role.permissions.length > 0) {
+                                    <div class="perm-tags">
+                                      @for (perm of role.permissions; track perm) {
+                                        <span class="perm-tag">{{ perm }}</span>
+                                      }
+                                    </div>
+                                  }
+                                </div>
+                              </div>
+                              <div class="entry-actions">
+                                <button type="button" class="icon-btn" title="Edit" (click)="startEditAppRole(i)">
+                                  <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                </button>
+                                <button type="button" class="icon-btn delete" title="Remove" (click)="removeAppCentricRole(i)">
+                                  <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                </button>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      } @else {
+                        <div class="entries-empty">No app-centric role templates defined yet. Add one above.</div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- Manifest JSON Panel -->
+              @if (activeConfigTab() === 'json') {
+                <div id="panel-json" role="tabpanel" aria-labelledby="tab-json" class="json-editor-panel">
+                  <p class="subpanel-hint">
+                    <svg class="lucide-icon" viewBox="0 0 24 24" style="width:13px;height:13px;margin-right:4px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    Advanced mode — edit the manifest JSON directly. Switching back to the Visual Editor will parse and load your changes.
+                  </p>
+                  <textarea
+                    id="module-manifest"
+                    name="manifestJson"
+                    [(ngModel)]="manifestJson"
+                    rows="14"
+                    required
+                    class="form-input json-textarea"
+                    placeholder='{ "permissions": [], "default_roles": [], "app_centric_roles": [] }'
+                  ></textarea>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Tab 3: Active Registered Database Roles -->
+        @if (panel === 'edit' && editPanelTab() === 'roles') {
+          <div class="tab-content-group">
+            <h3 style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); margin-bottom: 12px; margin-top: 8px;">Active System Roles</h3>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
+              @for (role of moduleRoles(); track role.id) {
+                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 0;">
+                  <div>
+                    <span style="font-weight: 600; font-size: 0.85rem; color: var(--primary);">{{ role.name }}</span>
+                    @if (!role.is_active) {
+                      <span class="badge" style="margin-left: 8px; font-size: 0.65rem; background: var(--danger, #dc3545); color: white; padding: 2px 6px;">Disabled</span>
+                    }
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin: 2px 0 0 0;">{{ role.description || 'No description' }}</p>
+                  </div>
+                  <span class="badge badge-secondary" style="font-size: 0.75rem;">{{ (role.permissions || []).length }} Perms</span>
+                </div>
+              } @empty {
+                <span style="font-size: 0.85rem; color: var(--text-muted);">No active system-level roles in the system.</span>
+              }
+            </div>
+
+            <h3 style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); margin-bottom: 12px;">Active Application Roles</h3>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              @for (role of moduleAppRoles(); track role.id) {
+                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 0;">
+                  <div>
+                    <span style="font-weight: 600; font-size: 0.85rem; color: var(--primary);">{{ role.name }}</span>
+                    @if (!role.is_active) {
+                      <span class="badge" style="margin-left: 8px; font-size: 0.65rem; background: var(--danger, #dc3545); color: white; padding: 2px 6px;">Disabled</span>
+                    }
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin: 2px 0 0 0;">{{ role.description || 'No description' }}</p>
+                  </div>
+                  <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+                    <span class="badge badge-primary" style="font-size: 0.7rem; letter-spacing: 0.05em; font-family: monospace;">APP: {{ role.app_code }}</span>
+                    <span class="badge badge-secondary" style="font-size: 0.7rem;">{{ (role.permissions || []).length }} Perms</span>
+                  </div>
+                </div>
+              } @empty {
+                <span style="font-size: 0.85rem; color: var(--text-muted);">No active application-scoped roles in the system.</span>
+              }
+            </div>
+          </div>
+        }
+
+        <div class="panel-actions" style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
+          <button type="button" (click)="closePanel()" class="btn btn-secondary">Cancel</button>
+          <button type="submit" [disabled]="!moduleForm.form.valid" class="btn btn-primary">
+            {{ panel === 'create' ? 'Register' : 'Save Changes' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+</div>

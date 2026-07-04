@@ -1,0 +1,184 @@
+/* ============================================================
+   Icarus Finance — Global Styles & Design Tokens
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ---------- CSS Custom Properties (theme tokens) ---------- */
+:root[data-theme="dark"] {
+  --color-bg-primary:     #0c0e14;
+  --color-bg-surface:     #13161f;
+  --color-bg-elevated:    #1c2030;
+  --color-bg-card:        #1a1e2a;
+  --color-border:         rgba(255, 255, 255, 0.07);
+  --color-border-hover:   rgba(255, 255, 255, 0.14);
+
+  --color-text-primary:   #e8eaf2;
+  --color-text-secondary: #9ba3be;
+  --color-text-muted:     #5a6180;
+
+  --color-accent:         #6c8ef7;
+  --color-accent-hover:   #8aa5ff;
+  --color-accent-muted:   rgba(108, 142, 247, 0.12);
+
+  --color-success:        #34d399;
+  --color-success-muted:  rgba(52, 211, 153, 0.10);
+  --color-warning:        #fbbf24;
+  --color-warning-muted:  rgba(251, 191, 36, 0.10);
+  --color-danger:         #f87171;
+  --color-danger-muted:   rgba(248, 113, 113, 0.10);
+  --color-info:           #60a5fa;
+  --color-info-muted:     rgba(96, 165, 250, 0.10);
+
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md:  0 4px 16px rgba(0,0,0,0.5);
+  --shadow-lg:  0 12px 40px rgba(0,0,0,0.6);
+}
+
+:root[data-theme="light"] {
+  --color-bg-primary:     #f2f4f8;
+  --color-bg-surface:     #ffffff;
+  --color-bg-elevated:    #eef0f7;
+  --color-bg-card:        #ffffff;
+  --color-border:         rgba(0, 0, 0, 0.08);
+  --color-border-hover:   rgba(0, 0, 0, 0.16);
+
+  --color-text-primary:   #1a1d2e;
+  --color-text-secondary: #4b5270;
+  --color-text-muted:     #8b92ab;
+
+  --color-accent:         #4c6ef5;
+  --color-accent-hover:   #3b5bdb;
+  --color-accent-muted:   rgba(76, 110, 245, 0.10);
+
+  --color-success:        #12b981;
+  --color-success-muted:  rgba(18, 185, 129, 0.10);
+  --color-warning:        #d97706;
+  --color-warning-muted:  rgba(217, 119, 6, 0.10);
+  --color-danger:         #dc2626;
+  --color-danger-muted:   rgba(220, 38, 38, 0.10);
+  --color-info:           #2563eb;
+  --color-info-muted:     rgba(37, 99, 235, 0.10);
+
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md:  0 4px 16px rgba(0,0,0,0.10);
+  --shadow-lg:  0 12px 40px rgba(0,0,0,0.14);
+}
+
+/* ---------- Reset & Base ---------- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ---------- Scrollbar ---------- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border-hover); border-radius: 4px; }
+
+/* ---------- Utilities ---------- */
+.surface {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
+.card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+
+  &:hover { box-shadow: var(--shadow-md); border-color: var(--color-border-hover); }
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: none;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+
+  &:hover { background: var(--color-accent-hover); transform: translateY(-1px); }
+  &:active { transform: translateY(0); }
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: var(--color-border-hover);
+    color: var(--color-text-primary);
+    background: var(--color-accent-muted);
+  }
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+
+  &.info     { background: var(--color-info-muted);    color: var(--color-info); }
+  &.warning  { background: var(--color-warning-muted); color: var(--color-warning); }
+  &.critical { background: var(--color-danger-muted);  color: var(--color-danger); }
+  &.success  { background: var(--color-success-muted); color: var(--color-success); }
+}
+
+/* ---------- AG Grid Theme Override ---------- */
+.ag-theme-alpine-dark,
+.ag-theme-alpine {
+  --ag-border-radius: 8px;
+  --ag-font-family: 'Inter', sans-serif;
+  --ag-font-size: 13px;
+}
+
+.ag-theme-alpine-dark {
+  --ag-background-color: var(--color-bg-surface);
+  --ag-header-background-color: var(--color-bg-elevated);
+  --ag-odd-row-background-color: rgba(255,255,255,0.02);
+  --ag-border-color: var(--color-border);
+  --ag-header-foreground-color: var(--color-text-secondary);
+  --ag-foreground-color: var(--color-text-primary);
+  --ag-selected-row-background-color: var(--color-accent-muted);
+  --ag-row-hover-color: rgba(255,255,255,0.03);
+  --ag-input-focus-border-color: var(--color-accent);
+  --ag-cell-horizontal-border: solid var(--color-border);
+}
+
+.ag-theme-alpine {
+  --ag-background-color: var(--color-bg-surface);
+  --ag-header-background-color: var(--color-bg-elevated);
+  --ag-border-color: var(--color-border);
+  --ag-selected-row-background-color: var(--color-accent-muted);
+  --ag-input-focus-border-color: var(--color-accent);
+}

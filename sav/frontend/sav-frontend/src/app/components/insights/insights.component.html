@@ -1,0 +1,51 @@
+<div class="insights-view">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Financial Insights</h1>
+      <p class="page-subtitle">Personalised alerts to optimise capital deployment and risk profile</p>
+    </div>
+    <button class="btn-primary" [disabled]="recomputing()" (click)="triggerRecompute()">
+      {{ recomputing() ? 'Analyzing Portfolio...' : '↻ Recompute Insights' }}
+    </button>
+  </header>
+
+  <section class="insights-container">
+    @for (ins of finance.insights(); track ins.id) {
+      <div class="card insight-card" [class]="[ins.severity, ins.is_read ? 'read' : 'unread']">
+        <div class="insight-meta">
+          <span class="badge" [class]="ins.severity">{{ ins.severity | uppercase }}</span>
+          <span class="category-badge">{{ formatCategory(ins.category) }}</span>
+          <span class="date">{{ ins.computed_at | date:'mediumDate' }}</span>
+        </div>
+
+        <div class="insight-body-section">
+          <h2 class="insight-title">{{ ins.title }}</h2>
+          <p class="insight-description">{{ ins.body }}</p>
+        </div>
+
+        <div class="insight-footer">
+          <div class="primary-actions">
+            @if (ins.action_url) {
+              <a [routerLink]="ins.action_url" class="btn-primary btn-sm">Take Action</a>
+            }
+          </div>
+          <div class="secondary-actions">
+            @if (!ins.is_read) {
+              <button class="btn-ghost btn-sm" (click)="markAsRead(ins.id)">Mark Read</button>
+            }
+            <button class="btn-ghost btn-sm dismiss-btn" (click)="dismiss(ins.id)">Dismiss</button>
+          </div>
+        </div>
+      </div>
+    } @empty {
+      <div class="empty-state card">
+        <span class="celebrate-icon">✨</span>
+        <h3>Your financial health looks clean!</h3>
+        <p>No active warnings, high idle cash recommendations, or concentration risks found.</p>
+        <div style="margin-top: 16px;">
+          <button class="btn-primary" (click)="triggerRecompute()">Analyze Portfolio Now</button>
+        </div>
+      </div>
+    }
+  </section>
+</div>
