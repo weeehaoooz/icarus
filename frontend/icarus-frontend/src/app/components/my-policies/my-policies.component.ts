@@ -174,6 +174,15 @@ export class MyPoliciesComponent implements OnInit {
         next: (data) => this.permissions.set(data as Permission[]),
         error: (err) => console.warn('Failed to load system permissions:', err)
       });
+    } else {
+      this.authService.getMyRoles().subscribe({
+        next: (data) => this.roles.set(data as Role[]),
+        error: (err) => console.warn('Failed to load user roles:', err)
+      });
+      this.authService.getMyPermissions().subscribe({
+        next: (data) => this.permissions.set(data as Permission[]),
+        error: (err) => console.warn('Failed to load user permissions:', err)
+      });
     }
   }
 }

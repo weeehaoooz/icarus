@@ -101,6 +101,14 @@ export class AuthService {
 		return this.http.get<any>(`${this.apiUrl}/me`);
 	}
 
+	getMyRoles(): Observable<any[]> {
+		return this.http.get<any[]>(`${this.apiUrl}/me/roles`);
+	}
+
+	getMyPermissions(): Observable<any[]> {
+		return this.http.get<any[]>(`${this.apiUrl}/me/permissions`);
+	}
+
 	updateProfile(profile: any): Observable<any> {
 		return this.http.put<any>(`${this.apiUrl}/me`, profile);
 	}

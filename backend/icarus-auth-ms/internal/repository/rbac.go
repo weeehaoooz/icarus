@@ -1823,3 +1823,183 @@ func (r *SQLRepository) GetModuleAppCentricRoles(moduleID string) ([]models.Role
 	}
 	return templates, nil
 }
+
+// GetUserRolesDetailed returns all Roles (with nested details) assigned or resolved for the user.
+func (r *SQLRepository) GetUserRolesDetailed(userID int64) ([]models.Role, error) {
+	var rows *sql.Rows
+	var err error
+	if r.driver == "postgres" {
+		rows, err = r.db.Query("SELECT role_id FROM user_tenant_module_roles WHERE user_id = $1", userID)
+	} else {
+		rows, err = r.db.Query("SELECT role_id FROM user_tenant_module_roles WHERE user_id = ?", userID)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var directRoleIDs []string
+	for rows.Next() {
+		var rid string
+		if err := rows.Scan(&rid); err == nil {
+			directRoleIDs = append(directRoleIDs, rid)
+		}
+	}
+
+	if len(directRoleIDs) == 0 {
+		return []models.Role{}, nil
+	}
+
+	hierarchy, err := r.GetRoleHierarchy()
+	if err != nil {
+		return nil, err
+	}
+	resolvedRoleIDs := resolveRoles(directRoleIDs, hierarchy)
+
+	placeholders := make([]string, len(resolvedRoleIDs))
+	args := make([]interface{}, len(resolvedRoleIDs))
+	for i, id := range resolvedRoleIDs {
+		if r.driver == "postgres" {
+			placeholders[i] = fmt.Sprintf("$%d", i+1)
+		} else {
+			placeholders[i] = "?"
+		}
+		args[i] = id
+	}
+
+	query := fmt.Sprintf(`
+		SELECT id, module_id, tenant_id, app_code, name, description, is_system_role, is_active, type, created_at 
+		FROM roles 
+		WHERE id IN (%s) 
+		ORDER BY name ASC`, strings.Join(placeholders, ","))
+
+	rows2, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows2.Close()
+
+	var roles []models.Role
+	for rows2.Next() {
+		var role models.Role
+		var tenantID sql.NullString
+		var desc sql.NullString
+		var roleType sql.NullString
+		var createdAtStr string
+
+		err = rows2.Scan(&role.ID, &role.ModuleID, &tenantID, &role.AppCode, &role.Name, &desc, &role.IsSystemRole, &role.IsActive, &roleType, &createdAtStr)
+		if err != nil {
+			return nil, err
+		}
+		role.Description = desc.String
+		role.Type = roleType.String
+		if role.Type == "" {
+			role.Type = "Custom"
+		}
+		if tenantID.Valid {
+			tVal := tenantID.String
+			role.TenantID = &tVal
+		}
+		role.CreatedAt, _ = parseTime(createdAtStr)
+
+		// Get mapped permissions
+		perms, err := r.getRolePermissions(role.ID)
+		if err == nil {
+			role.Permissions = perms
+		}
+
+		// Get nested roles
+		nested, err := r.getNestedRoles(role.ID)
+		if err == nil {
+			role.NestedRoles = nested
+		}
+
+		roles = append(roles, role)
+	}
+
+	if roles == nil {
+		roles = []models.Role{}
+	}
+
+	return roles, nil
+}
+
+// GetUserPermissionsDetailed returns all Permission details resolved for the user.
+func (r *SQLRepository) GetUserPermissionsDetailed(userID int64) ([]models.Permission, error) {
+	var rows *sql.Rows
+	var err error
+	if r.driver == "postgres" {
+		rows, err = r.db.Query("SELECT role_id FROM user_tenant_module_roles WHERE user_id = $1", userID)
+	} else {
+		rows, err = r.db.Query("SELECT role_id FROM user_tenant_module_roles WHERE user_id = ?", userID)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var directRoleIDs []string
+	for rows.Next() {
+		var rid string
+		if err := rows.Scan(&rid); err == nil {
+			directRoleIDs = append(directRoleIDs, rid)
+		}
+	}
+
+	if len(directRoleIDs) == 0 {
+		return []models.Permission{}, nil
+	}
+
+	hierarchy, err := r.GetRoleHierarchy()
+	if err != nil {
+		return nil, err
+	}
+	resolvedRoleIDs := resolveRoles(directRoleIDs, hierarchy)
+
+	placeholders := make([]string, len(resolvedRoleIDs))
+	args := make([]interface{}, len(resolvedRoleIDs))
+	for i, id := range resolvedRoleIDs {
+		if r.driver == "postgres" {
+			placeholders[i] = fmt.Sprintf("$%d", i+1)
+		} else {
+			placeholders[i] = "?"
+		}
+		args[i] = id
+	}
+
+	query := fmt.Sprintf(`
+		SELECT DISTINCT p.id, p.module_id, p.action, p.description, p.created_at 
+		FROM role_permissions rp 
+		JOIN permissions p ON rp.permission_id = p.id 
+		WHERE rp.role_id IN (%s) 
+		ORDER BY p.action ASC`, strings.Join(placeholders, ","))
+
+	rows2, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows2.Close()
+
+	var permissions []models.Permission
+	for rows2.Next() {
+		var p models.Permission
+		var desc sql.NullString
+		var createdAtStr string
+
+		err = rows2.Scan(&p.ID, &p.ModuleID, &p.Action, &desc, &createdAtStr)
+		if err != nil {
+			return nil, err
+		}
+		p.Description = desc.String
+		p.CreatedAt, _ = parseTime(createdAtStr)
+
+		permissions = append(permissions, p)
+	}
+
+	if permissions == nil {
+		permissions = []models.Permission{}
+	}
+
+	return permissions, nil
+}
+

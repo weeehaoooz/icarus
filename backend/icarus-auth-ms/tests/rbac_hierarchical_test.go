@@ -142,4 +142,35 @@ func TestHierarchicalRBAC(t *testing.T) {
 	} else if err.Error() != "invalid role hierarchy: recursive nesting detected" {
 		t.Errorf("Expected cycle detection error, got: %v", err)
 	}
+
+	// 8. Test GetUserRolesDetailed and GetUserPermissionsDetailed
+	detailedRoles, err := repo.GetUserRolesDetailed(userID)
+	if err != nil {
+		t.Fatalf("Failed to get detailed user roles: %v", err)
+	}
+	if len(detailedRoles) != 3 {
+		t.Errorf("Expected 3 detailed roles, got %d", len(detailedRoles))
+	}
+	roleNamesDetailed := make(map[string]bool)
+	for _, r := range detailedRoles {
+		roleNamesDetailed[r.Name] = true
+	}
+	if !roleNamesDetailed["role_a"] || !roleNamesDetailed["role_b"] || !roleNamesDetailed["role_c"] {
+		t.Errorf("Expected detailed roles to contain role_a, role_b, role_c, got %+v", detailedRoles)
+	}
+
+	detailedPerms, err := repo.GetUserPermissionsDetailed(userID)
+	if err != nil {
+		t.Fatalf("Failed to get detailed user permissions: %v", err)
+	}
+	if len(detailedPerms) != 3 {
+		t.Errorf("Expected 3 detailed permissions, got %d", len(detailedPerms))
+	}
+	permActionsDetailed := make(map[string]bool)
+	for _, p := range detailedPerms {
+		permActionsDetailed[p.Action] = true
+	}
+	if !permActionsDetailed["perm:a"] || !permActionsDetailed["perm:b"] || !permActionsDetailed["perm:c"] {
+		t.Errorf("Expected detailed permissions to contain perm:a, perm:b, perm:c, got %+v", detailedPerms)
+	}
 }

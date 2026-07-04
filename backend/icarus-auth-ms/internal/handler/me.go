@@ -149,3 +149,49 @@ func (s *HandlerServer) MeChangePasswordHandler(w http.ResponseWriter, r *http.R
 
 	s.respondWithJSON(w, http.StatusOK, map[string]string{"message": "password changed successfully"})
 }
+
+// MeRolesHandler returns the list of roles assigned to the currently authenticated user.
+func (s *HandlerServer) MeRolesHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		s.respondWithError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	username := r.Header.Get("X-Username")
+	user, err := s.Repo.GetUserByUsername(username)
+	if err != nil {
+		s.respondWithError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	roles, err := s.Repo.GetUserRolesDetailed(user.ID)
+	if err != nil {
+		s.respondWithError(w, http.StatusInternalServerError, "failed to get roles: "+err.Error())
+		return
+	}
+
+	s.respondWithJSON(w, http.StatusOK, roles)
+}
+
+// MePermissionsHandler returns the list of resolved permissions for the currently authenticated user.
+func (s *HandlerServer) MePermissionsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		s.respondWithError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	username := r.Header.Get("X-Username")
+	user, err := s.Repo.GetUserByUsername(username)
+	if err != nil {
+		s.respondWithError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	permissions, err := s.Repo.GetUserPermissionsDetailed(user.ID)
+	if err != nil {
+		s.respondWithError(w, http.StatusInternalServerError, "failed to get permissions: "+err.Error())
+		return
+	}
+
+	s.respondWithJSON(w, http.StatusOK, permissions)
+}

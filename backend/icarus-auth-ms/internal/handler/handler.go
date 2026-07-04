@@ -1,9 +1,9 @@
 package handler
 
 import (
+	"encoding/json"
 	"icarus-auth-ms/internal/crypto"
 	"icarus-auth-ms/internal/repository"
-	"encoding/json"
 	"log"
 	"net/http"
 	"time"
@@ -40,9 +40,11 @@ func (s *HandlerServer) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /internal/modules/{id}/applications/sync", s.InternalSyncOnboardApplicationHandler)
 	mux.HandleFunc("DELETE /internal/modules/{id}/applications/sync/{appCode}", s.InternalSyncOffboardApplicationHandler)
 	mux.HandleFunc("POST /token/scope", s.TokenScopeHandler)
-	
+
 	// Profile and password APIs for authenticated users
 	mux.HandleFunc("GET /me", s.UserRequired(s.MeGetHandler))
+	mux.HandleFunc("GET /me/roles", s.UserRequired(s.MeRolesHandler))
+	mux.HandleFunc("GET /me/permissions", s.UserRequired(s.MePermissionsHandler))
 	mux.HandleFunc("PUT /me", s.UserRequired(s.MeUpdateHandler))
 	mux.HandleFunc("PUT /me/password", s.UserRequired(s.MeChangePasswordHandler))
 
@@ -65,7 +67,6 @@ func (s *HandlerServer) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /admin/roles/{id}", s.AdminRequired(s.AdminDeleteRoleHandler))
 
 	mux.HandleFunc("GET /admin/applications", s.AdminRequired(s.AdminListApplicationsHandler))
-
 	mux.HandleFunc("GET /admin/permissions", s.AdminRequired(s.AdminListPermissionsHandler))
 
 	// LDAP configuration endpoints
