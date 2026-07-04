@@ -91,4 +91,16 @@ export class AuthService {
 			})
 		);
 	}
+
+	getProfile(): Observable<any> {
+		return this.http.get<any>(`${this.apiUrl}/me`);
+	}
+
+	updateProfile(profile: any): Observable<any> {
+		return this.http.put<any>(`${this.apiUrl}/me`, profile);
+	}
+
+	changePassword(payload: any): Observable<any> {
+		return this.http.put<any>(`${this.apiUrl}/me/password`, payload);
+	}
 }

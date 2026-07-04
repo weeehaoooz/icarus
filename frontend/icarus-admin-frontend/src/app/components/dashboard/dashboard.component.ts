@@ -29,6 +29,10 @@ export class DashboardComponent {
     return this.authService.currentUser()?.sub || 'Admin';
   });
 
+  readonly isAdmin = computed(() => {
+    return this.authService.isAdmin();
+  });
+
   isSettingsActive(): boolean {
     return this.router.url.includes('/dashboard/settings');
   }
