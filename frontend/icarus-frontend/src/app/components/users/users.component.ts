@@ -1,4 +1,4 @@
-import { Component, signal, computed, inject, OnInit } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../services/admin.service';
 import { forkJoin, of } from 'rxjs';
@@ -34,6 +34,7 @@ interface Role {
 export class UsersComponent implements OnInit {
   private readonly adminService = inject(AdminService);
   private readonly dialog = inject(Dialog);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   // Data Signals
   readonly users = signal<User[]>([]);
@@ -201,6 +202,7 @@ export class UsersComponent implements OnInit {
     dialogRef.closed.subscribe(result => {
       if (result !== undefined) {
         this.formData.roles = result;
+        this.cdr.markForCheck();
       }
     });
   }

@@ -31,12 +31,7 @@ export class LoginComponent {
     this.authService.login(this.username, this.password).subscribe({
       next: () => {
         this.isLoading.set(false);
-        if (this.authService.isAdmin()) {
-          this.router.navigate(['/dashboard']);
-        } else {
-          this.errorMessage.set('Forbidden: You do not have administrator permissions.');
-          this.authService.logout();
-        }
+        this.router.navigate(['/dashboard']);
       },
       error: (err) => {
         this.isLoading.set(false);

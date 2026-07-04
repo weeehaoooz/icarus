@@ -1,0 +1,104 @@
+<section class="policy-sandbox-container animate-fade-in">
+  <!-- Page Header -->
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Policy Evaluation Sandbox</h1>
+      <p class="page-subtitle">Test the enforcement engine rules by simulating target actions against your current resolved policy set.</p>
+    </div>
+  </header>
+
+  <div class="glass-panel sandbox-container">
+    <div class="sandbox-sidebar-config">
+      <h3 class="panel-section-title">Configure Simulation</h3>
+      <p class="section-desc mb-6">Specify target module/resource and permission action to run trace verification.</p>
+      
+      <form (ngSubmit)="simulatePolicyEvaluation()" #evalForm="ngForm" class="form-grid">
+        <div class="form-group">
+          <label for="sb-module" class="form-label">Target Module / Resource</label>
+          <select 
+            id="sb-module" 
+            name="module" 
+            [(ngModel)]="sandboxForm.module"
+            (change)="onSandboxModuleChange()"
+            class="form-select"
+          >
+            @for (mod of displayModules(); track mod.id) {
+              <option [value]="mod.code">{{ mod.name }} ({{ mod.code }})</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="sb-action" class="form-label">Target Permission Action</label>
+          <select 
+            id="sb-action" 
+            name="action" 
+            [(ngModel)]="sandboxForm.action"
+            class="form-select"
+            [disabled]="sandboxActions().length === 0"
+          >
+            @if (sandboxActions().length > 0) {
+              @for (act of sandboxActions(); track act) {
+                <option [value]="act">{{ act }}</option>
+              }
+            } @else {
+              <option value="">No permissions registered for this module</option>
+            }
+          </select>
+        </div>
+
+        <button 
+          type="submit" 
+          class="btn btn-primary w-full mt-4" 
+          [disabled]="isEvaluating() || sandboxActions().length === 0"
+        >
+          @if (isEvaluating()) {
+            <span class="spinner spinner-white mr-2"></span> Running Trace...
+          } @else {
+            Run Evaluation Trace
+          }
+        </button>
+      </form>
+    </div>
+
+    <!-- Evaluation Results & Output Trace Terminal -->
+    <div class="sandbox-results-panel">
+      @if (evaluationResult()) {
+        <!-- Result Banner -->
+        <div class="evaluation-banner animate-fade-in" [class.banner-granted]="evaluationResult() === 'GRANTED'" [class.banner-denied]="evaluationResult() === 'DENIED'">
+          <div class="banner-icon-circle">
+            @if (evaluationResult() === 'GRANTED') {
+              <svg class="lucide-icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            } @else {
+              <svg class="lucide-icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            }
+          </div>
+          <div>
+            <h4 class="banner-title">POLICY EVALUATION: {{ evaluationResult() }}</h4>
+            <p class="banner-desc">
+              {{ evaluationResult() === 'GRANTED' ? 'Access has been verified. The current policy set contains this target rule.' : 'Access has been rejected. Ensure you have the required role or request it via the portal.' }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Terminal Trace Logger -->
+        <div class="terminal-trace-panel animate-fade-in">
+          <div class="terminal-header">
+            <div class="window-dot-red"></div>
+            <div class="window-dot-yellow"></div>
+            <div class="window-dot-green"></div>
+            <span class="terminal-title">Policy Engine Log Trace</span>
+          </div>
+          <pre class="terminal-body"><code>@for (line of evaluationTrace(); track $index) {<div class="terminal-line">{{ line }}</div>}</code></pre>
+        </div>
+      } @else {
+        <!-- Empty state -->
+        <div class="sandbox-empty-state">
+          <svg class="lucide-icon empty-icon" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+          <h4 class="font-semibold text-lg text-white mb-1">Awaiting Evaluation</h4>
+          <p class="text-muted text-small text-center max-w-xs">Configure the target module and permission scope, then run the evaluation trace to view the enforcement audit log.</p>
+        </div>
+      }
+    </div>
+  </div>
+</section>

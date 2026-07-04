@@ -1,0 +1,144 @@
+<section class="profile-settings-container animate-fade-in">
+  <!-- Page Header -->
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Profile &amp; Settings</h1>
+      <p class="page-subtitle">Manage your personal profile details and update your security credentials.</p>
+    </div>
+  </header>
+
+  @if (isLoadingProfile()) {
+    <div class="loader-box">
+      <span class="spinner"></span> Loading profile settings...
+    </div>
+  } @else if (profileError()) {
+    <div class="alert alert-danger" role="alert">
+      {{ profileError() }}
+    </div>
+  } @else {
+    <div class="profile-settings-layout">
+      <!-- Personal Profile Form -->
+      <div class="glass-panel">
+        <h3 class="panel-section-title">Personal Identity Details</h3>
+        <p class="section-desc">Manage your core identity parameters stored in the baseline repository.</p>
+
+        @if (profileSuccessMessage()) {
+          <div class="alert alert-success animate-fade-in">
+            {{ profileSuccessMessage() }}
+          </div>
+        }
+        @if (profileErrorMessage()) {
+          <div class="alert alert-danger animate-fade-in">
+            {{ profileErrorMessage() }}
+          </div>
+        }
+
+        <form (ngSubmit)="updateProfile()" #profileEditForm="ngForm" class="form-grid mt-4">
+          <div class="form-group">
+            <label for="pf-firstname" class="form-label">First Name</label>
+            <input 
+              type="text" 
+              id="pf-firstname" 
+              name="firstName" 
+              [(ngModel)]="profileForm.firstName" 
+              class="form-input" 
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="pf-lastname" class="form-label">Last Name</label>
+            <input 
+              type="text" 
+              id="pf-lastname" 
+              name="lastName" 
+              [(ngModel)]="profileForm.lastName" 
+              class="form-input" 
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="pf-email" class="form-label">Email Address</label>
+            <input 
+              type="email" 
+              id="pf-email" 
+              name="email" 
+              [(ngModel)]="profileForm.email" 
+              class="form-input" 
+              required
+            />
+          </div>
+
+          <button type="submit" class="btn btn-primary mt-4" [disabled]="!profileEditForm.form.valid">
+            Save Personal Details
+          </button>
+        </form>
+      </div>
+
+      <!-- Password Settings Form -->
+      <div class="glass-panel">
+        <h3 class="panel-section-title">Update Identity Password</h3>
+        <p class="section-desc">Change the credentials used to verify your identity on system login.</p>
+
+        @if (passwordSuccessMessage()) {
+          <div class="alert alert-success animate-fade-in">
+            {{ passwordSuccessMessage() }}
+          </div>
+        }
+        @if (passwordErrorMessage()) {
+          <div class="alert alert-danger animate-fade-in">
+            {{ passwordErrorMessage() }}
+          </div>
+        }
+
+        <form (ngSubmit)="changePassword()" #passForm="ngForm" class="form-grid mt-4">
+          <div class="form-group">
+            <label for="pw-old" class="form-label">Current Password</label>
+            <input 
+              type="password" 
+              id="pw-old" 
+              name="oldPassword" 
+              [(ngModel)]="passwordForm.oldPassword" 
+              class="form-input" 
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="pw-new" class="form-label">New Secure Password</label>
+            <input 
+              type="password" 
+              id="pw-new" 
+              name="newPassword" 
+              [(ngModel)]="passwordForm.newPassword" 
+              class="form-input" 
+              required
+              minlength="6"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="pw-confirm" class="form-label">Confirm New Password</label>
+            <input 
+              type="password" 
+              id="pw-confirm" 
+              name="confirmPassword" 
+              [(ngModel)]="passwordForm.confirmPassword" 
+              class="form-input" 
+              required
+            />
+          </div>
+
+          <button 
+            type="submit" 
+            class="btn btn-secondary mt-4" 
+            [disabled]="!passForm.form.valid || passwordForm.newPassword !== passwordForm.confirmPassword"
+          >
+            Change Password
+          </button>
+        </form>
+      </div>
+    </div>
+  }
+</section>

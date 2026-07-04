@@ -1,0 +1,131 @@
+<section class="request-access-container animate-fade-in">
+  <!-- Page Header -->
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Request Policy Access</h1>
+      <p class="page-subtitle">Apply for additional Access Policies or Roles. Administrators can auto-approve their requests, while standard accounts enter a validation queue.</p>
+    </div>
+  </header>
+
+  <div class="glass-panel access-section">
+    <h3 class="panel-section-title">Self-Service Access Request Portal</h3>
+    <p class="section-desc">Fill out the target details and justification to apply for a role.</p>
+
+    <!-- Alerts -->
+    @if (requestSuccessMessage()) {
+      <div class="alert alert-success animate-fade-in">
+        {{ requestSuccessMessage() }}
+      </div>
+    }
+    @if (requestErrorMessage()) {
+      <div class="alert alert-danger animate-fade-in">
+        {{ requestErrorMessage() }}
+      </div>
+    }
+
+    <form (ngSubmit)="submitAccessRequest()" #reqForm="ngForm" class="request-portal-form">
+      <div class="form-row-grid">
+        <div class="form-group">
+          <label for="req-tenant" class="form-label">Scope Tenant</label>
+          <select id="req-tenant" name="tenant" [(ngModel)]="requestForm.tenant" class="form-select">
+            @for (t of displayTenants(); track t.id) {
+              <option [value]="t.code">{{ t.name }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="req-module" class="form-label">Target Module</label>
+          <select id="req-module" name="module" [(ngModel)]="requestForm.module" class="form-select">
+            @for (m of displayModules(); track m.id) {
+              <option [value]="m.code">{{ m.name }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="req-role" class="form-label">Available Role Profile</label>
+          <select id="req-role" name="role" [(ngModel)]="requestForm.role" class="form-select" required>
+            <option value="" disabled selected>-- Select access profile --</option>
+            @for (r of requestableRoles(); track r.name) {
+              <option [value]="r.name">{{ r.name }} - {{ r.description }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group mt-4">
+        <label for="req-justification" class="form-label">Business Justification</label>
+        <textarea 
+          id="req-justification" 
+          name="justification" 
+          [(ngModel)]="requestForm.justification" 
+          rows="3" 
+          class="form-textarea"
+          placeholder="Explain why you require this additional access profile (minimum 10 characters)..."
+          required
+        ></textarea>
+      </div>
+
+      <div class="button-footer-row mt-4">
+        <button 
+          type="submit" 
+          class="btn btn-primary" 
+          [disabled]="!reqForm.form.valid || requestForm.justification.trim().length < 10"
+        >
+          Submit Access Request
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Request History List -->
+  <div class="glass-panel access-section mt-6">
+    <h3 class="panel-section-title">My Access Request History</h3>
+    <p class="section-desc text-small text-muted">A record of self-service access requests and automated validation logs.</p>
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Request ID</th>
+            <th>Access Role</th>
+            <th>Tenant &amp; Module</th>
+            <th>Justification</th>
+            <th>Submitted At</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (requestHistory().length > 0) {
+            @for (req of requestHistory(); track req.id) {
+              <tr>
+                <td class="font-mono font-semibold">{{ req.id }}</td>
+                <td class="font-semibold text-accent">{{ req.role }}</td>
+                <td>
+                  <div class="text-small text-white">{{ req.tenant }}</div>
+                  <div class="text-xsmall text-muted">{{ req.module }}</div>
+                </td>
+                <td class="text-muted text-small max-w-xs truncate" title="{{ req.justification }}">{{ req.justification }}</td>
+                <td class="text-muted text-small">{{ req.submittedAt }}</td>
+                <td>
+                  <span 
+                    class="status-indicator" 
+                    [class.status-indicator--active]="req.status === 'Approved'"
+                    [class.status-indicator--inactive]="req.status === 'Rejected'"
+                    [class.status-indicator--pending]="req.status === 'Pending'"
+                  >
+                    {{ req.status }}
+                  </span>
+                </td>
+              </tr>
+            }
+          } @else {
+            <tr>
+              <td colspan="6" class="text-center text-muted py-4">No access requests found in this session.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>

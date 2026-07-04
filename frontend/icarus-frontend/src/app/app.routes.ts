@@ -21,9 +21,12 @@ export const routes: Routes = [
       { path: 'roles', component: RolesComponent, canActivate: [adminGuard] },
       { path: 'settings/integrations', loadComponent: () => import('./components/ldap/ldap.component').then(m => m.LdapComponent), canActivate: [adminGuard] },
       { path: 'tenants', loadComponent: () => import('./components/tenants/tenants.component').then(m => m.TenantsComponent), canActivate: [adminGuard] },
-      { path: 'modules', loadComponent: () => import('./components/modules/modules.component').then(m => m.ModulesComponent), canActivate: [adminGuard] },
+      { path: 'modules', loadComponent: () => import('./components/modules/modules.component').then(m => m.ModulesComponent) },
       { path: 'applications', loadComponent: () => import('./components/applications/applications.component').then(m => m.ApplicationsComponent), canActivate: [adminGuard] },
       { path: 'my-policies', loadComponent: () => import('./components/my-policies/my-policies.component').then(m => m.MyPoliciesComponent) },
+      { path: 'policy-sandbox', loadComponent: () => import('./components/policy-sandbox/policy-sandbox.component').then(m => m.PolicySandboxComponent) },
+      { path: 'request-access', loadComponent: () => import('./components/request-access/request-access.component').then(m => m.RequestAccessComponent) },
+      { path: 'profile-settings', loadComponent: () => import('./components/profile-settings/profile-settings.component').then(m => m.ProfileSettingsComponent) },
       { path: '', redirectTo: 'my-policies', pathMatch: 'full' }
     ]
   },

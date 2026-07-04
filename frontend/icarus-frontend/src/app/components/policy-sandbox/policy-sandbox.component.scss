@@ -1,0 +1,335 @@
+.policy-sandbox-container {
+  padding: 30px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-header {
+  margin-bottom: 28px;
+  
+  .page-title {
+    font-family: var(--font-heading);
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 6px;
+    letter-spacing: -0.025em;
+  }
+  
+  .page-subtitle {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+  }
+}
+
+.glass-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-md);
+  padding: 24px;
+  border-radius: 12px;
+  transition: var(--transition);
+  
+  &:hover {
+    border-color: var(--border-color-hover);
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+.panel-section-title {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 12px;
+}
+
+.section-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+/* Sandbox split panel styling */
+.sandbox-container {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 30px;
+  
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sandbox-sidebar-config {
+  border-right: 1px solid var(--border-color);
+  padding-right: 30px;
+  
+  @media (max-width: 900px) {
+    border-right: none;
+    padding-right: 0;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 30px;
+  }
+}
+
+.sandbox-results-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 300px;
+}
+
+.sandbox-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+  padding: 40px;
+  
+  .empty-icon {
+    width: 48px;
+    height: 48px;
+    stroke: var(--text-muted);
+    stroke-width: 1.5;
+    margin-bottom: 16px;
+    opacity: 0.7;
+  }
+}
+
+/* Evaluation Banner */
+.evaluation-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid transparent;
+  
+  .banner-icon-circle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    
+    .lucide-icon {
+      width: 20px;
+      height: 20px;
+      stroke-width: 3;
+    }
+  }
+  
+  .banner-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  
+  .banner-desc {
+    font-size: 0.8rem;
+  }
+  
+  &.banner-granted {
+    background: var(--secondary-glow);
+    border-color: rgba(52, 211, 153, 0.2);
+    color: var(--secondary);
+    
+    .banner-icon-circle {
+      background: var(--secondary);
+      color: var(--text-inverse);
+    }
+    
+    .banner-desc {
+      color: rgba(255, 255, 255, 0.9);
+    }
+  }
+  
+  &.banner-denied {
+    background: var(--danger-glow);
+    border-color: rgba(248, 113, 113, 0.2);
+    color: var(--danger);
+    
+    .banner-icon-circle {
+      background: var(--danger);
+      color: var(--text-inverse);
+    }
+    
+    .banner-desc {
+      color: rgba(255, 255, 255, 0.9);
+    }
+  }
+}
+
+/* Trace Terminal Logger */
+.terminal-trace-panel {
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.terminal-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #111827;
+  padding: 10px 14px;
+  border-bottom: 1px solid #1f2937;
+  
+  [class^="window-dot-"] {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+  
+  .window-dot-red { background: #ef4444; }
+  .window-dot-yellow { background: #f59e0b; }
+  .window-dot-green { background: #10b981; }
+  
+  .terminal-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #9ca3af;
+    margin-left: 8px;
+    font-family: monospace;
+  }
+}
+
+.terminal-body {
+  background: #030712;
+  color: #10b981;
+  padding: 16px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  overflow-y: auto;
+  max-height: 350px;
+  margin: 0;
+}
+
+.terminal-line {
+  white-space: pre-wrap;
+}
+
+/* Forms & UI Controls */
+.form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.form-select {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-family: var(--font-family);
+  font-size: 0.85rem;
+  transition: var(--transition);
+  
+  &:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary-glow);
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  font-family: var(--font-family);
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: var(--transition);
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: var(--text-inverse);
+  
+  &:hover:not(:disabled) {
+    background: var(--primary-hover);
+  }
+}
+
+.w-full {
+  width: 100%;
+}
+
+.mt-4 { margin-top: 16px; }
+.mb-6 { margin-bottom: 24px; }
+.mr-2 { margin-right: 8px; }
+
+/* Spinner Loader */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: var(--primary);
+  animation: spin 0.8s linear infinite;
+  
+  &-white {
+    border-top-color: white;
+  }
+}
+
+.loader-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Animations */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}

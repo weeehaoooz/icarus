@@ -49,10 +49,10 @@ func (s *HandlerServer) MeGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch roles as well
-	resolvedRoles, _, err := s.Repo.GetResolvedUserRolesAndPermissions(user.ID, "system-tenant", "icarus-auth-ms")
+	// Fetch roles as well (all assigned role names across all tenants/modules)
+	roles, err := s.Repo.GetUserRoles(user.ID)
 	if err == nil {
-		user.Roles = resolvedRoles
+		user.Roles = roles
 	}
 
 	s.respondWithJSON(w, http.StatusOK, user)

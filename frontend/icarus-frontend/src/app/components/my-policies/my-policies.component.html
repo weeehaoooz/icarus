@@ -2,545 +2,128 @@
   <!-- Page Header -->
   <header class="page-header">
     <div>
-      <h1 class="page-title">My Access &amp; Policies Hub</h1>
-      <p class="page-subtitle">Inspect your assigned roles, evaluate access rules, and request additional policy permissions.</p>
+      <h1 class="page-title">My Access Policies</h1>
+      <p class="page-subtitle">Inspect your assigned roles and view your resolved access permissions.</p>
     </div>
   </header>
 
-  <!-- Tab Links -->
-  <div class="tabs-nav-bar" role="tablist" aria-label="Self-service access navigation">
-    <button 
-      class="tab-btn" 
-      [class.active]="activeTab() === 'overview'" 
-      (click)="switchTab('overview')"
-      role="tab"
-      [attr.aria-selected]="activeTab() === 'overview'"
-      aria-controls="panel-overview"
-    >
-      <svg class="lucide-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
-      Access Overview
-    </button>
-    <button 
-      class="tab-btn" 
-      [class.active]="activeTab() === 'sandbox'" 
-      (click)="switchTab('sandbox')"
-      role="tab"
-      [attr.aria-selected]="activeTab() === 'sandbox'"
-      aria-controls="panel-sandbox"
-    >
-      <svg class="lucide-icon" viewBox="0 0 24 24"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>
-      Policy Sandbox
-    </button>
-    <button 
-      class="tab-btn" 
-      [class.active]="activeTab() === 'requests'" 
-      (click)="switchTab('requests')"
-      role="tab"
-      [attr.aria-selected]="activeTab() === 'requests'"
-      aria-controls="panel-requests"
-    >
-      <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      Request Access
-    </button>
-    <button 
-      class="tab-btn" 
-      [class.active]="activeTab() === 'profile'" 
-      (click)="switchTab('profile')"
-      role="tab"
-      [attr.aria-selected]="activeTab() === 'profile'"
-      aria-controls="panel-profile"
-    >
-      <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      Profile &amp; Settings
-    </button>
-  </div>
-
-  <!-- Tab Panels -->
-  <div class="tab-panels-content">
-    
-    <!-- ─── 1. OVERVIEW PANEL ──────────────────────────────── -->
-    @if (activeTab() === 'overview') {
-      <div id="panel-overview" role="tabpanel" aria-labelledby="overview-tab" class="tab-panel-wrapper animate-fade-in">
-        @if (isLoadingProfile()) {
-          <div class="loader-box">
-            <span class="spinner"></span> Loading access profile...
+  @if (isLoadingProfile()) {
+    <div class="loader-box">
+      <span class="spinner"></span> Loading access profile...
+    </div>
+  } @else if (profileError()) {
+    <div class="alert alert-danger" role="alert">
+      {{ profileError() }}
+    </div>
+  } @else {
+    <!-- User Identity Card -->
+    <div class="identity-header-grid">
+      <div class="glass-panel identity-card">
+        <div class="user-avatar-badge">{{ userProfile()?.username?.substring(0, 2)?.toUpperCase() }}</div>
+        <div class="identity-info">
+          <h2 class="user-display-name">{{ userProfile()?.first_name }} {{ userProfile()?.last_name }}</h2>
+          <p class="user-username">&#64;{{ userProfile()?.username }}</p>
+          <div class="user-email-row">
+            <svg class="lucide-icon text-muted" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            <span>{{ userProfile()?.email || 'No email provided' }}</span>
           </div>
-        } @else if (profileError()) {
-          <div class="alert alert-danger" role="alert">
-            {{ profileError() }}
-          </div>
-        } @else {
-          <!-- User Identity Card -->
-          <div class="identity-header-grid">
-            <div class="glass-panel identity-card">
-              <div class="user-avatar-badge">{{ userProfile()?.username?.substring(0, 2)?.toUpperCase() }}</div>
-              <div class="identity-info">
-                <h2 class="user-display-name">{{ userProfile()?.first_name }} {{ userProfile()?.last_name }}</h2>
-                <p class="user-username">&#64;{{ userProfile()?.username }}</p>
-                <div class="user-email-row">
-                  <svg class="lucide-icon text-muted" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                  <span>{{ userProfile()?.email || 'No email provided' }}</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="glass-panel groups-card">
-              <span class="panel-section-label">Identity Groups</span>
-              <h3 class="panel-section-title">Assigned User Groups</h3>
-              <div class="groups-badges-list">
-                @if (userProfile()?.groups && userProfile()?.groups!.length > 0) {
-                  @for (g of userProfile()?.groups; track g.name) {
-                    <span class="group-badge" [class.badge-ldap]="g.type === 'LDAP'" [class.badge-custom]="g.type !== 'LDAP'">
-                      <span class="type-indicator">{{ g.type }}</span>
-                      {{ g.name }}
-                    </span>
-                  }
-                } @else {
-                  <p class="text-muted text-small">This account is not mapped to any security groups.</p>
-                }
-              </div>
-            </div>
-          </div>
-
-          <!-- Active Roles Grid -->
-          <div class="glass-panel access-section">
-            <h3 class="panel-section-title">Active Role Assignments</h3>
-            <p class="section-desc">These access roles are currently linked to your user account across core platform components.</p>
-            <div class="table-container">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Role ID</th>
-                    <th>Module</th>
-                    <th>Tenant Scope</th>
-                    <th>Description</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @if (myActiveRoles().length > 0) {
-                    @for (role of myActiveRoles(); track role.id || role.name) {
-                      <tr>
-                        <td class="font-semibold text-accent">{{ role.name }}</td>
-                        <td>
-                          <span class="mono-badge">{{ role.module_id }}</span>
-                        </td>
-                        <td>
-                          <span class="tenant-scope-badge">
-                            {{ role.module_id === 'icarus-auth-ms' ? 'system-tenant' : 'global' }}
-                          </span>
-                        </td>
-                        <td class="text-muted text-small">{{ role.description }}</td>
-                        <td>
-                          <span class="status-indicator status-indicator--active">Active</span>
-                        </td>
-                      </tr>
-                    }
-                  } @else {
-                    <tr>
-                      <td colspan="5" class="text-center text-muted py-4">No active roles are assigned to this user profile.</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Resolved Permissions Grid -->
-          <div class="glass-panel access-section">
-            <h3 class="panel-section-title">Resolved Access Permissions</h3>
-            <p class="section-desc">These fine-grained access permissions are automatically resolved from your role hierarchy.</p>
-            <div class="table-container">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Permission Action</th>
-                    <th>Module</th>
-                    <th>Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @if (myResolvedPermissionDetails().length > 0) {
-                    @for (perm of myResolvedPermissionDetails(); track perm.id) {
-                      <tr>
-                        <td class="font-mono font-semibold">{{ perm.action }}</td>
-                        <td>
-                          <span class="mono-badge">{{ perm.module_id }}</span>
-                        </td>
-                        <td class="text-muted text-small">{{ perm.description }}</td>
-                      </tr>
-                    }
-                  } @else {
-                    <tr>
-                      <td colspan="3" class="text-center text-muted py-4">No permissions resolved. Select the Access Request tab to apply for a role.</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          </div>
-        }
+        </div>
       </div>
-    }
 
-    <!-- ─── 2. POLICY SANDBOX PANEL ───────────────────────── -->
-    @if (activeTab() === 'sandbox') {
-      <div id="panel-sandbox" role="tabpanel" aria-labelledby="sandbox-tab" class="tab-panel-wrapper animate-fade-in">
-        <div class="glass-panel sandbox-container">
-          <div class="sandbox-sidebar-config">
-            <h3 class="panel-section-title">Policy Evaluator Sandbox</h3>
-            <p class="section-desc mb-6">Test the enforcement engine rules by simulating target actions against your current resolved policy set.</p>
-            
-            <form (ngSubmit)="simulatePolicyEvaluation()" #evalForm="ngForm" class="form-grid">
-              <div class="form-group">
-                <label for="sb-module" class="form-label">Target Module / Resource</label>
-                <select 
-                  id="sb-module" 
-                  name="module" 
-                  [(ngModel)]="sandboxForm.module"
-                  (change)="onSandboxModuleChange()"
-                  class="form-select"
-                >
-                  @for (mod of modules(); track mod.id) {
-                    <option [value]="mod.code">{{ mod.name }} ({{ mod.code }})</option>
-                  }
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label for="sb-action" class="form-label">Target Permission Action</label>
-                <select 
-                  id="sb-action" 
-                  name="action" 
-                  [(ngModel)]="sandboxForm.action"
-                  class="form-select"
-                  [disabled]="sandboxActions().length === 0"
-                >
-                  @if (sandboxActions().length > 0) {
-                    @for (act of sandboxActions(); track act) {
-                      <option [value]="act">{{ act }}</option>
-                    }
-                  } @else {
-                    <option value="">No permissions registered for this module</option>
-                  }
-                </select>
-              </div>
-
-              <button 
-                type="submit" 
-                class="btn btn-primary w-full mt-4" 
-                [disabled]="isEvaluating() || sandboxActions().length === 0"
-              >
-                @if (isEvaluating()) {
-                  <span class="spinner spinner-white mr-2"></span> Running Trace...
-                } @else {
-                  Run Evaluation Trace
-                }
-              </button>
-            </form>
-          </div>
-
-          <!-- Evaluation Results & Output Trace Terminal -->
-          <div class="sandbox-results-panel">
-            @if (evaluationResult()) {
-              <!-- Result Banner -->
-              <div class="evaluation-banner animate-fade-in" [class.banner-granted]="evaluationResult() === 'GRANTED'" [class.banner-denied]="evaluationResult() === 'DENIED'">
-                <div class="banner-icon-circle">
-                  @if (evaluationResult() === 'GRANTED') {
-                    <svg class="lucide-icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                  } @else {
-                    <svg class="lucide-icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                  }
-                </div>
-                <div>
-                  <h4 class="banner-title">POLICY EVALUATION: {{ evaluationResult() }}</h4>
-                  <p class="banner-desc">
-                    {{ evaluationResult() === 'GRANTED' ? 'Access has been verified. The current policy set contains this target rule.' : 'Access has been rejected. Ensure you have the required role or request it via the portal.' }}
-                  </p>
-                </div>
-              </div>
-
-              <!-- Terminal Trace Logger -->
-              <div class="terminal-trace-panel animate-fade-in">
-                <div class="terminal-header">
-                  <div class="window-dot-red"></div>
-                  <div class="window-dot-yellow"></div>
-                  <div class="window-dot-green"></div>
-                  <span class="terminal-title">Policy Engine Log Trace</span>
-                </div>
-                <pre class="terminal-body"><code>@for (line of evaluationTrace(); track $index) {<div class="terminal-line">{{ line }}</div>}</code></pre>
-              </div>
-            } @else {
-              <!-- Empty state -->
-              <div class="sandbox-empty-state">
-                <svg class="lucide-icon empty-icon" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
-                <h4 class="font-semibold text-lg text-white mb-1">Awaiting Evaluation</h4>
-                <p class="text-muted text-small text-center max-w-xs">Configure the target module and permission scope, then run the evaluation trace to view the enforcement audit log.</p>
-              </div>
+      <div class="glass-panel groups-card">
+        <span class="panel-section-label">Identity Groups</span>
+        <h3 class="panel-section-title">Assigned User Groups</h3>
+        <div class="groups-badges-list">
+          @if (userProfile()?.groups && userProfile()?.groups!.length > 0) {
+            @for (g of userProfile()?.groups; track g.name) {
+              <span class="group-badge" [class.badge-ldap]="g.type === 'LDAP'" [class.badge-custom]="g.type !== 'LDAP'">
+                <span class="type-indicator">{{ g.type }}</span>
+                {{ g.name }}
+              </span>
             }
-          </div>
+          } @else {
+            <p class="text-muted text-small">This account is not mapped to any security groups.</p>
+          }
         </div>
       </div>
-    }
+    </div>
 
-    <!-- ─── 3. REQUEST ACCESS PANEL ───────────────────────── -->
-    @if (activeTab() === 'requests') {
-      <div id="panel-requests" role="tabpanel" aria-labelledby="requests-tab" class="tab-panel-wrapper animate-fade-in">
-        <div class="glass-panel access-section">
-          <h3 class="panel-section-title">Self-Service Access Request Portal</h3>
-          <p class="section-desc">Apply for additional Access Policies or Roles. Administrators can auto-approve their requests, while standard accounts enter a validation queue.</p>
-
-          <!-- Alerts -->
-          @if (requestSuccessMessage()) {
-            <div class="alert alert-success animate-fade-in">
-              {{ requestSuccessMessage() }}
-            </div>
-          }
-          @if (requestErrorMessage()) {
-            <div class="alert alert-danger animate-fade-in">
-              {{ requestErrorMessage() }}
-            </div>
-          }
-
-          <form (ngSubmit)="submitAccessRequest()" #reqForm="ngForm" class="request-portal-form">
-            <div class="form-row-grid">
-              <div class="form-group">
-                <label for="req-tenant" class="form-label">Scope Tenant</label>
-                <select id="req-tenant" name="tenant" [(ngModel)]="requestForm.tenant" class="form-select">
-                  @for (t of tenants(); track t.id) {
-                    <option [value]="t.code">{{ t.name }}</option>
-                  }
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label for="req-module" class="form-label">Target Module</label>
-                <select id="req-module" name="module" [(ngModel)]="requestForm.module" class="form-select">
-                  @for (m of modules(); track m.id) {
-                    <option [value]="m.code">{{ m.name }}</option>
-                  }
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label for="req-role" class="form-label">Available Role Profile</label>
-                <select id="req-role" name="role" [(ngModel)]="requestForm.role" class="form-select" required>
-                  <option value="" disabled selected>-- Select access profile --</option>
-                  @for (r of requestableRoles(); track r.name) {
-                    <option [value]="r.name">{{ r.name }} - {{ r.description }}</option>
-                  }
-                </select>
-              </div>
-            </div>
-
-            <div class="form-group mt-4">
-              <label for="req-justification" class="form-label">Business Justification</label>
-              <textarea 
-                id="req-justification" 
-                name="justification" 
-                [(ngModel)]="requestForm.justification" 
-                rows="3" 
-                class="form-textarea"
-                placeholder="Explain why you require this additional access profile (minimum 10 characters)..."
-                required
-              ></textarea>
-            </div>
-
-            <div class="button-footer-row mt-4">
-              <button 
-                type="submit" 
-                class="btn btn-primary" 
-                [disabled]="!reqForm.form.valid || requestForm.justification.trim().length < 10"
-              >
-                Submit Access Request
-              </button>
-            </div>
-          </form>
-        </div>
-
-        <!-- Request History List -->
-        <div class="glass-panel access-section mt-6">
-          <h3 class="panel-section-title">My Access Request History</h3>
-          <p class="section-desc text-small text-muted">A record of self-service access requests and automated validation logs.</p>
-          <div class="table-container">
-            <table class="data-table">
-              <thead>
+    <!-- Active Roles Grid -->
+    <div class="glass-panel access-section mt-6">
+      <h3 class="panel-section-title">Active Role Assignments</h3>
+      <p class="section-desc">These access roles are currently linked to your user account across core platform components.</p>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Role ID</th>
+              <th>Module</th>
+              <th>Tenant Scope</th>
+              <th>Description</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (myActiveRoles().length > 0) {
+              @for (role of myActiveRoles(); track role.id || role.name) {
                 <tr>
-                  <th>Request ID</th>
-                  <th>Access Role</th>
-                  <th>Tenant &amp; Module</th>
-                  <th>Justification</th>
-                  <th>Submitted At</th>
-                  <th>Status</th>
+                  <td class="font-semibold text-accent">{{ role.name }}</td>
+                  <td>
+                    <span class="mono-badge">{{ role.module_id }}</span>
+                  </td>
+                  <td>
+                    <span class="tenant-scope-badge">
+                      {{ role.module_id === 'icarus-auth-ms' ? 'system-tenant' : 'global' }}
+                    </span>
+                  </td>
+                  <td class="text-muted text-small">{{ role.description }}</td>
+                  <td>
+                    <span class="status-indicator status-indicator--active">Active</span>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                @if (requestHistory().length > 0) {
-                  @for (req of requestHistory(); track req.id) {
-                    <tr>
-                      <td class="font-mono font-semibold">{{ req.id }}</td>
-                      <td class="font-semibold text-accent">{{ req.role }}</td>
-                      <td>
-                        <div class="text-small text-white">{{ req.tenant }}</div>
-                        <div class="text-xsmall text-muted">{{ req.module }}</div>
-                      </td>
-                      <td class="text-muted text-small max-w-xs truncate" title="{{ req.justification }}">{{ req.justification }}</td>
-                      <td class="text-muted text-small">{{ req.submittedAt }}</td>
-                      <td>
-                        <span 
-                          class="status-indicator" 
-                          [class.status-indicator--active]="req.status === 'Approved'"
-                          [class.status-indicator--inactive]="req.status === 'Rejected'"
-                          [class.status-indicator--pending]="req.status === 'Pending'"
-                        >
-                          {{ req.status }}
-                        </span>
-                      </td>
-                    </tr>
-                  }
-                } @else {
-                  <tr>
-                    <td colspan="6" class="text-center text-muted py-4">No access requests found in this session.</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        </div>
+              }
+            } @else {
+              <tr>
+                <td colspan="5" class="text-center text-muted py-4">No active roles are assigned to this user profile.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
-    }
+    </div>
 
-    <!-- ─── 4. PROFILE & SETTINGS PANEL ───────────────────── -->
-    @if (activeTab() === 'profile') {
-      <div id="panel-profile" role="tabpanel" aria-labelledby="profile-tab" class="tab-panel-wrapper animate-fade-in">
-        <div class="profile-settings-layout">
-          
-          <!-- Personal Profile Form -->
-          <div class="glass-panel">
-            <h3 class="panel-section-title">Personal Identity Details</h3>
-            <p class="section-desc">Manage your core identity parameters stored in the baseline repository.</p>
-
-            @if (profileSuccessMessage()) {
-              <div class="alert alert-success animate-fade-in">
-                {{ profileSuccessMessage() }}
-              </div>
+    <!-- Resolved Permissions Grid -->
+    <div class="glass-panel access-section mt-6">
+      <h3 class="panel-section-title">Resolved Access Permissions</h3>
+      <p class="section-desc">These fine-grained access permissions are automatically resolved from your role hierarchy.</p>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Permission Action</th>
+              <th>Module</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (myResolvedPermissionDetails().length > 0) {
+              @for (perm of myResolvedPermissionDetails(); track perm.id) {
+                <tr>
+                  <td class="font-mono font-semibold">{{ perm.action }}</td>
+                  <td>
+                    <span class="mono-badge">{{ perm.module_id }}</span>
+                  </td>
+                  <td class="text-muted text-small">{{ perm.description }}</td>
+                </tr>
+              }
+            } @else {
+              <tr>
+                <td colspan="3" class="text-center text-muted py-4">No permissions resolved. Navigate to the Request Access portal to apply for a role.</td>
+              </tr>
             }
-            @if (profileErrorMessage()) {
-              <div class="alert alert-danger animate-fade-in">
-                {{ profileErrorMessage() }}
-              </div>
-            }
-
-            <form (ngSubmit)="updateProfile()" #profileEditForm="ngForm" class="form-grid mt-4">
-              <div class="form-group">
-                <label for="pf-firstname" class="form-label">First Name</label>
-                <input 
-                  type="text" 
-                  id="pf-firstname" 
-                  name="firstName" 
-                  [(ngModel)]="profileForm.firstName" 
-                  class="form-input" 
-                  required
-                />
-              </div>
-
-              <div class="form-group">
-                <label for="pf-lastname" class="form-label">Last Name</label>
-                <input 
-                  type="text" 
-                  id="pf-lastname" 
-                  name="lastName" 
-                  [(ngModel)]="profileForm.lastName" 
-                  class="form-input" 
-                  required
-                />
-              </div>
-
-              <div class="form-group">
-                <label for="pf-email" class="form-label">Email Address</label>
-                <input 
-                  type="email" 
-                  id="pf-email" 
-                  name="email" 
-                  [(ngModel)]="profileForm.email" 
-                  class="form-input" 
-                  required
-                />
-              </div>
-
-              <button type="submit" class="btn btn-primary mt-4" [disabled]="!profileEditForm.form.valid">
-                Save Personal Details
-              </button>
-            </form>
-          </div>
-
-          <!-- Password Settings Form -->
-          <div class="glass-panel">
-            <h3 class="panel-section-title">Update Identity Password</h3>
-            <p class="section-desc">Change the credentials used to verify your identity on system login.</p>
-
-            @if (passwordSuccessMessage()) {
-              <div class="alert alert-success animate-fade-in">
-                {{ passwordSuccessMessage() }}
-              </div>
-            }
-            @if (passwordErrorMessage()) {
-              <div class="alert alert-danger animate-fade-in">
-                {{ passwordErrorMessage() }}
-              </div>
-            }
-
-            <form (ngSubmit)="changePassword()" #passForm="ngForm" class="form-grid mt-4">
-              <div class="form-group">
-                <label for="pw-old" class="form-label">Current Password</label>
-                <input 
-                  type="password" 
-                  id="pw-old" 
-                  name="oldPassword" 
-                  [(ngModel)]="passwordForm.oldPassword" 
-                  class="form-input" 
-                  required
-                />
-              </div>
-
-              <div class="form-group">
-                <label for="pw-new" class="form-label">New Secure Password</label>
-                <input 
-                  type="password" 
-                  id="pw-new" 
-                  name="newPassword" 
-                  [(ngModel)]="passwordForm.newPassword" 
-                  class="form-input" 
-                  required
-                  minlength="6"
-                />
-              </div>
-
-              <div class="form-group">
-                <label for="pw-confirm" class="form-label">Confirm New Password</label>
-                <input 
-                  type="password" 
-                  id="pw-confirm" 
-                  name="confirmPassword" 
-                  [(ngModel)]="passwordForm.confirmPassword" 
-                  class="form-input" 
-                  required
-                />
-              </div>
-
-              <button 
-                type="submit" 
-                class="btn btn-secondary mt-4" 
-                [disabled]="!passForm.form.valid || passwordForm.newPassword !== passwordForm.confirmPassword"
-              >
-                Change Authentication Password
-              </button>
-            </form>
-          </div>
-
-        </div>
+          </tbody>
+        </table>
       </div>
-    }
-
-  </div>
+    </div>
+  }
 </section>
