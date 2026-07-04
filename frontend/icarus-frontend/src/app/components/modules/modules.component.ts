@@ -58,7 +58,7 @@ export class ModulesComponent implements OnInit {
   readonly applications = signal<any[]>([]);
   readonly onboardedApps = signal<string[]>([]);
   readonly moduleOwners = signal<string[]>([]);
-  
+
   readonly searchQuery = signal('');
   readonly isSearching = signal(false);
   private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -115,7 +115,7 @@ export class ModulesComponent implements OnInit {
     const query = this.searchQuery().toLowerCase().trim();
     const allModules = this.modules() || [];
     if (!query) return allModules;
-    return allModules.filter(m => 
+    return allModules.filter(m =>
       m.name.toLowerCase().includes(query) ||
       m.code.toLowerCase().includes(query) ||
       m.base_url.toLowerCase().includes(query)
@@ -450,12 +450,8 @@ export class ModulesComponent implements OnInit {
       permissions: [
         { action: 'read', path_pattern: '/api/v1/resource', method: 'GET', description: 'Read resource' }
       ],
-      default_roles: [
-        { name: 'Viewer', description: 'Allows viewing resources', permissions: ['read'] }
-      ],
-      app_centric_roles: [
-        { name: 'AppViewer', description: 'Allows app-scoped viewing of resources', permissions: ['read'] }
-      ]
+      default_roles: [],
+      app_centric_roles: []
     };
     this.initVisualFromManifest(defaultManifest);
     this.syncVisualToJson();
