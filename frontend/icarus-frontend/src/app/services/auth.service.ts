@@ -8,6 +8,7 @@ export interface DecodedToken {
 	type: string;
 	roles?: string[];
 	permissions?: string[];
+	owned_modules?: string[];
 	exp: number;
 }
 
@@ -39,6 +40,10 @@ export class AuthService {
 	readonly isAdmin = computed(() => {
 		const user = this.currentUser();
 		return user?.roles?.includes('admin') || false;
+	});
+	readonly isModuleOwner = computed(() => {
+		const user = this.currentUser();
+		return (user?.owned_modules && user.owned_modules.length > 0) || false;
 	});
 
 	login(username: string, password: string): Observable<any> {

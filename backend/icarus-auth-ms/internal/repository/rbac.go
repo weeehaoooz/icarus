@@ -261,7 +261,7 @@ func (r *SQLRepository) GetUserPermissions(userID int64) ([]string, error) {
 	return permissions, nil
 }
 
-// AssignUserRoles assigns roles to a user (backward-compatible, links to system-tenant and auth-ms module).
+// AssignUserRoles assigns roles to a user across different modules (by resolving role names in the DB).
 func (r *SQLRepository) AssignUserRoles(userID int64, roles []string) error {
 	tx, err := r.db.Begin()
 	if err != nil {
@@ -270,9 +270,9 @@ func (r *SQLRepository) AssignUserRoles(userID int64, roles []string) error {
 	defer tx.Rollback()
 
 	if r.driver == "postgres" {
-		_, err = tx.Exec("DELETE FROM user_tenant_module_roles WHERE user_id = $1 AND tenant_id = $2 AND module_id = $3", userID, "system-tenant", "icarus-auth-ms")
+		_, err = tx.Exec("DELETE FROM user_tenant_module_roles WHERE user_id = $1 AND tenant_id = $2", userID, "system-tenant")
 	} else {
-		_, err = tx.Exec("DELETE FROM user_tenant_module_roles WHERE user_id = ? AND tenant_id = ? AND module_id = ?", userID, "system-tenant", "icarus-auth-ms")
+		_, err = tx.Exec("DELETE FROM user_tenant_module_roles WHERE user_id = ? AND tenant_id = ?", userID, "system-tenant")
 	}
 	if err != nil {
 		return err
@@ -282,17 +282,18 @@ func (r *SQLRepository) AssignUserRoles(userID int64, roles []string) error {
 		if roleName == "" {
 			continue
 		}
-		// Resolve role ID for auth-ms
 		var roleID string
+		var moduleID string
 		var findErr error
 		if r.driver == "postgres" {
-			findErr = tx.QueryRow("SELECT id FROM roles WHERE name = $1 AND module_id = $2", roleName, "icarus-auth-ms").Scan(&roleID)
+			findErr = tx.QueryRow("SELECT id, module_id FROM roles WHERE name = $1 LIMIT 1", roleName).Scan(&roleID, &moduleID)
 		} else {
-			findErr = tx.QueryRow("SELECT id FROM roles WHERE name = ? AND module_id = ?", roleName, "icarus-auth-ms").Scan(&roleID)
+			findErr = tx.QueryRow("SELECT id, module_id FROM roles WHERE name = ? LIMIT 1", roleName).Scan(&roleID, &moduleID)
 		}
 		if findErr != nil {
-			// If role doesn't exist, create it under auth-ms
+			// If role doesn't exist, create it under auth-ms (fallback for legacy roles)
 			roleID = "icarus-auth-ms:" + roleName
+			moduleID = "icarus-auth-ms"
 			if r.driver == "postgres" {
 				_, err = tx.Exec("INSERT INTO roles (id, module_id, name, description) VALUES ($1, $2, $3, $4)", roleID, "icarus-auth-ms", roleName, "Auto-created legacy role")
 			} else {
@@ -307,13 +308,15 @@ func (r *SQLRepository) AssignUserRoles(userID int64, roles []string) error {
 		if r.driver == "postgres" {
 			_, err = tx.Exec(`
 				INSERT INTO user_tenant_module_roles (id, user_id, tenant_id, module_id, role_id) 
-				VALUES ($1, $2, $3, $4, $5)`, 
-				id, userID, "system-tenant", "icarus-auth-ms", roleID)
+				VALUES ($1, $2, $3, $4, $5)
+				ON CONFLICT (user_id, tenant_id, module_id) DO UPDATE SET role_id = EXCLUDED.role_id`, 
+				id, userID, "system-tenant", moduleID, roleID)
 		} else {
 			_, err = tx.Exec(`
 				INSERT INTO user_tenant_module_roles (id, user_id, tenant_id, module_id, role_id) 
-				VALUES (?, ?, ?, ?, ?)`, 
-				id, userID, "system-tenant", "icarus-auth-ms", roleID)
+				VALUES (?, ?, ?, ?, ?)
+				ON CONFLICT (user_id, tenant_id, module_id) DO UPDATE SET role_id = excluded.role_id`, 
+				id, userID, "system-tenant", moduleID, roleID)
 		}
 		if err != nil {
 			return err
@@ -1166,7 +1169,7 @@ func (r *SQLRepository) GetResolvedUserRolesAndPermissions(userID int64, tenantI
 }
 
 // SyncModule registration function to save module, permissions, and roles.
-func (r *SQLRepository) SyncModule(code, name, baseURL string, perms []models.Permission, defaultRoles []models.Role, appCentricRoles []models.Role) error {
+func (r *SQLRepository) SyncModule(code, name, baseURL string, perms []models.Permission, defaultRoles []models.Role, appCentricRoles []models.Role, creator string) error {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return err
@@ -1215,6 +1218,50 @@ func (r *SQLRepository) SyncModule(code, name, baseURL string, perms []models.Pe
 		if err != nil {
 			return err
 		}
+	}
+
+	// Automatically ensure a "<module_code> owner" role exists in defaultRoles
+	ownerRoleName := fmt.Sprintf("%s owner", moduleID)
+	hasOwnerRole := false
+	for _, dr := range defaultRoles {
+		if dr.Name == ownerRoleName {
+			hasOwnerRole = true
+			break
+		}
+	}
+	if !hasOwnerRole {
+		var actions []string
+		for _, p := range perms {
+			actions = append(actions, p.Action)
+		}
+		defaultRoles = append(defaultRoles, models.Role{
+			Name:        ownerRoleName,
+			Description: fmt.Sprintf("Module owner with full access to %s", moduleID),
+			Permissions: actions,
+		})
+	}
+
+	// Delete old default/system roles for this module (excluding app-centric ones)
+	if r.driver == "postgres" {
+		_, _ = tx.Exec(`
+			DELETE FROM role_permissions 
+			WHERE role_id IN (
+				SELECT id FROM roles 
+				WHERE module_id = $1 AND tenant_id IS NULL AND is_system_role = 1 AND (app_code IS NULL OR app_code = '')
+			)`, moduleID)
+		_, _ = tx.Exec(`
+			DELETE FROM roles 
+			WHERE module_id = $1 AND tenant_id IS NULL AND is_system_role = 1 AND (app_code IS NULL OR app_code = '')`, moduleID)
+	} else {
+		_, _ = tx.Exec(`
+			DELETE FROM role_permissions 
+			WHERE role_id IN (
+				SELECT id FROM roles 
+				WHERE module_id = ? AND tenant_id IS NULL AND is_system_role = 1 AND (app_code IS NULL OR app_code = '')
+			)`, moduleID)
+		_, _ = tx.Exec(`
+			DELETE FROM roles 
+			WHERE module_id = ? AND tenant_id IS NULL AND is_system_role = 1 AND (app_code IS NULL OR app_code = '')`, moduleID)
 	}
 
 	// Insert default roles and their permission mappings
@@ -1297,8 +1344,110 @@ func (r *SQLRepository) SyncModule(code, name, baseURL string, perms []models.Pe
 		}
 	}
 
+	// Assign Module owner role to creator if provided
+	if creator != "" {
+		var userID int64
+		var findErr error
+		if r.driver == "postgres" {
+			findErr = tx.QueryRow("SELECT id FROM users WHERE username = $1", creator).Scan(&userID)
+		} else {
+			findErr = tx.QueryRow("SELECT id FROM users WHERE username = ?", creator).Scan(&userID)
+		}
+		if findErr == nil {
+			roleID := moduleID + ":" + ownerRoleName
+			id := fmt.Sprintf("%d-%s", userID, roleID)
+			if r.driver == "postgres" {
+				_, err = tx.Exec(`
+					INSERT INTO user_tenant_module_roles (id, user_id, tenant_id, module_id, role_id) 
+					VALUES ($1, $2, $3, $4, $5)
+					ON CONFLICT (user_id, tenant_id, module_id) DO UPDATE SET role_id = EXCLUDED.role_id`, 
+					id, userID, "system-tenant", moduleID, roleID)
+			} else {
+				_, err = tx.Exec(`
+					INSERT INTO user_tenant_module_roles (id, user_id, tenant_id, module_id, role_id) 
+					VALUES (?, ?, ?, ?, ?)
+					ON CONFLICT (user_id, tenant_id, module_id) DO UPDATE SET role_id = excluded.role_id`, 
+					id, userID, "system-tenant", moduleID, roleID)
+			}
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	return tx.Commit()
 }
+
+// GetUserOwnedModules retrieves all module IDs where the user is a Module owner.
+func (r *SQLRepository) GetUserOwnedModules(userID int64) ([]string, error) {
+	query := `
+		SELECT DISTINCT utmr.module_id 
+		FROM user_tenant_module_roles utmr
+		JOIN roles r ON utmr.role_id = r.id
+		WHERE utmr.user_id = ? AND r.name = utmr.module_id || ' owner'`
+	if r.driver == "postgres" {
+		query = `
+			SELECT DISTINCT utmr.module_id 
+			FROM user_tenant_module_roles utmr
+			JOIN roles r ON utmr.role_id = r.id
+			WHERE utmr.user_id = $1 AND r.name = utmr.module_id || ' owner'`
+	}
+
+	rows, err := r.db.Query(query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var modules []string
+	for rows.Next() {
+		var modID string
+		if err := rows.Scan(&modID); err == nil {
+			modules = append(modules, modID)
+		}
+	}
+	if modules == nil {
+		modules = []string{}
+	}
+	return modules, nil
+}
+
+// GetModuleOwners retrieves usernames of all users holding the 'Module owner' role for a module.
+func (r *SQLRepository) GetModuleOwners(moduleCode string) ([]string, error) {
+	query := `
+		SELECT DISTINCT u.username 
+		FROM user_tenant_module_roles utmr
+		JOIN users u ON utmr.user_id = u.id
+		JOIN roles r ON utmr.role_id = r.id
+		WHERE utmr.module_id = ? AND r.name = utmr.module_id || ' owner'`
+	if r.driver == "postgres" {
+		query = `
+			SELECT DISTINCT u.username 
+			FROM user_tenant_module_roles utmr
+			JOIN users u ON utmr.user_id = u.id
+			JOIN roles r ON utmr.role_id = r.id
+			WHERE utmr.module_id = $1 AND r.name = utmr.module_id || ' owner'`
+	}
+
+	rows, err := r.db.Query(query, moduleCode)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var owners []string
+	for rows.Next() {
+		var username string
+		if err := rows.Scan(&username); err == nil {
+			owners = append(owners, username)
+		}
+	}
+	if owners == nil {
+		owners = []string{}
+	}
+	return owners, nil
+}
+
 
 // CreateTenant creates a new tenant.
 func (r *SQLRepository) CreateTenant(id, code, name, status string) error {

@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { PlatformService } from '../../services/platform.service';
 import { AdminService } from '../../services/admin.service';
+import { AuthService } from '../../services/auth.service';
 import { forkJoin } from 'rxjs';
 
 interface Module {
@@ -38,14 +39,25 @@ const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'
 export class ModulesComponent implements OnInit {
   private readonly platformService = inject(PlatformService);
   private readonly adminService = inject(AdminService);
+  private readonly authService = inject(AuthService);
 
   readonly httpMethods = HTTP_METHODS;
+
+  readonly isAdmin = computed(() => this.authService.isAdmin());
+
+  isOwner(moduleCode: string | undefined): boolean {
+    if (!moduleCode) return false;
+    if (this.isAdmin()) return true;
+    const user = this.authService.currentUser();
+    return user?.owned_modules?.includes(moduleCode) || false;
+  }
 
   // Data Signals
   readonly modules = signal<Module[]>([]);
   readonly systemRoles = signal<any[]>([]);
   readonly applications = signal<any[]>([]);
   readonly onboardedApps = signal<string[]>([]);
+  readonly moduleOwners = signal<string[]>([]);
   
   readonly searchQuery = signal('');
   readonly isSearching = signal(false);
@@ -428,6 +440,7 @@ export class ModulesComponent implements OnInit {
     this.panelError.set(null);
     this.configTabError.set(null);
     this.onboardedApps.set([]);
+    this.moduleOwners.set([]);
     this.formData = { id: '', code: '', name: '', baseUrl: '', isActive: true };
     this.editPanelTab.set('settings');
     this.activeConfigTab.set('visual');
@@ -470,12 +483,14 @@ export class ModulesComponent implements OnInit {
     this.platformService.getModuleManifest(module.id).subscribe({
       next: (manifest) => {
         this.initVisualFromManifest(manifest);
+        this.moduleOwners.set(manifest.owners || []);
         this.syncVisualToJson();
       },
       error: (err) => {
         console.error('Failed to load module manifest:', err);
-        const empty = { permissions: [], default_roles: [], app_centric_roles: [] };
+        const empty = { permissions: [], default_roles: [], app_centric_roles: [], owners: [] };
         this.initVisualFromManifest(empty);
+        this.moduleOwners.set([]);
         this.syncVisualToJson();
       }
     });
@@ -494,7 +509,7 @@ export class ModulesComponent implements OnInit {
   onboardApplication(): void {
     const selected = this.selectedModule();
     const appCode = this.onboardAppCode;
-    if (!selected || !appCode) return;
+    if (!selected || !appCode || !this.isOwner(selected.code)) return;
     this.panelError.set(null);
 
     this.platformService.onboardApplicationToModule(selected.code, appCode).subscribe({
@@ -509,7 +524,7 @@ export class ModulesComponent implements OnInit {
 
   offboardApplication(appCode: string): void {
     const selected = this.selectedModule();
-    if (!selected || !appCode) return;
+    if (!selected || !appCode || !this.isOwner(selected.code)) return;
     this.panelError.set(null);
 
     if (confirm(`Are you sure you want to offboard application '${appCode}'? All app roles for this application will be deactivated.`)) {
@@ -530,6 +545,19 @@ export class ModulesComponent implements OnInit {
 
   saveModule(): void {
     this.panelError.set(null);
+
+    if (this.activePanel() === 'edit') {
+      const selected = this.selectedModule();
+      if (selected && !this.isOwner(selected.code)) {
+        this.panelError.set('Forbidden: Only module owners are allowed to update this module.');
+        return;
+      }
+    } else {
+      if (!this.isAdmin()) {
+        this.panelError.set('Forbidden: Only super-admins are allowed to register modules.');
+        return;
+      }
+    }
 
     let permissions: any[] = [];
     let defaultRoles: any[] = [];
@@ -579,6 +607,10 @@ export class ModulesComponent implements OnInit {
 
   deleteModule(id: string, event: Event): void {
     event.stopPropagation();
+    if (!this.isOwner(id)) {
+      alert('Forbidden: Only the module owner or admin is allowed to delete this module.');
+      return;
+    }
     if (confirm('Are you sure you want to delete this module? All associated permissions, roles, and routing mappings will be removed.')) {
       this.platformService.deleteModule(id).subscribe({
         next: () => {
@@ -596,7 +628,7 @@ export class ModulesComponent implements OnInit {
   }
 
   deleteSelected(): void {
-    const ids = Array.from(this.selectedIds());
+    const ids = Array.from(this.selectedIds()).filter(id => this.isOwner(id));
     if (ids.length === 0) return;
 
     if (confirm(`Are you sure you want to delete the ${ids.length} selected modules?`)) {

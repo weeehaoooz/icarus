@@ -1,11 +1,11 @@
 package tests
 
 import (
+	"bytes"
+	"encoding/json"
 	"icarus-auth-ms/internal/crypto"
 	"icarus-auth-ms/internal/handler"
 	"icarus-auth-ms/internal/repository"
-	"bytes"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -190,5 +190,126 @@ func TestAdminRBACFlow(t *testing.T) {
 	}
 	if !foundEditor {
 		t.Error("Expected to find editor role in listed roles")
+	}
+}
+
+func TestModuleGovernanceRBAC(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "mod_gov_test_keys")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	dbFile := filepath.Join(tempDir, "test_mod_gov.db")
+	defer os.Remove(dbFile)
+
+	privKey, pubKey, err := crypto.LoadOrGenerateKeys(tempDir)
+	if err != nil {
+		t.Fatalf("Failed to load/generate keys: %v", err)
+	}
+
+	dbConn, err := repository.InitDB("sqlite", dbFile)
+	if err != nil {
+		t.Fatalf("Failed to init DB: %v", err)
+	}
+	defer dbConn.Close()
+
+	repo := repository.NewSQLRepository(dbConn, "sqlite")
+	if err := repo.SeedDefaultRBAC(); err != nil {
+		t.Fatalf("Failed to seed default RBAC data: %v", err)
+	}
+
+	tokenMgr := crypto.NewTokenManager(privKey, pubKey, "icarus-auth-ms")
+	server := handler.NewHandlerServer(repo, tokenMgr)
+
+	mux := http.NewServeMux()
+	server.RegisterRoutes(mux)
+
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	// Register Charlie
+	regReq := handler.RegisterRequest{
+		Username: "charlie",
+		Password: "password123",
+	}
+	regBody, _ := json.Marshal(regReq)
+	_, _ = http.Post(ts.URL+"/register", "application/json", bytes.NewBuffer(regBody))
+
+	// Get Charlie ID
+	user, err := repo.GetUserByUsername("charlie")
+	if err != nil {
+		t.Fatalf("Failed to get charlie: %v", err)
+	}
+
+	// Sync a module owned by Charlie
+	syncReq := handler.SyncModuleRequest{
+		Code:    "test-module",
+		Name:    "Test Module",
+		BaseURL: "http://test-module",
+		Creator: "charlie",
+	}
+	syncBody, _ := json.Marshal(syncReq)
+	res, err := http.Post(ts.URL+"/internal/modules/sync", "application/json", bytes.NewBuffer(syncBody))
+	if err != nil {
+		t.Fatalf("Failed to sync module: %v", err)
+	}
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("Expected sync status 200, got %d", res.StatusCode)
+	}
+
+	// Verify Charlie is now the owner in DB
+	owned, err := repo.GetUserOwnedModules(user.ID)
+	if err != nil {
+		t.Fatalf("Failed to get user owned modules: %v", err)
+	}
+	if len(owned) != 1 || owned[0] != "test-module" {
+		t.Errorf("Expected charlie to own 'test-module', got %v", owned)
+	}
+
+	owners, err := repo.GetModuleOwners("test-module")
+	if err != nil {
+		t.Fatalf("Failed to get module owners: %v", err)
+	}
+	if len(owners) != 1 || owners[0] != "charlie" {
+		t.Errorf("Expected owners of 'test-module' to be ['charlie'], got %v", owners)
+	}
+
+	// Verify endpoint returns owners
+	endpointRes, err := http.Get(ts.URL + "/internal/modules/test-module/roles-and-templates")
+	if err != nil {
+		t.Fatalf("Failed to call roles-and-templates endpoint: %v", err)
+	}
+	if endpointRes.StatusCode != http.StatusOK {
+		t.Fatalf("Expected 200 OK, got %d", endpointRes.StatusCode)
+	}
+	var resData struct {
+		Owners []string `json:"owners"`
+	}
+	_ = json.NewDecoder(endpointRes.Body).Decode(&resData)
+	if len(resData.Owners) != 1 || resData.Owners[0] != "charlie" {
+		t.Errorf("Expected endpoint to return owners ['charlie'], got %v", resData.Owners)
+	}
+
+	// Log in as Charlie and verify owned_modules claim
+	loginReq := handler.LoginRequest{
+		Username: "charlie",
+		Password: "password123",
+	}
+	loginBody, _ := json.Marshal(loginReq)
+	res, err = http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(loginBody))
+	if err != nil {
+		t.Fatalf("Login failed: %v", err)
+	}
+	var loginRes map[string]string
+	_ = json.NewDecoder(res.Body).Decode(&loginRes)
+	tokenStr := loginRes["access_token"]
+
+	claims, err := tokenMgr.VerifyToken(tokenStr)
+	if err != nil {
+		t.Fatalf("Token verification failed: %v", err)
+	}
+	if len(claims.OwnedModules) != 1 || claims.OwnedModules[0] != "test-module" {
+		t.Errorf("Expected token to contain owned_modules ['test-module'], got %v", claims.OwnedModules)
 	}
 }

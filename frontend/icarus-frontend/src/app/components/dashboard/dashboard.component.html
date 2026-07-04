@@ -56,7 +56,9 @@
             </li>
           </ul>
         </div>
+      }
 
+      @if (isAdmin() || isModuleOwner()) {
         <!-- ─── Modules & Apps Section ─────────────────────── -->
         <div class="nav-section">
           <span class="nav-section-label">Modules &amp; Apps</span>
@@ -69,16 +71,20 @@
                 <span class="nav-accent-dot" aria-hidden="true"></span>
               </a>
             </li>
-            <li class="nav-item">
-              <a routerLink="/dashboard/applications" routerLinkActive="active" class="nav-link"
-                 aria-label="Applications">
-                <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M9 3v18"/><path d="M15 3v18"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>
-                Applications
-              </a>
-            </li>
+            @if (isAdmin()) {
+              <li class="nav-item">
+                <a routerLink="/dashboard/applications" routerLinkActive="active" class="nav-link"
+                   aria-label="Applications">
+                  <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M9 3v18"/><path d="M15 3v18"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>
+                  Applications
+                </a>
+              </li>
+            }
           </ul>
         </div>
+      }
 
+      @if (isAdmin()) {
         <!-- ─── Platform Section (low-priority) ────────────── -->
         <div class="nav-section nav-section--platform">
           <span class="nav-section-label">Platform</span>

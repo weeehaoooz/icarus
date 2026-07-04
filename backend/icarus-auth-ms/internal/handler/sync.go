@@ -14,6 +14,7 @@ type SyncModuleRequest struct {
 	Permissions     []models.Permission `json:"permissions"`
 	DefaultRoles    []models.Role       `json:"default_roles"`
 	AppCentricRoles []models.Role       `json:"app_centric_roles"`
+	Creator         string              `json:"creator,omitempty"`
 }
 
 func (s *HandlerServer) InternalSyncModuleHandler(w http.ResponseWriter, r *http.Request) {
@@ -33,7 +34,7 @@ func (s *HandlerServer) InternalSyncModuleHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	err := s.Repo.SyncModule(req.Code, req.Name, req.BaseURL, req.Permissions, req.DefaultRoles, req.AppCentricRoles)
+	err := s.Repo.SyncModule(req.Code, req.Name, req.BaseURL, req.Permissions, req.DefaultRoles, req.AppCentricRoles, req.Creator)
 	if err != nil {
 		s.respondWithError(w, http.StatusInternalServerError, "failed to sync module: "+err.Error())
 		return
@@ -148,7 +149,12 @@ func (s *HandlerServer) TokenScopeHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	scopedToken, err := s.TokenMgr.GenerateScopedUserToken(user.Username, req.TenantID, req.ModuleCode, resolvedRoles, resolvedPermissions, user.Groups)
+	ownedModules, err := s.Repo.GetUserOwnedModules(user.ID)
+	if err != nil {
+		ownedModules = []string{}
+	}
+
+	scopedToken, err := s.TokenMgr.GenerateScopedUserToken(user.Username, req.TenantID, req.ModuleCode, resolvedRoles, resolvedPermissions, user.Groups, ownedModules)
 	if err != nil {
 		s.respondWithError(w, http.StatusInternalServerError, "failed to generate scoped token: "+err.Error())
 		return
@@ -313,9 +319,15 @@ func (s *HandlerServer) InternalGetModuleRolesAndTemplatesHandler(w http.Respons
 		return
 	}
 
+	owners, err := s.Repo.GetModuleOwners(moduleID)
+	if err != nil {
+		owners = []string{}
+	}
+
 	s.respondWithJSON(w, http.StatusOK, map[string]interface{}{
 		"default_roles":    defaultRoles,
 		"app_centric_roles": appCentricRoles,
+		"owners":           owners,
 	})
 }
 

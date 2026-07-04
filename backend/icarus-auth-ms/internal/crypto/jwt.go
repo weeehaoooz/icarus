@@ -13,12 +13,13 @@ import (
 )
 
 type CustomClaims struct {
-	Type        string             `json:"type"` // "user" or "client"
-	TenantID    string             `json:"tenant_id,omitempty"`
-	ModuleCode  string             `json:"module_code,omitempty"`
-	Roles       []string           `json:"roles,omitempty"`
-	Permissions []string           `json:"permissions,omitempty"`
-	Groups      []models.UserGroup `json:"groups,omitempty"`
+	Type         string             `json:"type"` // "user" or "client"
+	TenantID     string             `json:"tenant_id,omitempty"`
+	ModuleCode   string             `json:"module_code,omitempty"`
+	Roles        []string           `json:"roles,omitempty"`
+	Permissions  []string           `json:"permissions,omitempty"`
+	Groups       []models.UserGroup `json:"groups,omitempty"`
+	OwnedModules []string           `json:"owned_modules,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -56,12 +57,13 @@ func (m *TokenManager) GenerateUserToken(username string) (string, error) {
 }
 
 // GenerateUserTokenWithRoles generates a 5-minute access token for a user with specific roles/permissions/groups.
-func (m *TokenManager) GenerateUserTokenWithRoles(username string, roles []string, permissions []string, groups []models.UserGroup) (string, error) {
+func (m *TokenManager) GenerateUserTokenWithRoles(username string, roles []string, permissions []string, groups []models.UserGroup, ownedModules []string) (string, error) {
 	claims := CustomClaims{
-		Type:        "user",
-		Roles:       roles,
-		Permissions: permissions,
-		Groups:      groups,
+		Type:         "user",
+		Roles:        roles,
+		Permissions:  permissions,
+		Groups:       groups,
+		OwnedModules: ownedModules,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   username,
 			Issuer:    m.Issuer,
@@ -74,14 +76,15 @@ func (m *TokenManager) GenerateUserTokenWithRoles(username string, roles []strin
 }
 
 // GenerateScopedUserToken generates a 5-minute access token for a user scoped to a tenant and module.
-func (m *TokenManager) GenerateScopedUserToken(username, tenantID, moduleCode string, roles []string, permissions []string, groups []models.UserGroup) (string, error) {
+func (m *TokenManager) GenerateScopedUserToken(username, tenantID, moduleCode string, roles []string, permissions []string, groups []models.UserGroup, ownedModules []string) (string, error) {
 	claims := CustomClaims{
-		Type:        "user",
-		TenantID:    tenantID,
-		ModuleCode:  moduleCode,
-		Roles:       roles,
-		Permissions: permissions,
-		Groups:      groups,
+		Type:         "user",
+		TenantID:     tenantID,
+		ModuleCode:   moduleCode,
+		Roles:        roles,
+		Permissions:  permissions,
+		Groups:       groups,
+		OwnedModules: ownedModules,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   username,
 			Issuer:    m.Issuer,

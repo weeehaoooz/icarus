@@ -2,15 +2,20 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"icarus-admin-ms/internal/crypto"
 	"icarus-admin-ms/internal/models"
 	"strings"
 	"time"
 )
 
-// AdminRequired middleware ensures the request has a valid admin JWT.
+type contextKey string
+const claimsContextKey contextKey = "claims"
+
+// AdminRequired middleware ensures the request has a valid admin or module owner JWT.
 func (s *HandlerServer) AdminRequired(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
@@ -40,13 +45,71 @@ func (s *HandlerServer) AdminRequired(next http.HandlerFunc) http.HandlerFunc {
 			}
 		}
 
-		if !isAdmin {
-			s.respondWithError(w, http.StatusForbidden, "forbidden: admin role required")
+		isModuleOwner := len(claims.OwnedModules) > 0
+
+		if !isAdmin && !isModuleOwner {
+			s.respondWithError(w, http.StatusForbidden, "forbidden: admin or module owner role required")
 			return
 		}
 
-		next(w, r)
+		ctx := context.WithValue(r.Context(), claimsContextKey, claims)
+		next(w, r.WithContext(ctx))
 	}
+}
+
+func (s *HandlerServer) isSuperAdmin(r *http.Request) bool {
+	claims, ok := r.Context().Value(claimsContextKey).(*crypto.CustomClaims)
+	if !ok || claims == nil {
+		return false
+	}
+	for _, role := range claims.Roles {
+		if role == "admin" {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *HandlerServer) isModuleOwner(r *http.Request, moduleID string) (bool, *crypto.CustomClaims) {
+	claims, ok := r.Context().Value(claimsContextKey).(*crypto.CustomClaims)
+	if !ok || claims == nil {
+		return false, nil
+	}
+
+	// Super-admins are allowed to do anything (per user's feedback)
+	for _, role := range claims.Roles {
+		if role == "admin" {
+			return true, claims
+		}
+	}
+
+	for _, m := range claims.OwnedModules {
+		if m == moduleID {
+			return true, claims
+		}
+	}
+	return false, claims
+}
+
+func (s *HandlerServer) canViewModule(r *http.Request, moduleID string) bool {
+	claims, ok := r.Context().Value(claimsContextKey).(*crypto.CustomClaims)
+	if !ok || claims == nil {
+		return false
+	}
+
+	// Super-admins can view all modules
+	for _, role := range claims.Roles {
+		if role == "admin" {
+			return true
+		}
+	}
+
+	for _, m := range claims.OwnedModules {
+		if m == moduleID {
+			return true
+		}
+	}
+	return false
 }
 
 // === TENANTS CRUD ===
@@ -209,6 +272,32 @@ func (s *HandlerServer) AdminListModulesHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// Filter modules if the user is not a Super-admin
+	if !s.isSuperAdmin(r) {
+		claims, ok := r.Context().Value(claimsContextKey).(*crypto.CustomClaims)
+		var owned []string
+		if ok && claims != nil {
+			owned = claims.OwnedModules
+		}
+		
+		ownedSet := make(map[string]bool)
+		for _, m := range owned {
+			ownedSet[m] = true
+		}
+
+		var filtered []models.Module
+		for _, m := range modules {
+			if ownedSet[m.ID] || ownedSet[m.Code] {
+				filtered = append(filtered, m)
+			}
+		}
+		modules = filtered
+	}
+
+	if modules == nil {
+		modules = []models.Module{}
+	}
+
 	s.respondWithJSON(w, http.StatusOK, modules)
 }
 
@@ -220,11 +309,17 @@ type AdminModuleSaveRequest struct {
 	Permissions     []models.Permission `json:"permissions"`
 	DefaultRoles    []models.Role       `json:"default_roles"`
 	AppCentricRoles []models.Role       `json:"app_centric_roles"`
+	Creator         string              `json:"creator,omitempty"`
 }
 
 func (s *HandlerServer) AdminCreateModuleHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		s.respondWithError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	if !s.isSuperAdmin(r) {
+		s.respondWithError(w, http.StatusForbidden, "forbidden: only super-admin is allowed to register new modules")
 		return
 	}
 
@@ -237,6 +332,11 @@ func (s *HandlerServer) AdminCreateModuleHandler(w http.ResponseWriter, r *http.
 	if req.Code == "" || req.Name == "" || req.BaseURL == "" {
 		s.respondWithError(w, http.StatusBadRequest, "code, name, and base_url are required")
 		return
+	}
+
+	claims, ok := r.Context().Value(claimsContextKey).(*crypto.CustomClaims)
+	if ok && claims != nil {
+		req.Creator = claims.Subject
 	}
 
 	module := models.Module{
@@ -287,6 +387,12 @@ func (s *HandlerServer) AdminUpdateModuleHandler(w http.ResponseWriter, r *http.
 	id := r.PathValue("id")
 	if id == "" {
 		s.respondWithError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+
+	allowed, _ := s.isModuleOwner(r, id)
+	if !allowed {
+		s.respondWithError(w, http.StatusForbidden, "forbidden: only module owner or admin is allowed to update this module")
 		return
 	}
 
@@ -346,6 +452,11 @@ func (s *HandlerServer) AdminGetModuleManifestHandler(w http.ResponseWriter, r *
 		return
 	}
 
+	if !s.canViewModule(r, id) {
+		s.respondWithError(w, http.StatusForbidden, "forbidden: only module owner or admin is allowed to view this module's manifest")
+		return
+	}
+
 	module, err := s.Repo.GetModuleByCode(id)
 	if err != nil {
 		s.respondWithError(w, http.StatusNotFound, "module not found: "+err.Error())
@@ -362,6 +473,7 @@ func (s *HandlerServer) AdminGetModuleManifestHandler(w http.ResponseWriter, r *
 	resp, err := http.Get(authSyncURL)
 	var defaultRoles []models.Role
 	var appCentricRoles []models.Role
+	owners := []string{}
 
 	if err == nil {
 		defer resp.Body.Close()
@@ -369,10 +481,14 @@ func (s *HandlerServer) AdminGetModuleManifestHandler(w http.ResponseWriter, r *
 			var authData struct {
 				DefaultRoles    []models.Role `json:"default_roles"`
 				AppCentricRoles []models.Role `json:"app_centric_roles"`
+				Owners          []string      `json:"owners"`
 			}
 			if jsonErr := json.NewDecoder(resp.Body).Decode(&authData); jsonErr == nil {
 				defaultRoles = authData.DefaultRoles
 				appCentricRoles = authData.AppCentricRoles
+				if authData.Owners != nil {
+					owners = authData.Owners
+				}
 			}
 		}
 	}
@@ -385,6 +501,7 @@ func (s *HandlerServer) AdminGetModuleManifestHandler(w http.ResponseWriter, r *
 		"permissions":       permissions,
 		"default_roles":     defaultRoles,
 		"app_centric_roles": appCentricRoles,
+		"owners":           owners,
 	})
 }
 
@@ -397,6 +514,12 @@ func (s *HandlerServer) AdminDeleteModuleHandler(w http.ResponseWriter, r *http.
 	id := r.PathValue("id")
 	if id == "" {
 		s.respondWithError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+
+	allowed, _ := s.isModuleOwner(r, id)
+	if !allowed {
+		s.respondWithError(w, http.StatusForbidden, "forbidden: only module owner or admin is allowed to delete this module")
 		return
 	}
 

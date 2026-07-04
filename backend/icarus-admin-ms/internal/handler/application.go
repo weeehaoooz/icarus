@@ -167,6 +167,11 @@ func (s *HandlerServer) AdminListModuleApplicationsHandler(w http.ResponseWriter
 		return
 	}
 
+	if !s.canViewModule(r, moduleID) {
+		s.respondWithError(w, http.StatusForbidden, "forbidden: only module owner or admin is allowed to view applications for this module")
+		return
+	}
+
 	apps, err := s.Repo.ListModuleApplications(moduleID)
 	if err != nil {
 		s.respondWithError(w, http.StatusInternalServerError, err.Error())
@@ -185,6 +190,12 @@ func (s *HandlerServer) AdminOnboardApplicationHandler(w http.ResponseWriter, r 
 	moduleID := r.PathValue("id")
 	if moduleID == "" {
 		s.respondWithError(w, http.StatusBadRequest, "module id is required")
+		return
+	}
+
+	allowed, _ := s.isModuleOwner(r, moduleID)
+	if !allowed {
+		s.respondWithError(w, http.StatusForbidden, "forbidden: only module owner or admin is allowed to onboard applications to this module")
 		return
 	}
 
@@ -229,6 +240,12 @@ func (s *HandlerServer) AdminOffboardApplicationHandler(w http.ResponseWriter, r
 	appCode := r.PathValue("appCode")
 	if moduleID == "" || appCode == "" {
 		s.respondWithError(w, http.StatusBadRequest, "module id and app code are required")
+		return
+	}
+
+	allowed, _ := s.isModuleOwner(r, moduleID)
+	if !allowed {
+		s.respondWithError(w, http.StatusForbidden, "forbidden: only module owner or admin is allowed to offboard applications from this module")
 		return
 	}
 

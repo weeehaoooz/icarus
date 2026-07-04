@@ -5,9 +5,11 @@
       Register backend services and API portals for route routing, permission mapping, and access policies.
     </p>
   </div>
-  <button (click)="openCreatePanel()" class="btn btn-primary">
-    <svg class="lucide-icon" viewBox="0 0 24 24" style="margin-right: 6px;"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Register Module
-  </button>
+  @if (isAdmin()) {
+    <button (click)="openCreatePanel()" class="btn btn-primary">
+      <svg class="lucide-icon" viewBox="0 0 24 24" style="margin-right: 6px;"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Register Module
+    </button>
+  }
 </header>
 
 <div class="search-bar">
@@ -95,9 +97,11 @@
               <button (click)="openEditPanel(module)" class="icon-btn" title="Edit Module">
                 <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
               </button>
-              <button (click)="deleteModule(module.id, $event)" class="icon-btn delete" title="Delete Module">
-                <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-              </button>
+              @if (isOwner(module.code)) {
+                <button (click)="deleteModule(module.id, $event)" class="icon-btn delete" title="Delete Module">
+                  <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                </button>
+              }
             </td>
           </tr>
         } @empty {
@@ -186,6 +190,7 @@
                 name="name"
                 [(ngModel)]="formData.name"
                 required
+                [disabled]="panel === 'edit' && !isOwner(selectedModule()?.code)"
                 placeholder="e.g. Core API Portal"
                 class="form-input"
               />
@@ -198,6 +203,7 @@
                 name="baseUrl"
                 [(ngModel)]="formData.baseUrl"
                 required
+                [disabled]="panel === 'edit' && !isOwner(selectedModule()?.code)"
                 placeholder="e.g. http://localhost:8082"
                 class="form-input"
               />
@@ -209,6 +215,7 @@
                 id="module-isActive"
                 name="isActive"
                 [(ngModel)]="formData.isActive"
+                [disabled]="panel === 'edit' && !isOwner(selectedModule()?.code)"
                 class="form-checkbox"
               />
               <label class="form-label" for="module-isActive" style="margin-bottom: 0; cursor: pointer;">Module is Active</label>
@@ -216,9 +223,31 @@
 
             @if (panel === 'edit') {
               <div style="border-top: 1px solid var(--border-color); margin-top: 24px; padding-top: 16px;">
+                <h3 style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Governance &amp; Ownership</h3>
+                <p style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 12px;">
+                  Module ownership is governed by the system role: <strong style="color: var(--primary);">{{ selectedModule()?.code }} owner</strong>.
+                </p>
+                
+                <div style="display: flex; flex-direction: column; gap: 8px; background: rgba(255,255,255,0.01); border: 1px solid var(--border-color); padding: 12px; margin-bottom: 16px;">
+                  <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Current Owners</span>
+                  <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;">
+                    @for (owner of moduleOwners(); track owner) {
+                      <span style="background: rgba(255,255,255,0.05); padding: 4px 10px; font-size: 0.8rem; font-family: monospace; border: 1px solid rgba(255,255,255,0.1); color: var(--text-main);">
+                        👤 {{ owner }}
+                      </span>
+                    } @empty {
+                      <span style="font-size: 0.85rem; color: var(--text-muted);">No assigned owners in the system.</span>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+
+            @if (panel === 'edit') {
+              <div style="border-top: 1px solid var(--border-color); margin-top: 24px; padding-top: 16px;">
                 <h3 style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); margin-bottom: 12px;">Onboarded Applications</h3>
                 <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; background: rgba(255,255,255,0.01); border: 1px solid var(--border-color); border-radius: 0; padding: 12px;">
-                  @if (availableAppsToOnboard().length > 0) {
+                  @if (availableAppsToOnboard().length > 0 && isOwner(selectedModule()?.code)) {
                     <div style="display: flex; gap: 8px; margin-bottom: 12px;">
                       <select 
                         [(ngModel)]="onboardAppCode" 
@@ -247,15 +276,17 @@
                     @for (appCode of onboardedApps(); track appCode) {
                       <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 0; border: 1px solid rgba(255,255,255,0.05);">
                         <span style="font-family: monospace; font-size: 0.85rem; color: var(--primary); font-weight: 600;">{{ appCode }}</span>
-                        <button 
-                          type="button" 
-                          (click)="offboardApplication(appCode)" 
-                          class="icon-btn delete" 
-                          title="Offboard Application"
-                          style="padding: 2px;"
-                        >
-                          <svg class="lucide-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                        </button>
+                        @if (isOwner(selectedModule()?.code)) {
+                          <button 
+                            type="button" 
+                            (click)="offboardApplication(appCode)" 
+                            class="icon-btn delete" 
+                            title="Offboard Application"
+                            style="padding: 2px;"
+                          >
+                            <svg class="lucide-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          </button>
+                        }
                       </div>
                     } @empty {
                       <span style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 8px 0;">No application teams onboarded yet.</span>
@@ -341,86 +372,88 @@
                     <div class="visual-subpanel">
                       <p class="subpanel-hint"><span>Define the capability actions for this module. Roles reference permissions by their <strong>action key</strong> — path and method are optional metadata for documentation.</span></p>
 
-                      <div class="inline-form">
-                        <!-- Primary fields: what this permission IS -->
-                        <div class="inline-form-row">
-                          <div class="form-group inline-form-field flex-2">
-                            <label class="form-label" for="perm-action">Action Key <span class="required-star">*</span></label>
-                            <input
-                              id="perm-action"
-                              name="perm-action-input"
-                              [(ngModel)]="newPermission.action"
-                              placeholder="e.g. read, create, calculate"
-                              class="form-input"
-                            />
+                      @if (panel === 'create' || isOwner(selectedModule()?.code)) {
+                        <div class="inline-form">
+                          <!-- Primary fields: what this permission IS -->
+                          <div class="inline-form-row">
+                            <div class="form-group inline-form-field flex-2">
+                              <label class="form-label" for="perm-action">Action Key <span class="required-star">*</span></label>
+                              <input
+                                id="perm-action"
+                                name="perm-action-input"
+                                [(ngModel)]="newPermission.action"
+                                placeholder="e.g. read, create, calculate"
+                                class="form-input"
+                              />
+                            </div>
+                            <div class="form-group inline-form-field flex-3">
+                              <label class="form-label" for="perm-desc">Description</label>
+                              <input
+                                id="perm-desc"
+                                name="perm-desc-input"
+                                [(ngModel)]="newPermission.description"
+                                placeholder="What this permission allows"
+                                class="form-input"
+                              />
+                            </div>
                           </div>
-                          <div class="form-group inline-form-field flex-3">
-                            <label class="form-label" for="perm-desc">Description</label>
-                            <input
-                              id="perm-desc"
-                              name="perm-desc-input"
-                              [(ngModel)]="newPermission.description"
-                              placeholder="What this permission allows"
-                              class="form-input"
-                            />
-                          </div>
-                        </div>
 
-                        <!-- Optional metadata divider -->
-                        <div class="perm-optional-divider">
-                          <span>OPTIONAL METADATA</span>
-                        </div>
-
-                        <!-- Secondary fields: where this permission MAPS -->
-                        <div class="inline-form-row">
-                          <div class="form-group inline-form-field flex-3">
-                            <label class="form-label perm-optional-label" for="perm-path">
-                              Path Pattern
-                              <span
-                                class="perm-optional-info"
-                                data-tooltip="Maps this action to an API endpoint path (e.g. /api/v1/resource). Informational only — auth decisions use the action key, not the path."
-                                aria-label="Maps this action to an API endpoint path. Informational only."
-                                tabindex="0"
-                              >ⓘ</span>
-                            </label>
-                            <input
-                              id="perm-path"
-                              name="perm-path-input"
-                              [(ngModel)]="newPermission.path_pattern"
-                              placeholder="e.g. /api/v1/resource/*"
-                              class="form-input perm-optional-input"
-                            />
+                          <!-- Optional metadata divider -->
+                          <div class="perm-optional-divider">
+                            <span>OPTIONAL METADATA</span>
                           </div>
-                          <div class="form-group inline-form-field flex-1">
-                            <label class="form-label perm-optional-label" for="perm-method">
-                              HTTP Method
-                              <span
-                                class="perm-optional-info"
-                                data-tooltip="The HTTP method this action corresponds to. Informational only — not used in auth enforcement."
-                                aria-label="The HTTP method this action corresponds to. Informational only."
-                                tabindex="0"
-                              >ⓘ</span>
-                            </label>
-                            <select id="perm-method" name="perm-method-select" [(ngModel)]="newPermission.method" class="form-input perm-optional-input">
-                              @for (m of httpMethods; track m) {
-                                <option [value]="m">{{ m }}</option>
-                              }
-                            </select>
+
+                          <!-- Secondary fields: where this permission MAPS -->
+                          <div class="inline-form-row">
+                            <div class="form-group inline-form-field flex-3">
+                              <label class="form-label perm-optional-label" for="perm-path">
+                                Path Pattern
+                                <span
+                                  class="perm-optional-info"
+                                  data-tooltip="Maps this action to an API endpoint path (e.g. /api/v1/resource). Informational only — auth decisions use the action key, not the path."
+                                  aria-label="Maps this action to an API endpoint path. Informational only."
+                                  tabindex="0"
+                                >ⓘ</span>
+                              </label>
+                              <input
+                                id="perm-path"
+                                name="perm-path-input"
+                                [(ngModel)]="newPermission.path_pattern"
+                                placeholder="e.g. /api/v1/resource/*"
+                                class="form-input perm-optional-input"
+                              />
+                            </div>
+                            <div class="form-group inline-form-field flex-1">
+                              <label class="form-label perm-optional-label" for="perm-method">
+                                HTTP Method
+                                <span
+                                  class="perm-optional-info"
+                                  data-tooltip="The HTTP method this action corresponds to. Informational only — not used in auth enforcement."
+                                  aria-label="The HTTP method this action corresponds to. Informational only."
+                                  tabindex="0"
+                                >ⓘ</span>
+                              </label>
+                              <select id="perm-method" name="perm-method-select" [(ngModel)]="newPermission.method" class="form-input perm-optional-input">
+                                @for (m of httpMethods; track m) {
+                                  <option [value]="m">{{ m }}</option>
+                                }
+                              </select>
+                            </div>
+                          </div>
+
+                          <div class="inline-form-actions">
+                            @if (editingPermIndex() !== null) {
+                              <button type="button" class="btn btn-primary btn-sm" (click)="saveEditPermission()" [disabled]="!newPermission.action.trim()">Save</button>
+                              <button type="button" class="btn btn-secondary btn-sm" (click)="cancelEditPermission()">Cancel</button>
+                            } @else {
+                              <button type="button" class="btn btn-primary btn-sm" (click)="addPermission()" [disabled]="!newPermission.action.trim()">
+                                <svg class="lucide-icon" viewBox="0 0 24 24" style="width:12px;height:12px;"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                Add Permission
+                              </button>
+                            }
                           </div>
                         </div>
-
-                        <div class="inline-form-actions">
-                          @if (editingPermIndex() !== null) {
-                            <button type="button" class="btn btn-primary btn-sm" (click)="saveEditPermission()" [disabled]="!newPermission.action.trim()">Save</button>
-                            <button type="button" class="btn btn-secondary btn-sm" (click)="cancelEditPermission()">Cancel</button>
-                          } @else {
-                            <button type="button" class="btn btn-primary btn-sm" (click)="addPermission()" [disabled]="!newPermission.action.trim()">
-                              <svg class="lucide-icon" viewBox="0 0 24 24" style="width:12px;height:12px;"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                              Add Permission
-                            </button>
-                          }
-                        </div>
-                      </div>
+                      }
 
                       @if (permissions().length > 0) {
                         <div class="entries-list">
@@ -440,14 +473,16 @@
                                   }
                                 </div>
                               </div>
-                              <div class="entry-actions">
-                                <button type="button" class="icon-btn" title="Edit" (click)="startEditPermission(i)">
-                                  <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                                </button>
-                                <button type="button" class="icon-btn delete" title="Remove" (click)="removePermission(i)">
-                                  <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                                </button>
-                              </div>
+                              @if (panel === 'create' || isOwner(selectedModule()?.code)) {
+                                <div class="entry-actions">
+                                  <button type="button" class="icon-btn" title="Edit" (click)="startEditPermission(i)">
+                                    <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                  </button>
+                                  <button type="button" class="icon-btn delete" title="Remove" (click)="removePermission(i)">
+                                    <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                  </button>
+                                </div>
+                              }
                             </div>
                           }
                         </div>
@@ -462,52 +497,54 @@
                     <div class="visual-subpanel">
                       <p class="subpanel-hint">System roles are module-wide and assigned directly to users. Select which permissions each role grants.</p>
                       
-                      <div class="inline-form">
-                        <div class="inline-form-row">
-                          <div class="form-group inline-form-field flex-2">
-                            <label class="form-label" for="dr-name">Role Name <span class="required-star">*</span></label>
-                            <input id="dr-name" name="dr-name-input" [(ngModel)]="newDefaultRole.name" placeholder="e.g. Viewer, Editor, Admin" class="form-input" />
-                          </div>
-                          <div class="form-group inline-form-field flex-3">
-                            <label class="form-label" for="dr-desc">Description</label>
-                            <input id="dr-desc" name="dr-desc-input" [(ngModel)]="newDefaultRole.description" placeholder="What this role allows" class="form-input" />
-                          </div>
-                        </div>
-                        @if (permissionActions().length > 0) {
-                          <div class="form-group">
-                            <label class="form-label">Permissions</label>
-                            <div class="permissions-checklist">
-                              @for (action of permissionActions(); track action) {
-                                <label class="perm-check-item">
-                                  <input
-                                    type="checkbox"
-                                    class="form-checkbox"
-                                    [checked]="isPermissionChecked(newDefaultRole.permissions, action)"
-                                    (change)="toggleRolePermission(newDefaultRole.permissions, action)"
-                                  />
-                                  <span class="perm-check-label">{{ action }}</span>
-                                </label>
-                              }
+                      @if (panel === 'create' || isOwner(selectedModule()?.code)) {
+                        <div class="inline-form">
+                          <div class="inline-form-row">
+                            <div class="form-group inline-form-field flex-2">
+                              <label class="form-label" for="dr-name">Role Name <span class="required-star">*</span></label>
+                              <input id="dr-name" name="dr-name-input" [(ngModel)]="newDefaultRole.name" placeholder="e.g. Viewer, Editor, Admin" class="form-input" />
+                            </div>
+                            <div class="form-group inline-form-field flex-3">
+                              <label class="form-label" for="dr-desc">Description</label>
+                              <input id="dr-desc" name="dr-desc-input" [(ngModel)]="newDefaultRole.description" placeholder="What this role allows" class="form-input" />
                             </div>
                           </div>
-                        } @else {
-                          <p class="subpanel-hint" style="margin: 0 0 12px 0;">
-                            <svg class="lucide-icon" viewBox="0 0 24 24" style="width:13px;height:13px;margin-right:4px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                            Define permissions first (in the Permissions tab) to assign them to roles.
-                          </p>
-                        }
-                        <div class="inline-form-actions">
-                          @if (editingDefaultRoleIndex() !== null) {
-                            <button type="button" class="btn btn-primary btn-sm" (click)="saveEditDefaultRole()" [disabled]="!newDefaultRole.name.trim()">Save</button>
-                            <button type="button" class="btn btn-secondary btn-sm" (click)="cancelEditDefaultRole()">Cancel</button>
+                          @if (permissionActions().length > 0) {
+                            <div class="form-group">
+                              <label class="form-label">Permissions</label>
+                              <div class="permissions-checklist">
+                                @for (action of permissionActions(); track action) {
+                                  <label class="perm-check-item">
+                                    <input
+                                      type="checkbox"
+                                      class="form-checkbox"
+                                      [checked]="isPermissionChecked(newDefaultRole.permissions, action)"
+                                      (change)="toggleRolePermission(newDefaultRole.permissions, action)"
+                                    />
+                                    <span class="perm-check-label">{{ action }}</span>
+                                  </label>
+                                }
+                              </div>
+                            </div>
                           } @else {
-                            <button type="button" class="btn btn-primary btn-sm" (click)="addDefaultRole()" [disabled]="!newDefaultRole.name.trim()">
-                              <svg class="lucide-icon" viewBox="0 0 24 24" style="width:12px;height:12px;"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                              Add Role
-                            </button>
+                            <p class="subpanel-hint" style="margin: 0 0 12px 0;">
+                              <svg class="lucide-icon" viewBox="0 0 24 24" style="width:13px;height:13px;margin-right:4px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                              Define permissions first (in the Permissions tab) to assign them to roles.
+                            </p>
                           }
+                          <div class="inline-form-actions">
+                            @if (editingDefaultRoleIndex() !== null) {
+                              <button type="button" class="btn btn-primary btn-sm" (click)="saveEditDefaultRole()" [disabled]="!newDefaultRole.name.trim()">Save</button>
+                              <button type="button" class="btn btn-secondary btn-sm" (click)="cancelEditDefaultRole()">Cancel</button>
+                            } @else {
+                              <button type="button" class="btn btn-primary btn-sm" (click)="addDefaultRole()" [disabled]="!newDefaultRole.name.trim()">
+                                <svg class="lucide-icon" viewBox="0 0 24 24" style="width:12px;height:12px;"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                Add Role
+                              </button>
+                            }
+                          </div>
                         </div>
-                      </div>
+                      }
 
                       @if (defaultRoles().length > 0) {
                         <div class="entries-list">
@@ -531,19 +568,21 @@
                                   }
                                 </div>
                               </div>
-                              <div class="entry-actions">
-                                <button type="button" class="icon-btn" title="Edit" (click)="startEditDefaultRole(i)">
-                                  <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                                </button>
-                                <button type="button" class="icon-btn delete" title="Remove" (click)="removeDefaultRole(i)">
-                                  <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                                </button>
-                              </div>
+                              @if (panel === 'create' || isOwner(selectedModule()?.code)) {
+                                <div class="entry-actions">
+                                  <button type="button" class="icon-btn" title="Edit" (click)="startEditDefaultRole(i)">
+                                    <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                  </button>
+                                  <button type="button" class="icon-btn delete" title="Remove" (click)="removeDefaultRole(i)">
+                                    <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                  </button>
+                                </div>
+                              }
                             </div>
                           }
                         </div>
                       } @else {
-                        <div class="entries-empty">No system roles defined yet. Add one above.</div>
+                        <div class="entries-empty">No system roles defined yet.</div>
                       }
                     </div>
                   }
@@ -553,52 +592,54 @@
                     <div class="visual-subpanel">
                       <p class="subpanel-hint">App roles are templates used when an application team is onboarded to this module, creating scoped roles per application.</p>
                       
-                      <div class="inline-form">
-                        <div class="inline-form-row">
-                          <div class="form-group inline-form-field flex-2">
-                            <label class="form-label" for="ar-name">Role Name <span class="required-star">*</span></label>
-                            <input id="ar-name" name="ar-name-input" [(ngModel)]="newAppCentricRole.name" placeholder="e.g. AppViewer, AppEditor" class="form-input" />
-                          </div>
-                          <div class="form-group inline-form-field flex-3">
-                            <label class="form-label" for="ar-desc">Description</label>
-                            <input id="ar-desc" name="ar-desc-input" [(ngModel)]="newAppCentricRole.description" placeholder="What this role allows within an app scope" class="form-input" />
-                          </div>
-                        </div>
-                        @if (permissionActions().length > 0) {
-                          <div class="form-group">
-                            <label class="form-label">Permissions</label>
-                            <div class="permissions-checklist">
-                              @for (action of permissionActions(); track action) {
-                                <label class="perm-check-item">
-                                  <input
-                                    type="checkbox"
-                                    class="form-checkbox"
-                                    [checked]="isPermissionChecked(newAppCentricRole.permissions, action)"
-                                    (change)="toggleRolePermission(newAppCentricRole.permissions, action)"
-                                  />
-                                  <span class="perm-check-label">{{ action }}</span>
-                                </label>
-                              }
+                      @if (panel === 'create' || isOwner(selectedModule()?.code)) {
+                        <div class="inline-form">
+                          <div class="inline-form-row">
+                            <div class="form-group inline-form-field flex-2">
+                              <label class="form-label" for="ar-name">Role Name <span class="required-star">*</span></label>
+                              <input id="ar-name" name="ar-name-input" [(ngModel)]="newAppCentricRole.name" placeholder="e.g. AppViewer, AppEditor" class="form-input" />
+                            </div>
+                            <div class="form-group inline-form-field flex-3">
+                              <label class="form-label" for="ar-desc">Description</label>
+                              <input id="ar-desc" name="ar-desc-input" [(ngModel)]="newAppCentricRole.description" placeholder="What this role allows within an app scope" class="form-input" />
                             </div>
                           </div>
-                        } @else {
-                          <p class="subpanel-hint" style="margin: 0 0 12px 0;">
-                            <svg class="lucide-icon" viewBox="0 0 24 24" style="width:13px;height:13px;margin-right:4px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                            Define permissions first (in the Permissions tab) to assign them to roles.
-                          </p>
-                        }
-                        <div class="inline-form-actions">
-                          @if (editingAppRoleIndex() !== null) {
-                            <button type="button" class="btn btn-primary btn-sm" (click)="saveEditAppRole()" [disabled]="!newAppCentricRole.name.trim()">Save</button>
-                            <button type="button" class="btn btn-secondary btn-sm" (click)="cancelEditAppRole()">Cancel</button>
+                          @if (permissionActions().length > 0) {
+                            <div class="form-group">
+                              <label class="form-label">Permissions</label>
+                              <div class="permissions-checklist">
+                                @for (action of permissionActions(); track action) {
+                                  <label class="perm-check-item">
+                                    <input
+                                      type="checkbox"
+                                      class="form-checkbox"
+                                      [checked]="isPermissionChecked(newAppCentricRole.permissions, action)"
+                                      (change)="toggleRolePermission(newAppCentricRole.permissions, action)"
+                                    />
+                                    <span class="perm-check-label">{{ action }}</span>
+                                  </label>
+                                }
+                              </div>
+                            </div>
                           } @else {
-                            <button type="button" class="btn btn-primary btn-sm" (click)="addAppCentricRole()" [disabled]="!newAppCentricRole.name.trim()">
-                              <svg class="lucide-icon" viewBox="0 0 24 24" style="width:12px;height:12px;"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                              Add Role
-                            </button>
+                            <p class="subpanel-hint" style="margin: 0 0 12px 0;">
+                              <svg class="lucide-icon" viewBox="0 0 24 24" style="width:13px;height:13px;margin-right:4px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                              Define permissions first (in the Permissions tab) to assign them to roles.
+                            </p>
                           }
+                          <div class="inline-form-actions">
+                            @if (editingAppRoleIndex() !== null) {
+                              <button type="button" class="btn btn-primary btn-sm" (click)="saveEditAppRole()" [disabled]="!newAppCentricRole.name.trim()">Save</button>
+                              <button type="button" class="btn btn-secondary btn-sm" (click)="cancelEditAppRole()">Cancel</button>
+                            } @else {
+                              <button type="button" class="btn btn-primary btn-sm" (click)="addAppCentricRole()" [disabled]="!newAppCentricRole.name.trim()">
+                                <svg class="lucide-icon" viewBox="0 0 24 24" style="width:12px;height:12px;"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                Add Role
+                              </button>
+                            }
+                          </div>
                         </div>
-                      </div>
+                      }
 
                       @if (appCentricRoles().length > 0) {
                         <div class="entries-list">
@@ -623,19 +664,21 @@
                                   }
                                 </div>
                               </div>
-                              <div class="entry-actions">
-                                <button type="button" class="icon-btn" title="Edit" (click)="startEditAppRole(i)">
-                                  <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                                </button>
-                                <button type="button" class="icon-btn delete" title="Remove" (click)="removeAppCentricRole(i)">
-                                  <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                                </button>
-                              </div>
+                              @if (panel === 'create' || isOwner(selectedModule()?.code)) {
+                                <div class="entry-actions">
+                                  <button type="button" class="icon-btn" title="Edit" (click)="startEditAppRole(i)">
+                                    <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                  </button>
+                                  <button type="button" class="icon-btn delete" title="Remove" (click)="removeAppCentricRole(i)">
+                                    <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                  </button>
+                                </div>
+                              }
                             </div>
                           }
                         </div>
                       } @else {
-                        <div class="entries-empty">No app-centric role templates defined yet. Add one above.</div>
+                        <div class="entries-empty">No app-centric role templates defined yet.</div>
                       }
                     </div>
                   }
@@ -653,6 +696,7 @@
                     id="module-manifest"
                     name="manifestJson"
                     [(ngModel)]="manifestJson"
+                    [disabled]="panel === 'edit' && !isOwner(selectedModule()?.code)"
                     rows="14"
                     required
                     class="form-input json-textarea"
@@ -710,9 +754,11 @@
 
         <div class="panel-actions" style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
           <button type="button" (click)="closePanel()" class="btn btn-secondary">Cancel</button>
-          <button type="submit" [disabled]="!moduleForm.form.valid" class="btn btn-primary">
-            {{ panel === 'create' ? 'Register' : 'Save Changes' }}
-          </button>
+          @if (panel === 'create' || isOwner(selectedModule()?.code)) {
+            <button type="submit" [disabled]="!moduleForm.form.valid" class="btn btn-primary">
+              {{ panel === 'create' ? 'Register' : 'Save Changes' }}
+            </button>
+          }
         </div>
       </form>
     </div>

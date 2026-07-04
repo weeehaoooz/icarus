@@ -33,6 +33,10 @@ export class DashboardComponent {
     return this.authService.isAdmin();
   });
 
+  readonly isModuleOwner = computed(() => {
+    return this.authService.isModuleOwner();
+  });
+
   isSettingsActive(): boolean {
     return this.router.url.includes('/dashboard/settings');
   }
