@@ -7,7 +7,7 @@ Icarus services **MUST** be deployed and fully operational before any applicatio
 1. **Persistent Database/Identity Store:** Ensure SQLite/PostgreSQL is initialized.
 2. **`icarus-auth-ms` (Authentication Service):** Starts first to generate public/private key pairs and serve the JWKS (JSON Web Key Set) endpoint.
 3. **`icarus-admin-ms` (Identity & Policy Engine):** Starts once `icarus-auth-ms` is healthy to verify admin tokens and host the governance registration APIs.
-4. **`icarus-admin-frontend`:** Deployed last to allow administrator dashboard access.
+4. **`icarus-frontend`:** Deployed last to allow administrator dashboard access.
 
 ## 2. Secrets & Certificate Management
 > [!IMPORTANT]

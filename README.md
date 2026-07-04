@@ -9,7 +9,7 @@ This directory contains the services and interfaces responsible for managing glo
 - **[icarus-admin-ms](file:///Users/tengweihao/Projects/icarus/icarus/backend/icarus-admin-ms):** Orchestrates module governance (registration) and security policies/admin actions.
 
 ### Frontend Consoles
-- **[icarus-admin-frontend](file:///Users/tengweihao/Projects/icarus/icarus/frontend/icarus-admin-frontend):** An administrative user interface for managing system users, security parameters, and registration audits.
+- **[icarus-frontend](file:///Users/tengweihao/Projects/atlas/icarus/frontend/icarus-frontend):** An administrative user interface for managing system users, security parameters, and registration audits.
 
 ## Documentation
 - Detailed deployment instructions can be found in the [DEPLOYMENT.md](file:///Users/tengweihao/Projects/icarus/icarus/DEPLOYMENT.md) file.
