@@ -1,0 +1,12 @@
+# Exclude local keys and databases
+keys/
+*.db
+*.db-journal
+
+# Exclude compiled binaries
+auth-server
+
+# Exclude git and OS-specific files
+.git
+.gitignore
+.DS_Store

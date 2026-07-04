@@ -1,0 +1,11 @@
+# Exclude local databases
+*.db
+*.db-journal
+
+# Exclude compiled binaries
+platform-server
+
+# Exclude git and OS-specific files
+.git
+.gitignore
+.DS_Store

@@ -1,0 +1,127 @@
+.clients-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.search-bar {
+  margin-bottom: 16px;
+}
+
+
+.split-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  align-items: start;
+  transition: var(--transition);
+  
+  &.has-active-panel {
+    grid-template-columns: 1.4fr 1fr;
+  }
+  
+  @media (max-width: 1200px) {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.table-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  min-height: 400px;
+}
+
+.pem-preview {
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roles-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.detail-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 24px;
+  position: sticky;
+  top: 40px;
+  animation: slideIn 0.2s ease-out;
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+    
+    .panel-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    
+    .close-btn {
+      font-size: 1.25rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      
+      &:hover {
+        color: var(--text-main);
+      }
+    }
+  }
+}
+
+.role-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+  
+  .role-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 6px 10px;
+    background: #06090f;
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+    
+    &:hover {
+      border-color: var(--border-color-hover);
+    }
+  }
+}
+
+.panel-error {
+  padding: 10px 14px;
+  background: var(--danger-glow);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  color: var(--danger);
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

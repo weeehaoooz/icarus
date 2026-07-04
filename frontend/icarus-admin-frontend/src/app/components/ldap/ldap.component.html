@@ -1,0 +1,208 @@
+<header class="ldap-header">
+  <div>
+    <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.02em;">LDAP Directory Integration</h1>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">Integrate directory authentication services and manage user account synchronization policies</p>
+  </div>
+</header>
+
+<div class="ldap-layout">
+  <div class="settings-panel glass-panel animate-fade-in">
+    @if (message().type) {
+      <div 
+        class="notification-banner" 
+        [class.banner-success]="message().type === 'success'" 
+        [class.banner-error]="message().type === 'error'"
+        role="alert"
+      >
+        <span class="banner-icon">
+          @if (message().type === 'success') {
+            ✓
+          } @else {
+            ⚠
+          }
+        </span>
+        <span class="banner-text">{{ message().text }}</span>
+      </div>
+    }
+
+    <form (ngSubmit)="saveConfig()">
+      <!-- Toggle Enabled -->
+      <div class="form-group toggle-group">
+        <div class="toggle-info">
+          <label class="form-label" style="margin-bottom: 2px;">Enable LDAP Authentication</label>
+          <span style="font-size: 0.85rem; color: var(--text-muted);">Route authentication requests to the configured LDAP directory server.</span>
+        </div>
+        <label class="switch-container">
+          <input 
+            type="checkbox" 
+            [checked]="enabled()" 
+            (change)="toggleEnabled()" 
+            class="form-checkbox"
+          />
+          <span class="switch-label" style="font-weight: 600; font-size: 0.875rem; color: var(--text-muted);">{{ enabled() ? 'Enabled' : 'Disabled' }}</span>
+        </label>
+      </div>
+
+      <div class="section-divider">Connection Settings</div>
+
+      <div class="form-grid">
+        <!-- Server URL -->
+        <div class="form-group full-width">
+          <label class="form-label" for="server_url">LDAP Server URL</label>
+          <input 
+            type="url" 
+            id="server_url" 
+            [ngModel]="server_url()" 
+            (ngModelChange)="server_url.set($event)" 
+            name="server_url" 
+            class="form-input" 
+            required 
+            placeholder="ldap://ldap.forumsys.com:389 or ldaps://10.0.0.5:636"
+          />
+          <span class="field-hint">Specify host URL including protocol (ldap:// or ldaps://) and port number</span>
+        </div>
+
+        <!-- Bind DN -->
+        <div class="form-group">
+          <label class="form-label" for="bind_dn">Bind DN (Service Account)</label>
+          <input 
+            type="text" 
+            id="bind_dn" 
+            [ngModel]="bind_dn()" 
+            (ngModelChange)="bind_dn.set($event)" 
+            name="bind_dn" 
+            class="form-input" 
+            placeholder="cn=read-only-admin,dc=example,dc=com"
+          />
+          <span class="field-hint">Distinguished Name of the account used for directory searches</span>
+        </div>
+
+        <!-- Bind Password -->
+        <div class="form-group">
+          <label class="form-label" for="bind_password">Bind DN Password</label>
+          <input 
+            type="password" 
+            id="bind_password" 
+            [ngModel]="bind_password()" 
+            (ngModelChange)="bind_password.set($event)" 
+            name="bind_password" 
+            class="form-input" 
+            placeholder="••••••••••••"
+          />
+          <span class="field-hint">Password associated with the service account Bind DN</span>
+        </div>
+      </div>
+
+      <div class="section-divider">User Search & Mappings</div>
+
+      <div class="form-grid">
+        <!-- Search Base -->
+        <div class="form-group full-width">
+          <label class="form-label" for="search_base">Search Base DN</label>
+          <input 
+            type="text" 
+            id="search_base" 
+            [ngModel]="search_base()" 
+            (ngModelChange)="search_base.set($event)" 
+            name="search_base" 
+            class="form-input" 
+            required 
+            placeholder="dc=example,dc=com"
+          />
+          <span class="field-hint">The root distinguished name node where the directory search will commence</span>
+        </div>
+
+        <!-- Username Attribute -->
+        <div class="form-group">
+          <label class="form-label" for="username_attribute">Username Attribute</label>
+          <input 
+            type="text" 
+            id="username_attribute" 
+            [ngModel]="username_attribute()" 
+            (ngModelChange)="username_attribute.set($event)" 
+            name="username_attribute" 
+            class="form-input" 
+            required 
+            placeholder="uid"
+          />
+          <span class="field-hint">e.g. uid, sAMAccountName, or cn</span>
+        </div>
+
+        <!-- Email Attribute -->
+        <div class="form-group">
+          <label class="form-label" for="mail_attribute">Email Attribute</label>
+          <input 
+            type="text" 
+            id="mail_attribute" 
+            [ngModel]="mail_attribute()" 
+            (ngModelChange)="mail_attribute.set($event)" 
+            name="mail_attribute" 
+            class="form-input" 
+            required 
+            placeholder="mail"
+          />
+          <span class="field-hint">e.g. mail or userPrincipalName</span>
+        </div>
+
+        <!-- First Name Attribute -->
+        <div class="form-group">
+          <label class="form-label" for="first_name_attribute">First Name Attribute</label>
+          <input 
+            type="text" 
+            id="first_name_attribute" 
+            [ngModel]="first_name_attribute()" 
+            (ngModelChange)="first_name_attribute.set($event)" 
+            name="first_name_attribute" 
+            class="form-input" 
+            required 
+            placeholder="givenName"
+          />
+          <span class="field-hint">e.g. givenName</span>
+        </div>
+
+        <!-- Last Name Attribute -->
+        <div class="form-group">
+          <label class="form-label" for="last_name_attribute">Last Name Attribute</label>
+          <input 
+            type="text" 
+            id="last_name_attribute" 
+            [ngModel]="last_name_attribute()" 
+            (ngModelChange)="last_name_attribute.set($event)" 
+            name="last_name_attribute" 
+            class="form-input" 
+            required 
+            placeholder="sn"
+          />
+          <span class="field-hint">e.g. sn (Surname)</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="form-actions">
+        <button 
+          type="button" 
+          (click)="testConnection()" 
+          class="btn btn-secondary" 
+          [disabled]="isTesting() || !server_url() || !search_base()"
+        >
+          @if (isTesting()) {
+            <span class="spinner" aria-hidden="true"></span> Testing...
+          } @else {
+            <svg class="lucide-icon" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5m-9 9 4 8 5-5"/><path d="M22 12c0 5.5-4.5 10-10 10S2 17.5 2 12 6.5 2 12 2"/></svg> Test Connection
+          }
+        </button>
+        <button 
+          type="submit" 
+          class="btn btn-primary" 
+          [disabled]="isSaving() || !server_url() || !search_base()"
+        >
+          @if (isSaving()) {
+            <span class="spinner" aria-hidden="true"></span> Saving...
+          } @else {
+            <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Settings
+          }
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

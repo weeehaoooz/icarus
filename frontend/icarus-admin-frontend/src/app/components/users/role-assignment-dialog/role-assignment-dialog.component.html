@@ -1,0 +1,219 @@
+<div class="role-modal-container">
+  <!-- Header -->
+  <header class="role-modal-header">
+    <div class="header-info">
+      <div class="header-icon">
+        <svg class="lucide-icon" viewBox="0 0 24 24">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      </div>
+      <div>
+        <h2 class="role-modal-title">Manage Access Roles</h2>
+        <p class="role-modal-subtitle">
+          Operator: <strong class="username-highlight">{{ data.username }}</strong>
+          <span class="subtitle-sep">·</span>
+          {{ data.email }}
+        </p>
+      </div>
+    </div>
+    <button type="button" (click)="cancel()" class="role-modal-close-btn" aria-label="Close dialog">
+      <svg class="lucide-icon" viewBox="0 0 24 24">
+        <path d="M18 6 6 18" />
+        <path d="m6 6 12 12" />
+      </svg>
+    </button>
+  </header>
+
+  <!-- DnD Instruction Banner -->
+  <div class="dnd-hint">
+    <svg class="lucide-icon" viewBox="0 0 24 24" style="width:14px;height:14px;flex-shrink:0;">
+      <circle cx="9" cy="12" r="1" />
+      <circle cx="9" cy="5" r="1" />
+      <circle cx="9" cy="19" r="1" />
+      <circle cx="15" cy="12" r="1" />
+      <circle cx="15" cy="5" r="1" />
+      <circle cx="15" cy="19" r="1" />
+    </svg>
+    Drag roles between columns to assign or remove, or click the action buttons.
+  </div>
+
+  <!-- Two Column Grid -->
+  <div class="role-modal-grid">
+
+    <!-- LEFT: Available Roles -->
+    <div class="role-modal-column">
+      <div class="column-header">
+        <div class="column-title-row">
+          <span class="column-dot available-dot"></span>
+          <h3 class="column-title">Available Roles</h3>
+          <span class="column-count">{{ filteredAvailable().length }}</span>
+        </div>
+        <!-- Search Field -->
+        <div class="role-search-field">
+          <svg class="search-icon-svg" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <input type="text" id="available-role-search" class="search-input" placeholder="Search roles..."
+            [value]="roleSearchQuery()" (input)="roleSearchQuery.set($any($event.target).value)" autocomplete="off"
+            aria-label="Search available roles" />
+          @if (roleSearchQuery()) {
+          <button type="button" class="search-clear" (click)="roleSearchQuery.set('')" aria-label="Clear">
+            <svg class="lucide-icon" viewBox="0 0 24 24">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+          }
+        </div>
+      </div>
+
+      <!-- DnD Drop Zone -->
+      <div class="roles-drop-zone" cdkDropList id="available-list" [cdkDropListData]="availableList"
+        [cdkDropListConnectedTo]="['assigned-list']" (cdkDropListDropped)="onDrop($event)"
+        aria-label="Available roles drag-and-drop zone">
+        @for (role of filteredAvailable(); track role.name) {
+        <div class="role-list-item" cdkDrag [cdkDragData]="role">
+          <!-- Drag Handle -->
+          <span class="drag-handle" cdkDragHandle aria-hidden="true">
+            <svg viewBox="0 0 24 24" class="handle-icon">
+              <circle cx="9" cy="5" r="1" />
+              <circle cx="9" cy="12" r="1" />
+              <circle cx="9" cy="19" r="1" />
+              <circle cx="15" cy="5" r="1" />
+              <circle cx="15" cy="12" r="1" />
+              <circle cx="15" cy="19" r="1" />
+            </svg>
+          </span>
+          <div class="role-item-info">
+            <span class="role-item-name">{{ role.name }}</span>
+            @if (role.description) {
+            <span class="role-item-desc" [title]="role.description">{{ role.description }}</span>
+            }
+          </div>
+          <button type="button" class="role-action-btn add-btn" (click)="addRole(role)" aria-label="Assign role"
+            title="Assign role">
+            <svg class="lucide-icon" viewBox="0 0 24 24">
+              <path d="M5 12h14" />
+              <path d="M12 5v14" />
+            </svg>
+          </button>
+        </div>
+        } @empty {
+        <div class="empty-zone">
+          @if (roleSearchQuery()) {
+          <svg class="lucide-icon empty-icon" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          No roles match "<em>{{ roleSearchQuery() }}</em>"
+          } @else {
+          <svg class="lucide-icon empty-icon" viewBox="0 0 24 24">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+          All roles are assigned.
+          }
+        </div>
+        }
+      </div>
+    </div>
+
+    <!-- Center Arrow Divider -->
+    <div class="column-divider">
+      <svg class="lucide-icon divider-arrow" viewBox="0 0 24 24">
+        <path d="M5 12h14" />
+        <path d="m12 5 7 7-7 7" />
+      </svg>
+    </div>
+
+    <!-- RIGHT: Assigned Roles -->
+    <div class="role-modal-column">
+      <div class="column-header">
+        <div class="column-title-row">
+          <span class="column-dot assigned-dot"></span>
+          <h3 class="column-title">Assigned Roles</h3>
+          <span class="column-count accent">{{ assignedCount() }}</span>
+          @if (assignedList.length > 0) {
+          <button type="button" class="clear-all-btn" (click)="clearAllRoles()">Remove All</button>
+          }
+        </div>
+        <!-- Search Field -->
+        <div class="role-search-field">
+          <svg class="search-icon-svg" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <input type="text" id="assigned-role-search" class="search-input" placeholder="Filter assigned roles..."
+            [value]="assignedRoleSearchQuery()" (input)="assignedRoleSearchQuery.set($any($event.target).value)"
+            autocomplete="off" aria-label="Filter assigned roles" />
+          @if (assignedRoleSearchQuery()) {
+          <button type="button" class="search-clear" (click)="assignedRoleSearchQuery.set('')" aria-label="Clear">
+            <svg class="lucide-icon" viewBox="0 0 24 24">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+          }
+        </div>
+      </div>
+
+      <!-- DnD Drop Zone -->
+      <div class="roles-drop-zone assigned-zone" cdkDropList id="assigned-list" [cdkDropListData]="assignedList"
+        [cdkDropListConnectedTo]="['available-list']" (cdkDropListDropped)="onDrop($event)"
+        aria-label="Assigned roles drag-and-drop zone">
+        @for (roleName of filteredAssigned(); track roleName) {
+        <div class="role-list-item assigned-item" cdkDrag [cdkDragData]="roleName">
+          <span class="drag-handle" cdkDragHandle aria-hidden="true">
+            <svg viewBox="0 0 24 24" class="handle-icon">
+              <circle cx="9" cy="5" r="1" />
+              <circle cx="9" cy="12" r="1" />
+              <circle cx="9" cy="19" r="1" />
+              <circle cx="15" cy="5" r="1" />
+              <circle cx="15" cy="12" r="1" />
+              <circle cx="15" cy="19" r="1" />
+            </svg>
+          </span>
+          <div class="role-item-info">
+            <span class="role-item-name">{{ roleName }}</span>
+          </div>
+          <button type="button" class="role-action-btn remove-btn" (click)="removeRole(roleName)"
+            aria-label="Remove role" title="Remove role">
+            <svg class="lucide-icon" viewBox="0 0 24 24">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </div>
+        } @empty {
+        <div class="empty-zone drop-target-hint">
+          <svg class="lucide-icon empty-icon" viewBox="0 0 24 24">
+            <path d="M12 5v14" />
+            <path d="M5 12h14" />
+          </svg>
+          @if (assignedRoleSearchQuery()) {
+          No assigned roles match "<em>{{ assignedRoleSearchQuery() }}</em>"
+          } @else {
+          Drop roles here or click <strong>+</strong> to assign.
+          }
+        </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="role-modal-footer">
+    <span class="footer-summary">
+      {{ assignedCount() }} role{{ assignedCount() !== 1 ? 's' : '' }} assigned
+    </span>
+    <div class="footer-actions">
+      <button type="button" (click)="cancel()" class="btn btn-secondary">Cancel</button>
+      <button type="button" (click)="confirm()" class="btn btn-primary">
+        <svg class="lucide-icon" viewBox="0 0 24 24" style="width:14px;height:14px;margin-right:6px;">
+          <path d="M20 6 9 17l-5-5" />
+        </svg>
+        Save Changes
+      </button>
+    </div>
+  </footer>
+</div>

@@ -1,0 +1,590 @@
+:host {
+  display: block;
+}
+
+// ==============================
+// Modal Container
+// ==============================
+.role-modal-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 800px;
+  max-height: 85vh;
+  min-height: 700px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+  animation: modalScaleIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+// ==============================
+// Header
+// ==============================
+.role-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+
+  .header-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .header-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--primary-glow);
+    border: 1px solid rgba(20, 184, 166, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    .lucide-icon {
+      width: 18px;
+      height: 18px;
+      stroke: var(--primary);
+      stroke-width: 2;
+      fill: none;
+    }
+  }
+
+  .role-modal-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 3px;
+  }
+
+  .role-modal-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+
+    .username-highlight {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .subtitle-sep {
+      margin: 0 6px;
+      opacity: 0.4;
+    }
+  }
+
+  .role-modal-close-btn {
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    flex-shrink: 0;
+
+    .lucide-icon {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+      stroke-width: 2.5;
+      fill: none;
+    }
+
+    &:hover {
+      background: var(--danger-glow);
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+  }
+}
+
+// ==============================
+// DnD Hint Banner
+// ==============================
+.dnd-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 24px;
+  background: var(--primary-glow);
+  border-bottom: 1px solid rgba(20, 184, 166, 0.15);
+  font-size: 0.76rem;
+  color: var(--primary);
+  font-weight: 500;
+  flex-shrink: 0;
+
+  .lucide-icon {
+    stroke: currentColor;
+    stroke-width: 2.5;
+    fill: none;
+  }
+}
+
+// ==============================
+// Grid Layout
+// ==============================
+.role-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.column-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  border-left: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  background: var(--bg-main);
+  color: var(--border-color-hover);
+
+  .divider-arrow {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+  }
+}
+
+.role-modal-column {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+// ==============================
+// Column Header
+// ==============================
+.column-header {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+  background: var(--bg-card);
+}
+
+.column-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.column-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &.available-dot {
+    background: var(--border-color-hover);
+  }
+
+  &.assigned-dot {
+    background: var(--primary);
+    box-shadow: 0 0 8px rgba(20, 184, 166, 0.5);
+  }
+}
+
+.column-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-main);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex: 1;
+}
+
+.column-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
+  padding: 1px 7px;
+  border-radius: 20px;
+
+  &.accent {
+    color: var(--primary);
+    border-color: rgba(20, 184, 166, 0.3);
+    background: var(--primary-glow);
+  }
+}
+
+.clear-all-btn {
+  background: transparent;
+  border: none;
+  color: var(--danger);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 6px;
+  margin-left: auto;
+  transition: var(--transition);
+
+  &:hover {
+    text-decoration: underline;
+    color: var(--danger-hover);
+  }
+}
+
+// ==============================
+// Search Field (Redesigned)
+// ==============================
+.role-search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  .search-icon-svg {
+    position: absolute;
+    left: 10px;
+    width: 14px;
+    height: 14px;
+    stroke: var(--text-muted);
+    stroke-width: 2.5;
+    fill: none;
+    pointer-events: none;
+    flex-shrink: 0;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 7px 32px 7px 32px;
+    background: var(--bg-main);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    font-family: var(--font-family);
+    font-size: 0.82rem;
+    outline: none;
+    transition: var(--transition);
+
+    &::placeholder {
+      color: var(--text-muted);
+    }
+
+    &:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-glow);
+    }
+  }
+
+  .search-clear {
+    position: absolute;
+    right: 8px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+
+    .lucide-icon {
+      width: 12px;
+      height: 12px;
+      stroke: currentColor;
+      stroke-width: 2.5;
+      fill: none;
+    }
+
+    &:hover {
+      color: var(--text-main);
+    }
+  }
+}
+
+// ==============================
+// Drop Zones (Scrollable Lists)
+// ==============================
+.roles-drop-zone {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg-main);
+  min-height: 0;
+
+  &.assigned-zone {
+    background: rgba(20, 184, 166, 0.02);
+  }
+
+  // CDK drop list active states
+  &.cdk-drop-list-dragging .role-list-item:not(.cdk-drag-placeholder) {
+    transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+  }
+
+  &.cdk-drop-list-receiving {
+    background: rgba(20, 184, 166, 0.05);
+    outline: 2px dashed rgba(20, 184, 166, 0.4);
+    outline-offset: -2px;
+  }
+}
+
+// ==============================
+// Role List Items
+// ==============================
+.role-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-color);
+  cursor: default;
+  background: transparent;
+  transition: background 0.15s ease;
+  user-select: none;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.025);
+
+    .role-action-btn {
+      opacity: 1;
+    }
+  }
+
+  &.assigned-item {
+    border-left: 2px solid var(--primary);
+  }
+
+  // CDK Drag active state
+  &.cdk-drag-animating {
+    transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+  }
+
+  &.cdk-drag-preview {
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--primary);
+    background: var(--bg-card);
+  }
+}
+
+// ==============================
+// Drag Handle
+// ==============================
+.drag-handle {
+  display: flex;
+  align-items: center;
+  color: var(--border-color-hover);
+  cursor: grab;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+  padding: 2px;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  .role-list-item:hover & {
+    color: var(--text-muted);
+  }
+
+  .handle-icon {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+  }
+}
+
+// ==============================
+// Role Item Content
+// ==============================
+.role-item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+
+  .role-item-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-main);
+  }
+
+  .role-item-desc {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+// ==============================
+// Action Buttons
+// ==============================
+.role-action-btn {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.5;
+  transition: var(--transition);
+
+  .lucide-icon {
+    width: 13px;
+    height: 13px;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    fill: none;
+  }
+
+  &.add-btn {
+    color: var(--primary);
+    border-color: rgba(20, 184, 166, 0.3);
+
+    &:hover {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: var(--bg-main);
+      opacity: 1;
+    }
+  }
+
+  &.remove-btn {
+    color: var(--danger);
+    border-color: rgba(248, 113, 113, 0.3);
+
+    &:hover {
+      background: var(--danger);
+      border-color: var(--danger);
+      color: #fff;
+      opacity: 1;
+    }
+  }
+}
+
+// ==============================
+// Drag Preview Chip
+// ==============================
+.drag-preview {
+  background: var(--bg-card);
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: var(--font-family);
+  box-shadow: var(--shadow-lg);
+
+  &.assigned-preview {
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+}
+
+// ==============================
+// Drop Placeholder
+// ==============================
+.drop-placeholder {
+  background: rgba(20, 184, 166, 0.07);
+  border: 2px dashed rgba(20, 184, 166, 0.4);
+  min-height: 50px;
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+// Override CDK placeholder with our styles
+.cdk-drag-placeholder {
+  background: rgba(20, 184, 166, 0.06);
+  border: 2px dashed rgba(20, 184, 166, 0.35);
+  opacity: 1 !important;
+  min-height: 46px;
+}
+
+// ==============================
+// Empty Zone
+// ==============================
+.empty-zone {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px 24px;
+  color: var(--text-muted);
+  font-size: 0.83rem;
+  text-align: center;
+
+  .empty-icon {
+    width: 28px;
+    height: 28px;
+    stroke: var(--border-color-hover);
+    stroke-width: 1.5;
+    fill: none;
+  }
+
+  &.drop-target-hint {
+    border: 2px dashed var(--border-color);
+    margin: 16px;
+    padding: 32px;
+    transition: border-color 0.2s ease;
+  }
+}
+
+// ==============================
+// Footer
+// ==============================
+.role-modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 24px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-card);
+  flex-shrink: 0;
+
+  .footer-summary {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 500;
+
+    strong {
+      color: var(--primary);
+    }
+  }
+
+  .footer-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+}
+
+// ==============================
+// Animation
+// ==============================
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}

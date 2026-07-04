@@ -1,0 +1,219 @@
+<header class="clients-header">
+  <div>
+    <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.02em;">Clients Management</h1>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">Register client keys and roles for remote microservices</p>
+  </div>
+  @if (activePanel() !== 'create') {
+    <button (click)="openCreatePanel()" class="btn btn-primary">
+      <svg class="lucide-icon" viewBox="0 0 24 24" style="margin-right: 6px;"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Register Client
+    </button>
+  }
+</header>
+
+<div class="search-bar">
+  <div class="search-wrapper" [class.is-searching]="isSearching()">
+    <span class="search-icon" aria-hidden="true">
+      <svg class="lucide-icon" viewBox="0 0 24 24" style="width:15px;height:15px;">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+      </svg>
+    </span>
+    <input
+      type="search"
+      id="clients-search"
+      class="search-input"
+      placeholder="Search clients by ID..."
+      [value]="searchQuery()"
+      (input)="onSearchInput($event)"
+      autocomplete="off"
+      aria-label="Search clients"
+    />
+    <span class="search-suffix">
+      @if (isSearching()) {
+        <span class="search-spinner" aria-label="Searching…" role="status"></span>
+      } @else if (searchQuery()) {
+        <button class="search-clear-btn" type="button" (click)="clearSearch()" aria-label="Clear search">✕</button>
+      }
+    </span>
+  </div>
+</div>
+
+
+<div class="split-layout" [class.has-active-panel]="activePanel() !== null">
+  <!-- Left Side: Table -->
+  <div class="table-panel glass-panel animate-fade-in">
+    <div class="table-container">
+      <table class="custom-table" aria-label="Clients high-density credentials table">
+        <thead>
+          <tr>
+            <th style="width: 40px; text-align: center;">
+              <input 
+                type="checkbox" 
+                class="form-checkbox" 
+                [checked]="isAllSelected()" 
+                (change)="toggleSelectAll($event)"
+                aria-label="Select all clients on this page"
+              />
+            </th>
+            <th>Client ID</th>
+            <th>Public Key Preview</th>
+            <th>Roles</th>
+            <th>Created At</th>
+            <th style="width: 100px; text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (client of filteredClients(); track client.client_id) {
+            <tr 
+              [class.selected]="selectedClient()?.client_id === client.client_id"
+              (click)="openEditPanel(client)"
+              style="cursor: pointer;"
+            >
+              <td style="text-align: center;" (click)="$event.stopPropagation()">
+                <input 
+                  type="checkbox" 
+                  class="form-checkbox" 
+                  [checked]="selectedIds().has(client.client_id)" 
+                  (change)="toggleSelect(client.client_id, $event)"
+                  [aria-label]="'Select client ' + client.client_id"
+                />
+              </td>
+              <td style="font-weight: 700; color: var(--primary);">{{ client.client_id }}</td>
+              <td>
+                <div class="pem-preview">
+                  {{ client.public_key }}
+                </div>
+              </td>
+              <td>
+                <div class="roles-container">
+                  @for (role of client.roles; track role) {
+                    <span class="badge badge-secondary">{{ role }}</span>
+                  } @empty {
+                    <span style="color: var(--text-muted); font-size: 0.8rem; font-style: italic;">None</span>
+                  }
+                </div>
+              </td>
+              <td>{{ client.created_at | date:'medium' }}</td>
+              <td style="text-align: right;" (click)="$event.stopPropagation()">
+                <button (click)="deleteClient(client.client_id, $event)" class="icon-btn delete" title="Delete Credentials">
+                  <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 48px;">
+                No registered microservices match the filter criteria.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Right Side: Details/Edit Drawer -->
+  @if (activePanel(); as panelType) {
+    <div class="detail-panel glass-panel animate-fade-in" role="region" aria-label="Client Configuration Drawer">
+      <header class="panel-header">
+        <h2 class="panel-title">
+          {{ panelType === 'edit' ? 'Client Configurations' : 'Register New Client' }}
+        </h2>
+        <button (click)="closePanel()" class="close-btn" aria-label="Close client config panel">✕</button>
+      </header>
+
+      @if (panelError()) {
+        <div class="panel-error" role="alert">
+          {{ panelError() }}
+        </div>
+      }
+
+      <form (ngSubmit)="saveClient()">
+        <div class="form-group">
+          <label class="form-label" for="clientId">Client ID</label>
+          <input 
+            type="text" 
+            id="clientId" 
+            [(ngModel)]="formData.clientId" 
+            name="clientId" 
+            class="form-input" 
+            required 
+            placeholder="e.g. storage-service-client"
+            [disabled]="panelType === 'edit'"
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="publicKey">Public Key (RSA PEM format)</label>
+          <textarea 
+            id="publicKey" 
+            [(ngModel)]="formData.publicKey" 
+            name="publicKey" 
+            class="form-input" 
+            rows="8" 
+            required
+            placeholder="-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A...\n-----END PUBLIC KEY-----"
+            style="font-family: monospace; font-size: 0.8rem;"
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Assign Client Roles</label>
+          <div class="role-checkbox-grid">
+            @for (role of availableRoles(); track role.name) {
+              <label class="role-checkbox-item">
+                <input 
+                  type="checkbox" 
+                  [checked]="isRoleSelected(role.name)" 
+                  (change)="toggleRole(role.name)" 
+                  class="form-checkbox"
+                />
+                <span style="font-size: 0.85rem; font-weight: 500;">{{ role.name }}</span>
+              </label>
+            }
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+          <button type="button" (click)="closePanel()" class="btn btn-secondary">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary">
+            Save Credentials
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+</div>
+
+<!-- Sticky Bottom Bulk Actions Toolbar -->
+@if (selectedIds().size > 0) {
+  <div class="bulk-actions-bar animate-fade-in" role="toolbar" aria-label="Client bulk actions toolbar">
+    <div class="bulk-info">
+      Selected <strong>{{ selectedIds().size }}</strong> microservice clients
+    </div>
+
+    <div class="bulk-actions">
+      <!-- Role assign selector -->
+      <select 
+        #roleSelect 
+        (change)="bulkAssignRole(roleSelect.value); roleSelect.value = ''"
+        class="form-input" 
+        style="width: 180px; padding: 6px 10px; font-size: 0.8rem; background: #0c101d;"
+      >
+        <option value="">-- ASSIGN ROLE --</option>
+        @for (role of availableRoles(); track role.name) {
+          <option [value]="role.name">{{ role.name }}</option>
+        }
+      </select>
+      
+      <button (click)="bulkDelete()" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;">
+        Delete Selected
+      </button>
+      
+      <button (click)="clearSelection()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;">
+        Clear
+      </button>
+    </div>
+  </div>
+}
