@@ -6,7 +6,7 @@
 
 .page-header {
   margin-bottom: 28px;
-  
+
   .page-title {
     font-family: var(--font-heading);
     font-size: 2.2rem;
@@ -15,7 +15,7 @@
     margin-bottom: 6px;
     letter-spacing: -0.025em;
   }
-  
+
   .page-subtitle {
     font-size: 0.95rem;
     color: var(--text-muted);
@@ -27,7 +27,7 @@
   display: grid;
   grid-template-columns: 1.5fr 1fr;
   gap: 24px;
-  
+
   @media (max-width: 900px) {
     grid-template-columns: 1fr;
   }
@@ -40,7 +40,7 @@
   padding: 24px;
   border-radius: 12px;
   transition: var(--transition);
-  
+
   &:hover {
     border-color: var(--border-color-hover);
     box-shadow: var(--shadow-lg);
@@ -71,7 +71,7 @@
 .identity-info {
   display: flex;
   flex-direction: column;
-  
+
   .user-display-name {
     font-family: var(--font-heading);
     font-size: 1.5rem;
@@ -79,20 +79,20 @@
     color: var(--text-main);
     line-height: 1.2;
   }
-  
+
   .user-username {
     font-size: 0.9rem;
     color: var(--primary);
     margin-bottom: 8px;
   }
-  
+
   .user-email-row {
     display: flex;
     align-items: center;
     gap: 8px;
     font-size: 0.85rem;
     color: var(--text-muted);
-    
+
     .lucide-icon {
       width: 14px;
       height: 14px;
@@ -142,19 +142,19 @@
   font-size: 0.8rem;
   font-weight: 600;
   border-radius: 20px;
-  
+
   &.badge-ldap {
     background: var(--warning-glow);
     border: 1px solid rgba(251, 191, 36, 0.2);
     color: var(--warning);
   }
-  
+
   &.badge-custom {
     background: var(--primary-glow);
     border: 1px solid rgba(20, 184, 166, 0.2);
     color: var(--primary);
   }
-  
+
   .type-indicator {
     font-size: 0.65rem;
     font-weight: 700;
@@ -184,7 +184,7 @@
   border-collapse: collapse;
   text-align: left;
   font-size: 0.85rem;
-  
+
   th {
     background: var(--bg-panel);
     color: var(--text-main);
@@ -192,14 +192,14 @@
     padding: 12px 16px;
     border-bottom: 1px solid var(--border-color);
   }
-  
+
   td {
     padding: 12px 16px;
     border-bottom: 1px solid var(--border-color);
     color: var(--text-main);
     vertical-align: middle;
   }
-  
+
   tr:last-child td {
     border-bottom: none;
   }
@@ -229,7 +229,7 @@
   font-weight: 600;
   padding: 4px 8px;
   border-radius: 12px;
-  
+
   &--active {
     background: var(--secondary-glow);
     border: 1px solid rgba(52, 211, 153, 0.2);
@@ -237,15 +237,38 @@
   }
 }
 
-.mt-6 { margin-top: 24px; }
-.py-4 { padding-top: 16px; padding-bottom: 16px; }
+.mt-6 {
+  margin-top: 24px;
+}
 
-.font-semibold { font-weight: 600; }
-.font-mono { font-family: monospace; }
-.text-accent { color: var(--primary); }
-.text-muted { color: var(--text-muted); }
-.text-small { font-size: 0.8rem; }
-.text-center { text-align: center; }
+.py-4 {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.font-mono {
+  font-family: monospace;
+}
+
+.text-accent {
+  color: var(--primary);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.text-small {
+  font-size: 0.8rem;
+}
+
+.text-center {
+  text-align: center;
+}
 
 /* Spinner Loader */
 .spinner {
@@ -269,7 +292,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Animations */
@@ -278,6 +303,40 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.section-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+
+  .section-desc {
+    margin-bottom: 0;
+  }
+
+  .search-bar {
+    margin-bottom: 0;
+    flex-shrink: 0;
+    width: 320px;
+  }
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+
+    .search-bar {
+      width: 100%;
+    }
+  }
 }

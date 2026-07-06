@@ -8,122 +8,184 @@
   </header>
 
   @if (isLoadingProfile()) {
-    <div class="loader-box">
-      <span class="spinner"></span> Loading access profile...
-    </div>
+  <div class="loader-box">
+    <span class="spinner"></span> Loading access profile...
+  </div>
   } @else if (profileError()) {
-    <div class="alert alert-danger" role="alert">
-      {{ profileError() }}
-    </div>
+  <div class="alert alert-danger" role="alert">
+    {{ profileError() }}
+  </div>
   } @else {
-    <!-- User Identity Card -->
-    <div class="identity-header-grid">
-      <div class="glass-panel identity-card">
-        <div class="user-avatar-badge">{{ userProfile()?.username?.substring(0, 2)?.toUpperCase() }}</div>
-        <div class="identity-info">
-          <h2 class="user-display-name">{{ userProfile()?.first_name }} {{ userProfile()?.last_name }}</h2>
-          <p class="user-username">&#64;{{ userProfile()?.username }}</p>
-          <div class="user-email-row">
-            <svg class="lucide-icon text-muted" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-            <span>{{ userProfile()?.email || 'No email provided' }}</span>
-          </div>
+  <!-- User Identity Card -->
+  <div class="identity-header-grid">
+    <div class="glass-panel identity-card">
+      <div class="user-avatar-badge">{{ userProfile()?.username?.substring(0, 2)?.toUpperCase() }}</div>
+      <div class="identity-info">
+        <h2 class="user-display-name">{{ userProfile()?.first_name }} {{ userProfile()?.last_name }}</h2>
+        <p class="user-username">&#64;{{ userProfile()?.username }}</p>
+        <div class="user-email-row">
+          <svg class="lucide-icon text-muted" viewBox="0 0 24 24">
+            <rect width="20" height="16" x="2" y="4" rx="2" />
+            <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+          </svg>
+          <span>{{ userProfile()?.email || 'No email provided' }}</span>
         </div>
       </div>
+    </div>
 
-      <div class="glass-panel groups-card">
-        <span class="panel-section-label">Identity Groups</span>
-        <h3 class="panel-section-title">Assigned User Groups</h3>
-        <div class="groups-badges-list">
-          @if (userProfile()?.groups && userProfile()?.groups!.length > 0) {
-            @for (g of userProfile()?.groups; track g.name) {
-              <span class="group-badge" [class.badge-ldap]="g.type === 'LDAP'" [class.badge-custom]="g.type !== 'LDAP'">
-                <span class="type-indicator">{{ g.type }}</span>
-                {{ g.name }}
+    <div class="glass-panel groups-card">
+      <span class="panel-section-label">Identity Groups</span>
+      <h3 class="panel-section-title">Assigned User Groups</h3>
+      <div class="groups-badges-list">
+        @if (userProfile()?.groups && userProfile()?.groups!.length > 0) {
+        @for (g of userProfile()?.groups; track g.name) {
+        <span class="group-badge" [class.badge-ldap]="g.type === 'LDAP'" [class.badge-custom]="g.type !== 'LDAP'">
+          <span class="type-indicator">{{ g.type }}</span>
+          {{ g.name }}
+        </span>
+        }
+        } @else {
+        <p class="text-muted text-small">This account is not mapped to any security groups.</p>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Roles Grid -->
+  <div class="glass-panel access-section mt-6">
+    <div class="section-header-row">
+      <div>
+        <h3 class="panel-section-title">Active Role Assignments</h3>
+        <p class="section-desc">These access roles are currently linked to your user account across core platform
+          components.</p>
+      </div>
+      <div class="search-bar">
+        <div class="search-wrapper">
+          <span class="search-icon" aria-hidden="true">
+            <svg class="lucide-icon" viewBox="0 0 24 24" style="width:15px;height:15px;">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+          </span>
+          <input type="search" class="search-input" placeholder="Search roles..." [value]="roleSearchQuery()"
+            (input)="roleSearchQuery.set($any($event.target).value)" autocomplete="off" aria-label="Search roles" />
+          <span class="search-suffix">
+            @if (roleSearchQuery()) {
+            <button class="search-clear-btn" type="button" (click)="roleSearchQuery.set('')"
+              aria-label="Clear search">✕</button>
+            }
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Role ID</th>
+            <th>Module</th>
+            <th>Tenant Scope</th>
+            <th>Description</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (filteredActiveRoles().length > 0) {
+          @for (role of filteredActiveRoles(); track role.id || role.name) {
+          <tr>
+            <td class="font-semibold text-accent">{{ role.name }}</td>
+            <td>
+              <span class="mono-badge">{{ role.module_id }}</span>
+            </td>
+            <td>
+              <span class="tenant-scope-badge">
+                {{ role.module_id === 'icarus-auth-ms' ? 'system-tenant' : 'global' }}
               </span>
-            }
-          } @else {
-            <p class="text-muted text-small">This account is not mapped to any security groups.</p>
+            </td>
+            <td class="text-muted text-small">{{ role.description }}</td>
+            <td>
+              <span class="status-indicator status-indicator--active">Active</span>
+            </td>
+          </tr>
           }
+          } @else {
+          <tr>
+            <td colspan="5" class="text-center text-muted py-4">
+              @if (roleSearchQuery()) {
+              No active roles match your search query.
+              } @else {
+              No active roles are assigned to this user profile.
+              }
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Resolved Permissions Grid -->
+  <div class="glass-panel access-section mt-6">
+    <div class="section-header-row">
+      <div>
+        <h3 class="panel-section-title">Resolved Access Permissions</h3>
+        <p class="section-desc">These fine-grained access permissions are automatically resolved from your role
+          hierarchy.</p>
+      </div>
+      <div class="search-bar">
+        <div class="search-wrapper">
+          <span class="search-icon" aria-hidden="true">
+            <svg class="lucide-icon" viewBox="0 0 24 24" style="width:15px;height:15px;">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+          </span>
+          <input type="search" class="search-input" placeholder="Search permissions..."
+            [value]="permissionSearchQuery()" (input)="permissionSearchQuery.set($any($event.target).value)"
+            autocomplete="off" aria-label="Search permissions" />
+          <span class="search-suffix">
+            @if (permissionSearchQuery()) {
+            <button class="search-clear-btn" type="button" (click)="permissionSearchQuery.set('')"
+              aria-label="Clear search">✕</button>
+            }
+          </span>
         </div>
       </div>
     </div>
-
-    <!-- Active Roles Grid -->
-    <div class="glass-panel access-section mt-6">
-      <h3 class="panel-section-title">Active Role Assignments</h3>
-      <p class="section-desc">These access roles are currently linked to your user account across core platform components.</p>
-      <div class="table-container">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Role ID</th>
-              <th>Module</th>
-              <th>Tenant Scope</th>
-              <th>Description</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            @if (myActiveRoles().length > 0) {
-              @for (role of myActiveRoles(); track role.id || role.name) {
-                <tr>
-                  <td class="font-semibold text-accent">{{ role.name }}</td>
-                  <td>
-                    <span class="mono-badge">{{ role.module_id }}</span>
-                  </td>
-                  <td>
-                    <span class="tenant-scope-badge">
-                      {{ role.module_id === 'icarus-auth-ms' ? 'system-tenant' : 'global' }}
-                    </span>
-                  </td>
-                  <td class="text-muted text-small">{{ role.description }}</td>
-                  <td>
-                    <span class="status-indicator status-indicator--active">Active</span>
-                  </td>
-                </tr>
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Permission Action</th>
+            <th>Module</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (filteredResolvedPermissionDetails().length > 0) {
+          @for (perm of filteredResolvedPermissionDetails(); track perm.id) {
+          <tr>
+            <td class="font-mono font-semibold">{{ perm.action }}</td>
+            <td>
+              <span class="mono-badge">{{ perm.module_id }}</span>
+            </td>
+            <td class="text-muted text-small">{{ perm.description }}</td>
+          </tr>
+          }
+          } @else {
+          <tr>
+            <td colspan="3" class="text-center text-muted py-4">
+              @if (permissionSearchQuery()) {
+              No permissions match your search query.
+              } @else {
+              No permissions resolved. Navigate to the Request Access portal to apply for a role.
               }
-            } @else {
-              <tr>
-                <td colspan="5" class="text-center text-muted py-4">No active roles are assigned to this user profile.</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
     </div>
-
-    <!-- Resolved Permissions Grid -->
-    <div class="glass-panel access-section mt-6">
-      <h3 class="panel-section-title">Resolved Access Permissions</h3>
-      <p class="section-desc">These fine-grained access permissions are automatically resolved from your role hierarchy.</p>
-      <div class="table-container">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Permission Action</th>
-              <th>Module</th>
-              <th>Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            @if (myResolvedPermissionDetails().length > 0) {
-              @for (perm of myResolvedPermissionDetails(); track perm.id) {
-                <tr>
-                  <td class="font-mono font-semibold">{{ perm.action }}</td>
-                  <td>
-                    <span class="mono-badge">{{ perm.module_id }}</span>
-                  </td>
-                  <td class="text-muted text-small">{{ perm.description }}</td>
-                </tr>
-              }
-            } @else {
-              <tr>
-                <td colspan="3" class="text-center text-muted py-4">No permissions resolved. Navigate to the Request Access portal to apply for a role.</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>
+  </div>
   }
 </section>

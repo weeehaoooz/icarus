@@ -50,6 +50,9 @@ export class MyPoliciesComponent implements OnInit {
   readonly roles = signal<Role[]>([]);
   readonly permissions = signal<Permission[]>([]);
 
+  readonly roleSearchQuery = signal('');
+  readonly permissionSearchQuery = signal('');
+
   private readonly fallbackRoles: Role[] = [
     { name: 'admin', description: 'Administrator access profile', module_id: 'icarus-auth-ms', permissions: ['login', 'read', 'write'] },
     { name: 'standard-user', description: 'Standard user access profile', module_id: 'icarus-auth-ms', permissions: ['login', 'read'] }
@@ -141,6 +144,28 @@ export class MyPoliciesComponent implements OnInit {
     const actions = this.myResolvedPermissions();
     const allPerms = this.displayPermissions();
     return allPerms.filter(p => actions.includes(p.module_id + ':' + p.action) || actions.includes(p.action));
+  });
+
+  readonly filteredActiveRoles = computed(() => {
+    const query = this.roleSearchQuery().toLowerCase().trim();
+    const list = this.myActiveRoles();
+    if (!query) return list;
+    return list.filter(r =>
+      r.name.toLowerCase().includes(query) ||
+      (r.module_id && r.module_id.toLowerCase().includes(query)) ||
+      (r.description && r.description.toLowerCase().includes(query))
+    );
+  });
+
+  readonly filteredResolvedPermissionDetails = computed(() => {
+    const query = this.permissionSearchQuery().toLowerCase().trim();
+    const list = this.myResolvedPermissionDetails();
+    if (!query) return list;
+    return list.filter(p =>
+      p.action.toLowerCase().includes(query) ||
+      (p.module_id && p.module_id.toLowerCase().includes(query)) ||
+      (p.description && p.description.toLowerCase().includes(query))
+    );
   });
 
   ngOnInit(): void {
