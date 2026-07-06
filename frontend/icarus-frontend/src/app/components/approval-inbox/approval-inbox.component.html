@@ -1,0 +1,99 @@
+<section class="approval-inbox">
+  <div class="page-header">
+    <h1>Approval Inbox</h1>
+    <p class="subtitle">Review and action pending access requests assigned to you.</p>
+  </div>
+
+  @if (actionSuccess()) {
+    <div class="alert alert-success" role="status">✓ {{ actionSuccess() }}</div>
+  }
+  @if (actionError()) {
+    <div class="alert alert-error" role="alert">✕ {{ actionError() }}</div>
+  }
+
+  @if (isLoading()) {
+    <div class="loading-state" aria-busy="true">Loading inbox…</div>
+  } @else if (error()) {
+    <div class="error-state" role="alert">{{ error() }}</div>
+  } @else if (items().length === 0) {
+    <div class="empty-inbox">
+      <span class="empty-icon" aria-hidden="true">✉️</span>
+      <p>Your inbox is clear — no pending approvals.</p>
+    </div>
+  } @else {
+    <div class="inbox-list" role="list">
+      @for (item of items(); track item.step_id) {
+        <article class="inbox-card" role="listitem">
+          <header class="card-header">
+            <div class="card-title">
+              <span class="role-badge">{{ item.role_requested }}</span>
+              <span class="assignment-type" [class.role-queue]="item.assignment_type === 'ROLE_QUEUE'">
+                {{ item.assignment_type === 'ROLE_QUEUE' ? 'Role Queue' : 'Direct' }}
+              </span>
+            </div>
+            <span class="stage-label">{{ item.stage_name }}</span>
+          </header>
+
+          <div class="card-body">
+            <dl class="card-meta">
+              <dt>Requested by</dt>
+              <dd>{{ item.requester_id }}</dd>
+              <dt>Justification</dt>
+              <dd>{{ item.justification || 'No justification provided.' }}</dd>
+              <dt>Assigned</dt>
+              <dd>{{ item.assigned_at | date:'dd MMM yyyy, HH:mm' }}</dd>
+            </dl>
+
+            <div class="action-area">
+              <label [for]="'comment-' + item.step_id">Comment</label>
+              <textarea
+                [id]="'comment-' + item.step_id"
+                rows="2"
+                placeholder="Add a comment…"
+                [(ngModel)]="activeComments[item.step_id]"
+                aria-label="Decision comment for {{ item.role_requested }}"
+              ></textarea>
+
+              <div class="action-buttons">
+                <button
+                  class="btn-approve"
+                  (click)="approve(item.step_id)"
+                  [disabled]="actioningStepId() === item.step_id"
+                  [attr.aria-label]="'Approve ' + item.role_requested + ' request'"
+                >
+                  @if (actioningStepId() === item.step_id) { Processing… } @else { ✓ Approve }
+                </button>
+                <button
+                  class="btn-reject"
+                  (click)="reject(item.step_id)"
+                  [disabled]="actioningStepId() === item.step_id"
+                  [attr.aria-label]="'Reject ' + item.role_requested + ' request'"
+                >
+                  ✕ Reject
+                </button>
+              </div>
+
+              <details class="delegate-section">
+                <summary>Delegate to someone else</summary>
+                <div class="delegate-form">
+                  <input
+                    [id]="'delegate-' + item.step_id"
+                    type="text"
+                    placeholder="User ID to delegate to…"
+                    [(ngModel)]="delegateTargets[item.step_id]"
+                    aria-label="Delegate to user"
+                  />
+                  <button
+                    class="btn-delegate"
+                    (click)="delegate(item.step_id)"
+                    [disabled]="actioningStepId() === item.step_id"
+                  >Forward</button>
+                </div>
+              </details>
+            </div>
+          </div>
+        </article>
+      }
+    </div>
+  }
+</section>

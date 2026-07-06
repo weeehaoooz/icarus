@@ -39,6 +39,7 @@ func (s *HandlerServer) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /internal/applications/sync/{id}", s.InternalDeleteApplicationHandler)
 	mux.HandleFunc("POST /internal/modules/{id}/applications/sync", s.InternalSyncOnboardApplicationHandler)
 	mux.HandleFunc("DELETE /internal/modules/{id}/applications/sync/{appCode}", s.InternalSyncOffboardApplicationHandler)
+	mux.HandleFunc("GET /internal/roles/{role_name}/members", s.InternalListRoleMembersHandler)
 	mux.HandleFunc("POST /token/scope", s.TokenScopeHandler)
 
 	// Profile and password APIs for authenticated users

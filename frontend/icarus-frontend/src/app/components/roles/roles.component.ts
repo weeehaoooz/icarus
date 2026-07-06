@@ -1,5 +1,6 @@
 import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { AdminService } from '../../services/admin.service';
 import { PlatformService } from '../../services/platform.service';
 
@@ -24,7 +25,7 @@ interface Role {
 
 @Component({
   selector: 'app-roles',
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   templateUrl: './roles.component.html',
   styleUrl: './roles.component.scss'
 })

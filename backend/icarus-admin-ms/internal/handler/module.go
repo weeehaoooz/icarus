@@ -165,7 +165,8 @@ func (s *HandlerServer) AdminCreateModuleHandler(w http.ResponseWriter, r *http.
 		}
 	}
 
-	if err := s.Repo.RegisterModule(&module, permissions); err != nil {
+	allRoles := append(req.DefaultRoles, req.AppCentricRoles...)
+	if err := s.Repo.RegisterModule(&module, permissions, allRoles); err != nil {
 		s.respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -227,7 +228,8 @@ func (s *HandlerServer) AdminUpdateModuleHandler(w http.ResponseWriter, r *http.
 		}
 	}
 
-	if err := s.Repo.RegisterModule(&module, permissions); err != nil {
+	allRoles := append(req.DefaultRoles, req.AppCentricRoles...)
+	if err := s.Repo.RegisterModule(&module, permissions, allRoles); err != nil {
 		s.respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

@@ -2003,3 +2003,32 @@ func (r *SQLRepository) GetUserPermissionsDetailed(userID int64) ([]models.Permi
 	return permissions, nil
 }
 
+// ListRoleMembers returns usernames of all users holding the given role name.
+func (r *SQLRepository) ListRoleMembers(roleName string) ([]string, error) {
+	query := `
+		SELECT u.username
+		FROM user_tenant_module_roles utmr
+		JOIN roles r ON utmr.role_id = r.id
+		JOIN users u ON utmr.user_id = u.id
+		WHERE r.name = ?`
+	
+	rows, err := r.db.Query(query, roleName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var members []string
+	for rows.Next() {
+		var username string
+		if err := rows.Scan(&username); err != nil {
+			return nil, err
+		}
+		members = append(members, username)
+	}
+	if members == nil {
+		members = []string{}
+	}
+	return members, nil
+}
+

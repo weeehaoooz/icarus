@@ -161,7 +161,7 @@ func (r *SQLRepository) GetPermissionsByModuleID(moduleID string) ([]models.Perm
 
 // === NEW MODULES & TENANTS REGISTRY ===
 
-func (r *SQLRepository) RegisterModule(module *models.Module, permissions []models.Permission) error {
+func (r *SQLRepository) RegisterModule(module *models.Module, permissions []models.Permission, roles []models.Role) error {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return err
@@ -190,6 +190,27 @@ func (r *SQLRepository) RegisterModule(module *models.Module, permissions []mode
 			INSERT INTO permissions (id, module_id, action, path_pattern, method, description) 
 			VALUES (?, ?, ?, ?, ?, ?)`,
 			p.ID, p.ModuleID, p.Action, p.PathPattern, p.Method, p.Description)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Delete existing roles for this module
+	_, err = tx.Exec(`DELETE FROM roles WHERE module_id = ? AND is_system = 0`, module.ID)
+	if err != nil {
+		return err
+	}
+
+	// Re-insert roles
+	for _, rl := range roles {
+		roleID := rl.ID
+		if roleID == "" {
+			roleID = "role-" + module.ID + "-" + rl.Name
+		}
+		_, err = tx.Exec(`
+			INSERT OR IGNORE INTO roles (id, module_id, name, description, is_system) 
+			VALUES (?, ?, ?, ?, ?)`,
+			roleID, module.ID, rl.Name, rl.Description, 0)
 		if err != nil {
 			return err
 		}
@@ -414,4 +435,32 @@ func (r *SQLRepository) ListModuleApplications(moduleID string) ([]string, error
 	return list, nil
 }
 
+// ListRoles returns all roles from the platform roles catalogue.
+func (r *SQLRepository) ListRoles() ([]models.Role, error) {
+	rows, err := r.db.Query(`SELECT id, module_id, name, description FROM roles ORDER BY name ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
+	var list []models.Role
+	for rows.Next() {
+		var role models.Role
+		var desc sql.NullString
+		if err := rows.Scan(&role.ID, &role.ModuleID, &role.Name, &desc); err != nil {
+			return nil, err
+		}
+		role.Description = desc.String
+		list = append(list, role)
+	}
+	if list == nil {
+		list = []models.Role{}
+	}
+	return list, nil
+}
+
+// ListRoleMembers is a stub — actual role membership lives in icarus-auth-ms.
+// The workflow service calls auth-ms directly for real member resolution.
+func (r *SQLRepository) ListRoleMembers(roleName string) ([]string, error) {
+	return []string{}, nil
+}

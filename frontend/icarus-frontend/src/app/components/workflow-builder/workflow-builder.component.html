@@ -1,0 +1,128 @@
+<section class="workflow-builder">
+  <header class="page-header">
+    <div class="header-nav">
+      <a routerLink="/dashboard/roles" class="btn-back">← Back to Roles</a>
+    </div>
+    <h1>Configure Workflow</h1>
+    <p class="subtitle">Set up sequential approval stages and quorum rules for the role: <strong>{{ roleId() }}</strong></p>
+  </header>
+
+  @if (success()) {
+    <div class="alert alert-success" role="status">✓ {{ success() }}</div>
+  }
+  @if (error()) {
+    <div class="alert alert-error" role="alert">✕ {{ error() }}</div>
+  }
+
+  @if (isLoading()) {
+    <div class="loading-state" aria-busy="true">Loading workflow builder…</div>
+  } @else {
+    <div class="builder-container">
+      <div class="meta-section">
+        <div class="form-group">
+          <label for="workflow-name">Workflow Name</label>
+          <input
+            id="workflow-name"
+            type="text"
+            placeholder="e.g. Finance Approval Flow"
+            [(ngModel)]="workflowName"
+            aria-required="true"
+          />
+        </div>
+      </div>
+
+      <div class="stages-timeline">
+        @for (stage of stages(); track $index; let sIdx = $index) {
+          <div class="stage-card">
+            <header class="stage-header">
+              <span class="stage-badge">Stage {{ sIdx + 1 }}</span>
+              <div class="stage-title-input">
+                <input
+                  [id]="'stage-name-' + sIdx"
+                  type="text"
+                  placeholder="Stage Name (e.g. Line Manager Approval)"
+                  [(ngModel)]="stage.name"
+                  aria-label="Stage name"
+                />
+              </div>
+              <button
+                class="btn-delete-stage"
+                (click)="removeStage(sIdx)"
+                [disabled]="stages().length <= 1"
+                aria-label="Remove stage"
+              >✕ Remove</button>
+            </header>
+
+            <div class="stage-body">
+              <div class="stage-rules">
+                <div class="form-group">
+                  <label [for]="'exec-mode-' + sIdx">Execution Mode</label>
+                  <select [id]="'exec-mode-' + sIdx" [(ngModel)]="stage.execution_mode">
+                    <option value="SEQUENTIAL">Sequential (Step-by-Step)</option>
+                    <option value="PARALLEL">Parallel (Simultaneous)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label [for]="'quorum-' + sIdx">Approval Quorum</label>
+                  <input
+                    [id]="'quorum-' + sIdx"
+                    type="number"
+                    min="1"
+                    [max]="stage.approvers.length"
+                    [(ngModel)]="stage.approval_quorum"
+                  />
+                </div>
+              </div>
+
+              <div class="approvers-section">
+                <h3>Approvers List</h3>
+                <ul class="approver-list">
+                  @for (ap of stage.approvers; track $index; let aIdx = $index) {
+                    <li class="approver-row">
+                      <select [id]="'ap-type-' + sIdx + '-' + aIdx" [(ngModel)]="ap.resolver_type" class="ap-type-select">
+                        <option value="ROLE_QUEUE">Role Queue</option>
+                        <option value="USER">Direct User</option>
+                      </select>
+
+                      @if (ap.resolver_type === 'ROLE_QUEUE') {
+                        <select [id]="'ap-val-' + sIdx + '-' + aIdx" [(ngModel)]="ap.resolver_value" class="ap-val-input">
+                          <option value="">-- Select Role Queue --</option>
+                          @for (role of roles(); track role.id || role.name) {
+                            <option [value]="role.name">{{ role.name }}</option>
+                          }
+                        </select>
+                      } @else {
+                        <input
+                          [id]="'ap-val-' + sIdx + '-' + aIdx"
+                          type="text"
+                          placeholder="User ID (e.g. user_102)..."
+                          [(ngModel)]="ap.resolver_value"
+                          class="ap-val-input"
+                        />
+                      }
+
+                      <button
+                        class="btn-remove-ap"
+                        (click)="removeApprover(sIdx, aIdx)"
+                        [disabled]="stage.approvers.length <= 1"
+                        aria-label="Remove approver"
+                      >✕</button>
+                    </li>
+                  }
+                </ul>
+                <button class="btn-add-ap" (click)="addApprover(sIdx)">+ Add Approver</button>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="builder-actions">
+        <button class="btn-add-stage" (click)="addStage()">+ Add Sequential Stage</button>
+        <button class="btn-save" (click)="saveWorkflow()" [disabled]="isSaving()">
+          @if (isSaving()) { Saving… } @else { Save Workflow Configuration }
+        </button>
+      </div>
+    </div>
+  }
+</section>

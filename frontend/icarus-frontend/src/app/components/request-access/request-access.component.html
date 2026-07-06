@@ -1,131 +1,153 @@
-<section class="request-access-container animate-fade-in">
-  <!-- Page Header -->
-  <header class="page-header">
-    <div>
-      <h1 class="page-title">Request Policy Access</h1>
-      <p class="page-subtitle">Apply for additional Access Policies or Roles. Administrators can auto-approve their requests, while standard accounts enter a validation queue.</p>
+<section class="request-access">
+  <div class="page-header">
+    <h1>Request Access</h1>
+    <p class="subtitle">Browse available roles and add them to your cart for approval.</p>
+  </div>
+
+  @if (submitMessage()) {
+    <div class="alert alert-success" role="alert">
+      <span class="alert-icon">✓</span> {{ submitMessage() }}
     </div>
-  </header>
+  }
+  @if (submitError()) {
+    <div class="alert alert-error" role="alert">
+      <span class="alert-icon">✕</span> {{ submitError() }}
+    </div>
+  }
 
-  <div class="glass-panel access-section">
-    <h3 class="panel-section-title">Self-Service Access Request Portal</h3>
-    <p class="section-desc">Fill out the target details and justification to apply for a role.</p>
-
-    <!-- Alerts -->
-    @if (requestSuccessMessage()) {
-      <div class="alert alert-success animate-fade-in">
-        {{ requestSuccessMessage() }}
-      </div>
-    }
-    @if (requestErrorMessage()) {
-      <div class="alert alert-danger animate-fade-in">
-        {{ requestErrorMessage() }}
-      </div>
-    }
-
-    <form (ngSubmit)="submitAccessRequest()" #reqForm="ngForm" class="request-portal-form">
-      <div class="form-row-grid">
-        <div class="form-group">
-          <label for="req-tenant" class="form-label">Scope Tenant</label>
-          <select id="req-tenant" name="tenant" [(ngModel)]="requestForm.tenant" class="form-select">
-            @for (t of displayTenants(); track t.id) {
-              <option [value]="t.code">{{ t.name }}</option>
-            }
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="req-module" class="form-label">Target Module</label>
-          <select id="req-module" name="module" [(ngModel)]="requestForm.module" class="form-select">
-            @for (m of displayModules(); track m.id) {
-              <option [value]="m.code">{{ m.name }}</option>
-            }
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="req-role" class="form-label">Available Role Profile</label>
-          <select id="req-role" name="role" [(ngModel)]="requestForm.role" class="form-select" required>
-            <option value="" disabled selected>-- Select access profile --</option>
-            @for (r of requestableRoles(); track r.name) {
-              <option [value]="r.name">{{ r.name }} - {{ r.description }}</option>
-            }
-          </select>
+  <div class="layout">
+    <!-- Role Catalogue -->
+    <div class="catalogue">
+      <div class="catalogue-header">
+        <h2>Available Roles</h2>
+        <div class="search-bar">
+          <input
+            id="role-search"
+            type="search"
+            placeholder="Search roles…"
+            [(ngModel)]="roleSearch"
+            aria-label="Search roles"
+          />
         </div>
       </div>
 
-      <div class="form-group mt-4">
-        <label for="req-justification" class="form-label">Business Justification</label>
-        <textarea 
-          id="req-justification" 
-          name="justification" 
-          [(ngModel)]="requestForm.justification" 
-          rows="3" 
-          class="form-textarea"
-          placeholder="Explain why you require this additional access profile (minimum 10 characters)..."
-          required
+      @if (isLoadingRoles()) {
+        <div class="loading-state" aria-busy="true">Loading roles…</div>
+      } @else if (filteredRoles().length === 0) {
+        <div class="empty-state">No roles match your search.</div>
+      } @else {
+        <ul class="role-list" role="list">
+          @for (role of filteredRoles(); track role.id) {
+            <li class="role-card" [class.in-cart]="cartRoleIds().has(role.id ?? '')">
+              <div class="role-info">
+                <span class="role-name">{{ role.name }}</span>
+                <span class="role-desc">{{ role.description || 'No description available.' }}</span>
+              </div>
+              <button
+                class="btn-add"
+                [disabled]="cartRoleIds().has(role.id ?? '')"
+                (click)="addToCart(role)"
+                [attr.aria-label]="'Add ' + role.name + ' to cart'"
+              >
+                @if (cartRoleIds().has(role.id ?? '')) {
+                  <span>In Cart</span>
+                } @else {
+                  <span>+ Add</span>
+                }
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+
+    <!-- Cart Sidebar -->
+    <aside class="cart" aria-label="Access request cart">
+      <div class="cart-header">
+        <h2>Your Cart</h2>
+        <span class="cart-badge" aria-label="{{ cartItemCount() }} items in cart">
+          {{ cartItemCount() }}
+        </span>
+      </div>
+
+      @if (cartItemCount() === 0) {
+        <p class="cart-empty">No roles added yet. Browse the catalogue to get started.</p>
+      } @else {
+        <ul class="cart-items" role="list">
+          @for (item of currentCart()?.items ?? []; track item.id) {
+            <li class="cart-item">
+              <span class="cart-role-name">{{ item.role_name }}</span>
+              <button
+                class="btn-remove"
+                (click)="removeFromCart(item)"
+                [attr.aria-label]="'Remove ' + item.role_name + ' from cart'"
+              >
+                ✕
+              </button>
+            </li>
+          }
+        </ul>
+      }
+
+      <div class="justification-field">
+        <label for="justification">Justification <span class="required">*</span></label>
+        <textarea
+          id="justification"
+          rows="4"
+          placeholder="Explain why you need this access (min 10 characters)…"
+          [(ngModel)]="justification"
+          aria-required="true"
         ></textarea>
       </div>
 
-      <div class="button-footer-row mt-4">
-        <button 
-          type="submit" 
-          class="btn btn-primary" 
-          [disabled]="!reqForm.form.valid || requestForm.justification.trim().length < 10"
-        >
-          Submit Access Request
-        </button>
-      </div>
-    </form>
+      <button
+        id="submit-cart"
+        class="btn-submit"
+        [disabled]="isSubmitting() || cartItemCount() === 0"
+        (click)="submitCart()"
+        aria-live="polite"
+      >
+        @if (isSubmitting()) {
+          <span>Submitting…</span>
+        } @else {
+          <span>Submit Request ({{ cartItemCount() }})</span>
+        }
+      </button>
+    </aside>
   </div>
 
-  <!-- Request History List -->
-  <div class="glass-panel access-section mt-6">
-    <h3 class="panel-section-title">My Access Request History</h3>
-    <p class="section-desc text-small text-muted">A record of self-service access requests and automated validation logs.</p>
-    <div class="table-container">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Request ID</th>
-            <th>Access Role</th>
-            <th>Tenant &amp; Module</th>
-            <th>Justification</th>
-            <th>Submitted At</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          @if (requestHistory().length > 0) {
-            @for (req of requestHistory(); track req.id) {
-              <tr>
-                <td class="font-mono font-semibold">{{ req.id }}</td>
-                <td class="font-semibold text-accent">{{ req.role }}</td>
-                <td>
-                  <div class="text-small text-white">{{ req.tenant }}</div>
-                  <div class="text-xsmall text-muted">{{ req.module }}</div>
-                </td>
-                <td class="text-muted text-small max-w-xs truncate" title="{{ req.justification }}">{{ req.justification }}</td>
-                <td class="text-muted text-small">{{ req.submittedAt }}</td>
-                <td>
-                  <span 
-                    class="status-indicator" 
-                    [class.status-indicator--active]="req.status === 'Approved'"
-                    [class.status-indicator--inactive]="req.status === 'Rejected'"
-                    [class.status-indicator--pending]="req.status === 'Pending'"
-                  >
-                    {{ req.status }}
+  <!-- Request History -->
+  @if (cartHistory().length > 0) {
+    <section class="history" aria-label="Request history">
+      <h2>Request History</h2>
+      <div class="history-list">
+        @for (cart of cartHistory(); track cart.id) {
+          <div class="history-card">
+            <div class="history-meta">
+              <span class="history-id">{{ cart.id.slice(0, 8) }}…</span>
+              <span class="history-date">{{ cart.submitted_at | date:'dd MMM yyyy, HH:mm' }}</span>
+              <span class="history-overall" [class]="statusClass(cart.status)">{{ cart.status }}</span>
+            </div>
+            <ul class="history-items" role="list">
+              @for (item of cart.items; track item.id) {
+                <li class="history-item">
+                  <span class="history-role">{{ item.role_name }}</span>
+                  <span class="history-item-status" [class]="statusClass(item.status)">
+                    {{ item.status }}
                   </span>
-                </td>
-              </tr>
-            }
-          } @else {
-            <tr>
-              <td colspan="6" class="text-center text-muted py-4">No access requests found in this session.</td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  </div>
+                  @if (item.workflow_instance_id) {
+                    <a
+                      [routerLink]="['/dashboard/request-detail', item.workflow_instance_id]"
+                      class="history-trail-link"
+                      aria-label="View audit trail for {{ item.role_name }}"
+                    >View Trail</a>
+                  }
+                </li>
+              }
+            </ul>
+          </div>
+        }
+      </div>
+    </section>
+  }
 </section>

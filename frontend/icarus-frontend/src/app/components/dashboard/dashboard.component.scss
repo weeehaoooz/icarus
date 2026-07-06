@@ -280,3 +280,22 @@
     transform: translateY(0);
   }
 }
+
+/* ─── Toast Notification ──────────────────────────────────── */
+.toast-notification {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--primary);
+  box-shadow: var(--shadow-lg), 0 0 12px var(--primary-glow);
+  padding: 14px 20px;
+  border-radius: 8px;
+  z-index: 1100;
+  max-width: 360px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-main);
+  backdrop-filter: blur(8px);
+}
+

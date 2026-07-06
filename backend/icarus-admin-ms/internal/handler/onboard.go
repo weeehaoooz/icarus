@@ -56,7 +56,8 @@ func (s *HandlerServer) OnboardModuleHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	// 2. Persist in platform-ms local DB
-	err := s.Repo.RegisterModule(&module, permissions)
+	allRoles := append(req.DefaultRoles, req.AppCentricRoles...)
+	err := s.Repo.RegisterModule(&module, permissions, allRoles)
 	if err != nil {
 		s.respondWithError(w, http.StatusInternalServerError, "failed to persist module locally: "+err.Error())
 		return

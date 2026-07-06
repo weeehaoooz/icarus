@@ -54,6 +54,10 @@ func (s *HandlerServer) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /admin/modules/{id}/applications", s.AdminRequired(s.AdminListModuleApplicationsHandler))
 	mux.HandleFunc("POST /admin/modules/{id}/applications", s.AdminRequired(s.AdminOnboardApplicationHandler))
 	mux.HandleFunc("DELETE /admin/modules/{id}/applications/{appCode}", s.AdminRequired(s.AdminOffboardApplicationHandler))
+
+	// Internal service-to-service routes (called by icarus-workflow-ms for approver resolution)
+	mux.HandleFunc("GET /internal/roles", s.InternalListRolesHandler)
+	mux.HandleFunc("GET /internal/roles/{role_name}/members", s.InternalListRoleMembersHandler)
 }
 
 // LoggerMiddleware logs requests and latency.

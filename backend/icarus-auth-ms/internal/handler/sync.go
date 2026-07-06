@@ -330,3 +330,24 @@ func (s *HandlerServer) InternalGetModuleRolesAndTemplatesHandler(w http.Respons
 		"owners":            owners,
 	})
 }
+
+// InternalListRoleMembersHandler GET /internal/roles/{role_name}/members
+// Returns usernames of all users holding the given role name.
+func (s *HandlerServer) InternalListRoleMembersHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		s.respondWithError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	roleName := r.PathValue("role_name")
+	if roleName == "" {
+		s.respondWithError(w, http.StatusBadRequest, "role_name is required")
+		return
+	}
+	members, err := s.Repo.ListRoleMembers(roleName)
+	if err != nil {
+		s.respondWithError(w, http.StatusInternalServerError, "failed to query role members: "+err.Error())
+		return
+	}
+	s.respondWithJSON(w, http.StatusOK, members)
+}
+
