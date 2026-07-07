@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"icarus-workflow-ms/internal/models"
 	"net/http"
 	"strings"
@@ -70,20 +71,17 @@ func (s *HandlerServer) UpsertRoleWorkflowHandler(w http.ResponseWriter, r *http
 		return
 	}
 	for _, stage := range req.Stages {
-		if len(stage.Approvers) == 0 {
-			s.respondWithError(w, http.StatusBadRequest, "each stage must have at least one approver")
+		if stage.Type != models.StageTypeUser && stage.Type != models.StageTypeRole && stage.Type != models.StageTypeGrouped {
+			s.respondWithError(w, http.StatusBadRequest, "invalid stage type: must be USER, ROLE, or GROUPED")
 			return
 		}
-		if stage.ApprovalQuorum < 1 {
-			s.respondWithError(w, http.StatusBadRequest, "approval_quorum must be >= 1")
+		if stage.ApprovalTree == nil {
+			s.respondWithError(w, http.StatusBadRequest, "approval_tree is required for each stage")
 			return
 		}
-		for _, ap := range stage.Approvers {
-			if ap.ResolverType != "USER" && ap.ResolverType != "ROLE_QUEUE" && ap.ResolverType != "EXPRESSION" {
-				s.respondWithError(w, http.StatusBadRequest,
-					"invalid resolver_type: must be USER, ROLE_QUEUE, or EXPRESSION")
-				return
-			}
+		if err := validateNode(stage.ApprovalTree); err != nil {
+			s.respondWithError(w, http.StatusBadRequest, "invalid approval tree: "+err.Error())
+			return
 		}
 	}
 
@@ -116,4 +114,34 @@ func itoa(n int) string {
 		n /= 10
 	}
 	return s
+}
+
+func validateNode(node *models.UpsertNodeRequest) error {
+	if node == nil {
+		return fmt.Errorf("node is nil")
+	}
+	switch node.Type {
+	case "USER", "ROLE":
+		if node.Value == "" {
+			return fmt.Errorf("value must not be empty for USER or ROLE node")
+		}
+		if len(node.Children) > 0 {
+			return fmt.Errorf("USER or ROLE node must not have children")
+		}
+	case "GROUP":
+		if node.GroupCondition != models.ConditionAnd && node.GroupCondition != models.ConditionOr {
+			return fmt.Errorf("group_condition must be AND or OR for GROUP node")
+		}
+		if len(node.Children) == 0 {
+			return fmt.Errorf("GROUP node must have at least one child")
+		}
+		for i := range node.Children {
+			if err := validateNode(&node.Children[i]); err != nil {
+				return err
+			}
+		}
+	default:
+		return fmt.Errorf("invalid node type: %s", node.Type)
+	}
+	return nil
 }

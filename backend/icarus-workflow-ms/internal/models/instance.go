@@ -21,6 +21,7 @@ type WorkflowStep struct {
 	ID                 string     `json:"id"`
 	WorkflowInstanceID string     `json:"workflow_instance_id"`
 	StageDefinitionID  string     `json:"stage_definition_id"`
+	NodeID             string     `json:"node_id"`
 	StageName          string     `json:"stage_name,omitempty"`
 	AssignedToUserID   *string    `json:"assigned_to_user_id,omitempty"`
 	AssignedToRole     *string    `json:"assigned_to_role,omitempty"`

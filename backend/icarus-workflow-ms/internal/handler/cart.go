@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"icarus-workflow-ms/internal/models"
+	"icarus-workflow-ms/internal/repository"
 	"net/http"
 	"time"
 
@@ -249,21 +250,23 @@ func (s *HandlerServer) createStepsForStage(instanceID string, def *models.Workf
 		if stage.SequenceOrder != stageSeq {
 			continue
 		}
-		for _, approver := range stage.Approvers {
+		
+		leaves := repository.GetLeafNodes(stage.ApprovalTree)
+		for _, leaf := range leaves {
 			step := models.WorkflowStep{
 				ID:                 uuid.New().String(),
 				WorkflowInstanceID: instanceID,
 				StageDefinitionID:  stage.ID,
+				NodeID:             leaf.ID,
 				AssignedAt:         time.Now(),
 			}
-			switch approver.ResolverType {
+			switch leaf.Type {
 			case "USER":
-				step.AssignedToUserID = &approver.ResolverValue
-			case "ROLE_QUEUE":
-				step.AssignedToRole = &approver.ResolverValue
-			case "EXPRESSION":
-				// Future: evaluate expression; for now fall back to role queue
-				step.AssignedToRole = &approver.ResolverValue
+				val := leaf.Value
+				step.AssignedToUserID = &val
+			case "ROLE":
+				val := leaf.Value
+				step.AssignedToRole = &val
 			}
 			if err := s.Repo.CreateWorkflowStep(&step); err != nil {
 				return nil, err
@@ -271,7 +274,7 @@ func (s *HandlerServer) createStepsForStage(instanceID string, def *models.Workf
 			_ = s.Repo.WriteAuditLog(&models.AuditLog{
 				ID: uuid.New().String(), EntityType: "WORKFLOW_STEP", EntityID: step.ID,
 				ActorUserID: "system", Action: "ASSIGNED",
-				AfterState: fmt.Sprintf(`{"stage":"%s","seq":%d}`, stage.Name, stageSeq),
+				AfterState: fmt.Sprintf(`{"stage":"%s","seq":%d,"node_id":"%s"}`, stage.Name, stageSeq, leaf.ID),
 				CorrelationID: correlationID,
 			})
 			createdSteps = append(createdSteps, step)
@@ -279,6 +282,7 @@ func (s *HandlerServer) createStepsForStage(instanceID string, def *models.Workf
 	}
 	return createdSteps, nil
 }
+
 
 // resolveNotificationTargets returns user IDs to notify for a given step.
 func (s *HandlerServer) resolveNotificationTargets(step models.WorkflowStep) []string {

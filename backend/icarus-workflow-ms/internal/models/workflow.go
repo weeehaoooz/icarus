@@ -17,23 +17,40 @@ type WorkflowDefinition struct {
 	CreatedAt     time.Time               `json:"created_at"`
 }
 
-// WorkflowStageDefinition is one stage within a workflow definition.
-type WorkflowStageDefinition struct {
-	ID                   string               `json:"id"`
-	WorkflowDefinitionID string               `json:"workflow_definition_id"`
-	SequenceOrder        int                  `json:"sequence_order"`
-	ExecutionMode        string               `json:"execution_mode"` // SEQUENTIAL | PARALLEL
-	Name                 string               `json:"name"`
-	ApprovalQuorum       int                  `json:"approval_quorum"`
-	Approvers            []ApproverDefinition `json:"approvers,omitempty"`
+// StageType indicates the type of approval required at this stage.
+type StageType string
+
+const (
+	StageTypeUser    StageType = "USER"
+	StageTypeRole    StageType = "ROLE"
+	StageTypeGrouped StageType = "GROUPED"
+)
+
+// GroupCondition defines how a Grouped approval node is evaluated.
+type GroupCondition string
+
+const (
+	ConditionAnd GroupCondition = "AND"
+	ConditionOr  GroupCondition = "OR"
+)
+
+// ApprovalNode defines a recursive tree structure for grouped/parallel approvals.
+type ApprovalNode struct {
+	ID             string         `json:"id"`
+	Type           string         `json:"type"`                     // USER | ROLE | GROUP
+	Value          string         `json:"value,omitempty"`          // user_id or role_name (for USER/ROLE)
+	GroupCondition GroupCondition `json:"group_condition,omitempty"` // AND | OR (for GROUP)
+	Children       []ApprovalNode `json:"children,omitempty"`       // Nested nodes (for GROUP)
 }
 
-// ApproverDefinition specifies how to resolve the approver(s) for a stage.
-type ApproverDefinition struct {
-	ID               string `json:"id"`
-	StageDefinitionID string `json:"stage_definition_id"`
-	ResolverType     string `json:"resolver_type"`  // USER | ROLE_QUEUE | EXPRESSION
-	ResolverValue    string `json:"resolver_value"` // user_id | role_name | expression
+// WorkflowStageDefinition is one stage within a workflow definition.
+type WorkflowStageDefinition struct {
+	ID                   string        `json:"id"`
+	WorkflowDefinitionID string        `json:"workflow_definition_id"`
+	SequenceOrder        int           `json:"sequence_order"`
+	Name                 string        `json:"name"`
+	Type                 StageType     `json:"type"`
+	ApprovalTree         *ApprovalNode `json:"approval_tree,omitempty"`
 }
 
 // RoleWorkflowMapping links a role to its active workflow definition.
@@ -51,19 +68,20 @@ type RoleWorkflowMapping struct {
 // UpsertWorkflowRequest is the API payload for creating/updating a workflow definition for a role.
 
 type UpsertWorkflowRequest struct {
-	Name   string                   `json:"name"`
-	Stages []UpsertStageRequest     `json:"stages"`
+	Name   string               `json:"name"`
+	Stages []UpsertStageRequest `json:"stages"`
 }
 
 type UpsertStageRequest struct {
-	SequenceOrder  int                      `json:"sequence_order"`
-	ExecutionMode  string                   `json:"execution_mode"`
-	Name           string                   `json:"name"`
-	ApprovalQuorum int                      `json:"approval_quorum"`
-	Approvers      []UpsertApproverRequest  `json:"approvers"`
+	SequenceOrder int                `json:"sequence_order"`
+	Name          string             `json:"name"`
+	Type          StageType          `json:"type"`
+	ApprovalTree  *UpsertNodeRequest `json:"approval_tree,omitempty"`
 }
 
-type UpsertApproverRequest struct {
-	ResolverType  string `json:"resolver_type"`
-	ResolverValue string `json:"resolver_value"`
+type UpsertNodeRequest struct {
+	Type           string              `json:"type"`
+	Value          string              `json:"value,omitempty"`
+	GroupCondition GroupCondition      `json:"group_condition,omitempty"`
+	Children       []UpsertNodeRequest `json:"children,omitempty"`
 }
