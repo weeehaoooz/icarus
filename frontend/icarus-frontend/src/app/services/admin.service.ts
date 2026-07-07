@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 @Injectable({
@@ -52,8 +52,18 @@ export class AdminService {
 	}
 
 	// === Roles & Permissions ===
-	listRoles(): Observable<any[]> {
-		return this.http.get<any[]>(`${this.apiUrl}/roles`);
+	listRoles(search?: string, limit?: number, offset?: number): Observable<any[]> {
+		let params = new HttpParams();
+		if (search) {
+			params = params.set('q', search);
+		}
+		if (limit !== undefined) {
+			params = params.set('limit', limit.toString());
+		}
+		if (offset !== undefined) {
+			params = params.set('offset', offset.toString());
+		}
+		return this.http.get<any[]>('http://localhost:8080/roles', { params });
 	}
 
 	createRole(role: any): Observable<any> {

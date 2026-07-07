@@ -1,4 +1,6 @@
-import { Component, signal, computed, inject, OnInit } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, effect } from '@angular/core';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { AuthService } from '../../services/auth.service';
 import { AdminService } from '../../services/admin.service';
 
@@ -52,6 +54,35 @@ export class MyPoliciesComponent implements OnInit {
 
   readonly roleSearchQuery = signal('');
   readonly permissionSearchQuery = signal('');
+
+  readonly isLoadingMetadata = signal(false);
+
+  readonly rolesLimit = signal(10);
+  readonly permissionsLimit = signal(10);
+
+  readonly hasMoreRoles = computed(() => this.rolesLimit() < this.filteredActiveRoles().length);
+  readonly hasMorePermissions = computed(() => this.permissionsLimit() < this.filteredResolvedPermissionDetails().length);
+
+  readonly displayedActiveRoles = computed(() => {
+    return this.filteredActiveRoles().slice(0, this.rolesLimit());
+  });
+
+  readonly displayedResolvedPermissionDetails = computed(() => {
+    return this.filteredResolvedPermissionDetails().slice(0, this.permissionsLimit());
+  });
+
+  constructor() {
+    effect(() => {
+      // Reset limit when query changes
+      this.roleSearchQuery();
+      this.rolesLimit.set(10);
+    });
+    effect(() => {
+      // Reset limit when query changes
+      this.permissionSearchQuery();
+      this.permissionsLimit.set(10);
+    });
+  }
 
   private readonly fallbackRoles: Role[] = [
     { name: 'admin', description: 'Administrator access profile', module_id: 'icarus-auth-ms', permissions: ['login', 'read', 'write'] },
@@ -189,25 +220,59 @@ export class MyPoliciesComponent implements OnInit {
   }
 
   loadSystemMetadata(): void {
+    this.isLoadingMetadata.set(true);
     const isAdmin = this.authService.isAdmin();
-    if (isAdmin) {
-      this.adminService.listRoles().subscribe({
-        next: (data) => this.roles.set(data as Role[]),
-        error: (err) => console.warn('Failed to load system roles:', err)
-      });
-      this.adminService.listPermissions().subscribe({
-        next: (data) => this.permissions.set(data as Permission[]),
-        error: (err) => console.warn('Failed to load system permissions:', err)
-      });
-    } else {
-      this.authService.getMyRoles().subscribe({
-        next: (data) => this.roles.set(data as Role[]),
-        error: (err) => console.warn('Failed to load user roles:', err)
-      });
-      this.authService.getMyPermissions().subscribe({
-        next: (data) => this.permissions.set(data as Permission[]),
-        error: (err) => console.warn('Failed to load user permissions:', err)
-      });
+    const roles$ = (isAdmin ? this.adminService.listRoles() : this.authService.getMyRoles()).pipe(
+      catchError(err => {
+        console.warn('Failed to load roles:', err);
+        return of([]);
+      })
+    );
+    const permissions$ = (isAdmin ? this.adminService.listPermissions() : this.authService.getMyPermissions()).pipe(
+      catchError(err => {
+        console.warn('Failed to load permissions:', err);
+        return of([]);
+      })
+    );
+
+    forkJoin({
+      roles: roles$,
+      permissions: permissions$
+    }).subscribe({
+      next: (res) => {
+        this.roles.set(res.roles as Role[]);
+        this.permissions.set(res.permissions as Permission[]);
+        this.isLoadingMetadata.set(false);
+      },
+      error: () => {
+        this.isLoadingMetadata.set(false);
+      }
+    });
+  }
+
+  onRolesScroll(event: Event): void {
+    if (!this.hasMoreRoles()) return;
+    const element = event.target as HTMLElement;
+    const threshold = 30; // pixels from the bottom
+    if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
+      this.loadMoreRoles();
     }
+  }
+
+  onPermissionsScroll(event: Event): void {
+    if (!this.hasMorePermissions()) return;
+    const element = event.target as HTMLElement;
+    const threshold = 30; // pixels from the bottom
+    if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
+      this.loadMorePermissions();
+    }
+  }
+
+  loadMoreRoles(): void {
+    this.rolesLimit.update(limit => Math.min(limit + 10, this.filteredActiveRoles().length));
+  }
+
+  loadMorePermissions(): void {
+    this.permissionsLimit.update(limit => Math.min(limit + 10, this.filteredResolvedPermissionDetails().length));
   }
 }

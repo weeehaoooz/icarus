@@ -46,6 +46,7 @@ func (s *HandlerServer) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /me", s.UserRequired(s.MeGetHandler))
 	mux.HandleFunc("GET /me/roles", s.UserRequired(s.MeRolesHandler))
 	mux.HandleFunc("GET /me/permissions", s.UserRequired(s.MePermissionsHandler))
+	mux.HandleFunc("GET /roles", s.UserRequired(s.AdminListRolesHandler))
 	mux.HandleFunc("PUT /me", s.UserRequired(s.MeUpdateHandler))
 	mux.HandleFunc("PUT /me/password", s.UserRequired(s.MeChangePasswordHandler))
 

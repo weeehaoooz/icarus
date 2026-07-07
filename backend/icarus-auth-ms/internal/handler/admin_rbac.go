@@ -410,7 +410,35 @@ func (s *HandlerServer) AdminListRolesHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	roles, err := s.Repo.ListRoles()
+	qParams := r.URL.Query()
+	search := qParams.Get("q")
+	limitStr := qParams.Get("limit")
+	offsetStr := qParams.Get("offset")
+
+	var limit, offset int
+	var err error
+	if limitStr != "" {
+		limit, err = strconv.Atoi(limitStr)
+		if err != nil {
+			s.respondWithError(w, http.StatusBadRequest, "invalid limit parameter")
+			return
+		}
+	}
+	if offsetStr != "" {
+		offset, err = strconv.Atoi(offsetStr)
+		if err != nil {
+			s.respondWithError(w, http.StatusBadRequest, "invalid offset parameter")
+			return
+		}
+	}
+
+	var roles []models.Role
+	if limit > 0 || search != "" {
+		roles, err = s.Repo.ListRolesPaged(search, limit, offset)
+	} else {
+		roles, err = s.Repo.ListRoles()
+	}
+
 	if err != nil {
 		s.respondWithError(w, http.StatusInternalServerError, "failed to list roles: "+err.Error())
 		return

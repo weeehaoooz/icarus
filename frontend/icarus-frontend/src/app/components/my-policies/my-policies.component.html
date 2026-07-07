@@ -7,9 +7,127 @@
     </div>
   </header>
 
-  @if (isLoadingProfile()) {
-  <div class="loader-box">
-    <span class="spinner"></span> Loading access profile...
+  @if (isLoadingProfile() || isLoadingMetadata()) {
+  <!-- Skeleton Loader Layout -->
+  <div class="identity-header-grid">
+    <div class="glass-panel identity-card">
+      <div class="skeleton skeleton-avatar"></div>
+      <div class="identity-info" style="width: 100%;">
+        <div class="skeleton skeleton-name"></div>
+        <div class="skeleton skeleton-username"></div>
+        <div class="skeleton skeleton-email"></div>
+      </div>
+    </div>
+
+    <div class="glass-panel groups-card">
+      <div class="skeleton skeleton-label"></div>
+      <div class="skeleton skeleton-group-title"></div>
+      <div class="groups-badges-list">
+        <div class="skeleton skeleton-badge" style="width: 90px;"></div>
+        <div class="skeleton skeleton-badge" style="width: 75px;"></div>
+        <div class="skeleton skeleton-badge" style="width: 110px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="glass-panel access-section mt-6">
+    <div class="section-header-row">
+      <div style="width: 60%;">
+        <div class="skeleton skeleton-section-title"></div>
+        <div class="skeleton skeleton-section-desc"></div>
+      </div>
+      <div class="search-bar">
+        <div class="skeleton skeleton-search"></div>
+      </div>
+    </div>
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 25%;">
+              <div class="skeleton skeleton-th"></div>
+            </th>
+            <th style="width: 20%;">
+              <div class="skeleton skeleton-th"></div>
+            </th>
+            <th style="width: 20%;">
+              <div class="skeleton skeleton-th"></div>
+            </th>
+            <th style="width: 20%;">
+              <div class="skeleton skeleton-th"></div>
+            </th>
+            <th style="width: 15%;">
+              <div class="skeleton skeleton-th"></div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (i of [1, 2, 3]; track i) {
+          <tr>
+            <td>
+              <div class="skeleton skeleton-text" style="width: 80%;"></div>
+            </td>
+            <td>
+              <div class="skeleton skeleton-text" style="width: 60px;"></div>
+            </td>
+            <td>
+              <div class="skeleton skeleton-text" style="width: 90px;"></div>
+            </td>
+            <td>
+              <div class="skeleton skeleton-text" style="width: 90%;"></div>
+            </td>
+            <td>
+              <div class="skeleton skeleton-text" style="width: 40px;"></div>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="glass-panel access-section mt-6">
+    <div class="section-header-row">
+      <div style="width: 60%;">
+        <div class="skeleton skeleton-section-title"></div>
+        <div class="skeleton skeleton-section-desc"></div>
+      </div>
+      <div class="search-bar">
+        <div class="skeleton skeleton-search"></div>
+      </div>
+    </div>
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 30%;">
+              <div class="skeleton skeleton-th"></div>
+            </th>
+            <th style="width: 20%;">
+              <div class="skeleton skeleton-th"></div>
+            </th>
+            <th style="width: 50%;">
+              <div class="skeleton skeleton-th"></div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (i of [1, 2, 3, 4]; track i) {
+          <tr>
+            <td>
+              <div class="skeleton skeleton-text" style="width: 85%;"></div>
+            </td>
+            <td>
+              <div class="skeleton skeleton-text" style="width: 70px;"></div>
+            </td>
+            <td>
+              <div class="skeleton skeleton-text" style="width: 90%;"></div>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
   </div>
   } @else if (profileError()) {
   <div class="alert alert-danger" role="alert">
@@ -78,7 +196,7 @@
         </div>
       </div>
     </div>
-    <div class="table-container">
+    <div class="table-container" (scroll)="onRolesScroll($event)">
       <table class="data-table">
         <thead>
           <tr>
@@ -90,8 +208,8 @@
           </tr>
         </thead>
         <tbody>
-          @if (filteredActiveRoles().length > 0) {
-          @for (role of filteredActiveRoles(); track role.id || role.name) {
+          @if (displayedActiveRoles().length > 0) {
+          @for (role of displayedActiveRoles(); track role.id || role.name) {
           <tr>
             <td class="font-semibold text-accent">{{ role.name }}</td>
             <td>
@@ -105,6 +223,16 @@
             <td class="text-muted text-small">{{ role.description }}</td>
             <td>
               <span class="status-indicator status-indicator--active">Active</span>
+            </td>
+          </tr>
+          }
+          @if (hasMoreRoles()) {
+          <tr class="loading-sentinel-row">
+            <td colspan="5" class="text-center py-3">
+              <div class="sentinel-loader">
+                <span class="spinner"></span>
+                <span class="loading-text">Loading more roles...</span>
+              </div>
             </td>
           </tr>
           }
@@ -152,7 +280,7 @@
         </div>
       </div>
     </div>
-    <div class="table-container">
+    <div class="table-container" (scroll)="onPermissionsScroll($event)">
       <table class="data-table">
         <thead>
           <tr>
@@ -162,14 +290,24 @@
           </tr>
         </thead>
         <tbody>
-          @if (filteredResolvedPermissionDetails().length > 0) {
-          @for (perm of filteredResolvedPermissionDetails(); track perm.id) {
+          @if (displayedResolvedPermissionDetails().length > 0) {
+          @for (perm of displayedResolvedPermissionDetails(); track perm.id) {
           <tr>
             <td class="font-mono font-semibold">{{ perm.action }}</td>
             <td>
               <span class="mono-badge">{{ perm.module_id }}</span>
             </td>
             <td class="text-muted text-small">{{ perm.description }}</td>
+          </tr>
+          }
+          @if (hasMorePermissions()) {
+          <tr class="loading-sentinel-row">
+            <td colspan="3" class="text-center py-3">
+              <div class="sentinel-loader">
+                <span class="spinner"></span>
+                <span class="loading-text">Loading more permissions...</span>
+              </div>
+            </td>
           </tr>
           }
           } @else {

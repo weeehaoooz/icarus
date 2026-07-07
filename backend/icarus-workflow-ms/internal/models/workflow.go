@@ -49,6 +49,7 @@ type RoleWorkflowMapping struct {
 }
 
 // UpsertWorkflowRequest is the API payload for creating/updating a workflow definition for a role.
+
 type UpsertWorkflowRequest struct {
 	Name   string                   `json:"name"`
 	Stages []UpsertStageRequest     `json:"stages"`

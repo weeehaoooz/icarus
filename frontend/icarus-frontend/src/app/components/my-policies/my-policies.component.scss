@@ -177,6 +177,10 @@
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: var(--bg-main);
+  max-height: 380px;
+  overflow-y: auto;
+  position: relative;
+  scroll-behavior: smooth;
 }
 
 .data-table {
@@ -191,6 +195,10 @@
     font-weight: 600;
     padding: 12px 16px;
     border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 1px 0 var(--border-color);
   }
 
   td {
@@ -338,5 +346,133 @@
     .search-bar {
       width: 100%;
     }
+  }
+}
+
+/* Skeleton Loader Styling */
+.skeleton {
+  border-radius: 4px;
+  background: linear-gradient(90deg,
+      var(--bg-panel) 25%,
+      var(--border-color) 37%,
+      var(--bg-panel) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.skeleton-title {
+  width: 250px;
+  height: 2.2rem;
+  margin-bottom: 6px;
+}
+
+.skeleton-subtitle {
+  width: 450px;
+  height: 0.95rem;
+}
+
+.skeleton-avatar {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.skeleton-name {
+  width: 180px;
+  height: 1.5rem;
+  margin-bottom: 6px;
+}
+
+.skeleton-username {
+  width: 100px;
+  height: 0.9rem;
+  margin-bottom: 8px;
+}
+
+.skeleton-email {
+  width: 220px;
+  height: 0.85rem;
+}
+
+.skeleton-label {
+  width: 120px;
+  height: 0.75rem;
+  margin-bottom: 4px;
+}
+
+.skeleton-group-title {
+  width: 180px;
+  height: 1.25rem;
+  margin-bottom: 12px;
+}
+
+.skeleton-badge {
+  height: 28px;
+  border-radius: 20px;
+  display: inline-block;
+}
+
+.skeleton-section-title {
+  width: 220px;
+  height: 1.25rem;
+  margin-bottom: 6px;
+}
+
+.skeleton-section-desc {
+  height: 0.85rem;
+  margin-bottom: 16px;
+}
+
+.skeleton-search {
+  width: 100%;
+  height: 38px;
+  border-radius: 8px;
+}
+
+.skeleton-th {
+  width: 60px;
+  height: 0.85rem;
+}
+
+.skeleton-text {
+  height: 0.85rem;
+}
+
+/* Sentinel Loader Styling */
+.sentinel-loader {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--primary);
+  font-weight: 500;
+  font-size: 0.85rem;
+  animation: pulse 1.5s infinite ease-in-out;
+
+  .spinner {
+    border-top-color: var(--primary);
+  }
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+
+  50% {
+    opacity: 1;
   }
 }

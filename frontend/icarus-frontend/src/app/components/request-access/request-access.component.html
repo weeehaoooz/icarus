@@ -25,19 +25,31 @@
             id="role-search"
             type="search"
             placeholder="Search roles…"
-            [(ngModel)]="roleSearch"
+            [ngModel]="roleSearch()"
+            (input)="onSearchChange($event)"
             aria-label="Search roles"
           />
         </div>
       </div>
 
-      @if (isLoadingRoles()) {
-        <div class="loading-state" aria-busy="true">Loading roles…</div>
-      } @else if (filteredRoles().length === 0) {
+      @if (isLoadingRoles() && availableRoles().length === 0) {
+        <ul class="role-list" role="list">
+          @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+            <li class="role-card skeleton">
+              <div class="role-info">
+                <div class="skeleton-line skeleton-name"></div>
+                <div class="skeleton-line skeleton-desc"></div>
+                <div class="skeleton-line skeleton-desc second"></div>
+              </div>
+              <div class="skeleton-btn"></div>
+            </li>
+          }
+        </ul>
+      } @else if (availableRoles().length === 0) {
         <div class="empty-state">No roles match your search.</div>
       } @else {
         <ul class="role-list" role="list">
-          @for (role of filteredRoles(); track role.id) {
+          @for (role of availableRoles(); track role.id) {
             <li class="role-card" [class.in-cart]="cartRoleIds().has(role.id ?? '')">
               <div class="role-info">
                 <span class="role-name">{{ role.name }}</span>
@@ -56,6 +68,18 @@
                 }
               </button>
             </li>
+          }
+          @if (isLoadingMore()) {
+            @for (i of [1, 2, 3]; track i) {
+              <li class="role-card skeleton">
+                <div class="role-info">
+                  <div class="skeleton-line skeleton-name"></div>
+                  <div class="skeleton-line skeleton-desc"></div>
+                  <div class="skeleton-line skeleton-desc second"></div>
+                </div>
+                <div class="skeleton-btn"></div>
+              </li>
+            }
           }
         </ul>
       }

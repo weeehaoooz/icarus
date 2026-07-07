@@ -587,6 +587,84 @@ func (r *SQLRepository) ListRoles() ([]models.Role, error) {
 	return roles, nil
 }
 
+// ListRolesPaged retrieves a page of roles with optional search filter.
+func (r *SQLRepository) ListRolesPaged(search string, limit, offset int) ([]models.Role, error) {
+	var rows *sql.Rows
+	var err error
+
+	query := "SELECT id, module_id, tenant_id, app_code, name, description, is_system_role, is_active, type, created_at FROM roles"
+	var args []interface{}
+
+	if search != "" {
+		query += " WHERE name LIKE ? OR description LIKE ?"
+		searchPattern := "%" + search + "%"
+		args = append(args, searchPattern, searchPattern)
+	}
+
+	query += " ORDER BY name ASC"
+
+	if limit > 0 {
+		query += " LIMIT ? OFFSET ?"
+		args = append(args, limit, offset)
+	}
+
+	if r.driver == "postgres" {
+		placeholderCount := 1
+		for strings.Contains(query, "?") {
+			placeholder := fmt.Sprintf("$%d", placeholderCount)
+			query = strings.Replace(query, "?", placeholder, 1)
+			placeholderCount++
+		}
+	}
+
+	rows, err = r.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var roles []models.Role
+	for rows.Next() {
+		var role models.Role
+		var tenantID sql.NullString
+		var desc sql.NullString
+		var roleType sql.NullString
+		var createdAtStr string
+
+		err = rows.Scan(&role.ID, &role.ModuleID, &tenantID, &role.AppCode, &role.Name, &desc, &role.IsSystemRole, &role.IsActive, &roleType, &createdAtStr)
+		if err != nil {
+			return nil, err
+		}
+		role.Description = desc.String
+		role.Type = roleType.String
+		if role.Type == "" {
+			role.Type = "Custom"
+		}
+		if tenantID.Valid {
+			tVal := tenantID.String
+			role.TenantID = &tVal
+		}
+		role.CreatedAt, _ = parseTime(createdAtStr)
+
+		// Get mapped permissions
+		perms, err := r.getRolePermissions(role.ID)
+		if err != nil {
+			return nil, err
+		}
+		role.Permissions = perms
+
+		// Get nested roles
+		nested, err := r.getNestedRoles(role.ID)
+		if err != nil {
+			return nil, err
+		}
+		role.NestedRoles = nested
+
+		roles = append(roles, role)
+	}
+	return roles, nil
+}
+
 func (r *SQLRepository) getNestedRoles(roleID string) ([]string, error) {
 	var rows *sql.Rows
 	var err error

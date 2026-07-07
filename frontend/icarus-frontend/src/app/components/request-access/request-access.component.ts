@@ -2,7 +2,8 @@ import { Component, signal, computed, inject, OnInit, OnDestroy } from '@angular
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
-import { Subscription } from 'rxjs';
+import { Subscription, Subject, fromEvent } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { AuthService } from '../../services/auth.service';
 import { AdminService } from '../../services/admin.service';
 import { WorkflowService, AccessCart, CartItem } from '../../services/workflow.service';
@@ -33,9 +34,24 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
   readonly submitError = signal<string | null>(null);
 
   // Role catalogue
-  readonly availableRoles = signal<Role[]>([]);
+  readonly rawAvailableRoles = signal<Role[]>([]);
+  readonly userRoles = signal<Role[]>([]);
+
+  readonly availableRoles = computed(() => {
+    const userRoleIds = new Set(this.userRoles().map(ur => ur.id).filter(Boolean));
+    const userRoleNames = new Set(this.userRoles().map(ur => ur.name).filter(Boolean));
+    return this.rawAvailableRoles().filter(r => !userRoleIds.has(r.id) && !userRoleNames.has(r.name));
+  });
+
   readonly roleSearch = signal('');
   readonly isLoadingRoles = signal(false);
+  readonly isLoadingMore = signal(false);
+  readonly hasMore = signal(true);
+  readonly searchSubject = new Subject<string>();
+
+  // Pagination state
+  private offset = 0;
+  private readonly limit = 12;
 
   // History
   readonly cartHistory = signal<AccessCart[]>([]);
@@ -47,13 +63,6 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
   private pollInterval: ReturnType<typeof setInterval> | null = null;
   private subs: Subscription[] = [];
 
-  readonly filteredRoles = computed(() => {
-    const q = this.roleSearch().toLowerCase();
-    return this.availableRoles().filter(r =>
-      r.name.toLowerCase().includes(q) || r.description?.toLowerCase().includes(q)
-    );
-  });
-
   readonly cartItemCount = computed(() => this.currentCart()?.items?.length ?? 0);
 
   readonly cartRoleIds = computed(() =>
@@ -61,9 +70,26 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
   );
 
   ngOnInit(): void {
-    this.loadRoles();
+    this.loadUserRoles();
+    this.resetAndLoadRoles();
     this.loadHistory();
     this.initCart();
+
+    // Setup search input debounce
+    const searchSub = this.searchSubject.pipe(
+      debounceTime(350),
+      distinctUntilChanged()
+    ).subscribe(q => {
+      this.roleSearch.set(q);
+      this.resetAndLoadRoles();
+    });
+    this.subs.push(searchSub);
+
+    // Setup infinite scroll scroll listener
+    const scrollSub = fromEvent(window, 'scroll').subscribe(() => {
+      this.onWindowScroll();
+    });
+    this.subs.push(scrollSub);
   }
 
   ngOnDestroy(): void {
@@ -71,16 +97,74 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
     this.subs.forEach(s => s.unsubscribe());
   }
 
-  loadRoles(): void {
-    this.isLoadingRoles.set(true);
-    const sub = this.adminService.listRoles().subscribe({
-      next: (data: any[]) => {
-        this.availableRoles.set(data ?? []);
-        this.isLoadingRoles.set(false);
+  onSearchChange(event: Event): void {
+    const val = (event.target as HTMLInputElement).value;
+    this.searchSubject.next(val);
+  }
+
+  loadUserRoles(): void {
+    const sub = this.authService.getMyRoles().subscribe({
+      next: (roles) => {
+        this.userRoles.set(roles ?? []);
       },
-      error: () => this.isLoadingRoles.set(false),
+      error: () => {},
     });
     this.subs.push(sub);
+  }
+
+  resetAndLoadRoles(): void {
+    this.offset = 0;
+    this.hasMore.set(true);
+    this.rawAvailableRoles.set([]);
+    this.loadRoles(true);
+  }
+
+  loadRoles(isInitial: boolean = false): void {
+    if (isInitial) {
+      this.isLoadingRoles.set(true);
+    } else {
+      this.isLoadingMore.set(true);
+    }
+
+    const sub = this.adminService.listRoles(this.roleSearch(), this.limit, this.offset).subscribe({
+      next: (data: any[]) => {
+        const roles = data ?? [];
+        if (isInitial) {
+          this.rawAvailableRoles.set(roles);
+          this.isLoadingRoles.set(false);
+        } else {
+          this.rawAvailableRoles.update(existing => [...existing, ...roles]);
+          this.isLoadingMore.set(false);
+        }
+
+        if (roles.length < this.limit) {
+          this.hasMore.set(false);
+        }
+      },
+      error: () => {
+        if (isInitial) {
+          this.isLoadingRoles.set(false);
+        } else {
+          this.isLoadingMore.set(false);
+        }
+      },
+    });
+    this.subs.push(sub);
+  }
+
+  loadMoreRoles(): void {
+    if (this.isLoadingRoles() || this.isLoadingMore() || !this.hasMore()) return;
+    this.offset += this.limit;
+    this.loadRoles(false);
+  }
+
+  onWindowScroll(): void {
+    if (this.isLoadingRoles() || this.isLoadingMore() || !this.hasMore()) return;
+    const pos = window.innerHeight + window.scrollY;
+    const max = document.documentElement.scrollHeight;
+    if (pos >= max - 200) {
+      this.loadMoreRoles();
+    }
   }
 
   loadHistory(): void {
