@@ -74,7 +74,7 @@ export class WorkflowBuilderComponent implements OnInit {
   }
 
   loadExistingDefinitions(): void {
-    this.workflowService.listWorkflowDefinitions()
+    this.workflowService.listWorkflowTemplates()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (defs) => {
