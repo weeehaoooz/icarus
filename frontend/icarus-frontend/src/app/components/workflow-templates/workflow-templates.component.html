@@ -1,0 +1,161 @@
+<section class="wt-page">
+  <header class="wt-header">
+    <div>
+      <h1>Workflow Templates</h1>
+      <p class="subtitle">Create reusable DAG workflow blueprints and map them to roles.</p>
+    </div>
+    <button class="btn-create" (click)="navigateToBuilder()" id="create-template-btn">
+      <svg viewBox="0 0 24 24" class="lucide-icon">
+        <path d="M5 12h14" />
+        <path d="M12 5v14" />
+      </svg>
+      New Template
+    </button>
+  </header>
+
+  @if (success()) {
+  <div class="alert alert-success" role="status">✓ {{ success() }}</div>
+  }
+  @if (error()) {
+  <div class="alert alert-error" role="alert">✕ {{ error() }}</div>
+  }
+
+  @if (isLoading()) {
+  <div class="loading-state" aria-busy="true">Loading workflow templates…</div>
+  } @else if (templates().length === 0) {
+  <div class="empty-state">
+    <div class="empty-icon-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <path d="M9 9h6M9 12h6M9 15h4" />
+      </svg>
+    </div>
+    <h2>No Workflow Templates Yet</h2>
+    <p>Create your first reusable workflow template to define multi-stage approval chains that can be mapped to any
+      role.</p>
+    <button class="btn-create" (click)="navigateToBuilder()">Create First Template</button>
+  </div>
+  } @else {
+  <div class="templates-grid">
+    @for (tmpl of templates(); track tmpl.id) {
+    <article class="template-card" [attr.aria-label]="tmpl.name + ' workflow template'">
+      <div class="card-header">
+        <div class="card-title-row">
+          <span class="template-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="6" cy="12" r="2" />
+              <circle cx="18" cy="6" r="2" />
+              <circle cx="18" cy="18" r="2" />
+              <path d="M8 12h8M8 11l6-4M8 13l6 4" />
+            </svg>
+          </span>
+          <div>
+            <h2 class="template-name">{{ tmpl.name }}</h2>
+            @if (tmpl.description) {
+            <p class="template-desc">{{ tmpl.description }}</p>
+            }
+          </div>
+        </div>
+        <span class="status-badge" [class]="statusClass(tmpl.status)">{{ tmpl.status }}</span>
+      </div>
+
+      <div class="card-meta">
+        <div class="meta-item">
+          <span class="meta-label">Version</span>
+          <span class="meta-value">v{{ tmpl.version }}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Nodes</span>
+          <span class="meta-value">{{ nodeCountLabel(tmpl) }}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Key</span>
+          <span class="meta-value mono">{{ tmpl.definition_key }}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Created by</span>
+          <span class="meta-value">{{ tmpl.created_by }}</span>
+        </div>
+      </div>
+
+      <div class="card-mapping">
+        @if (tmpl.mapped_role_id) {
+        <div class="mapping-pill active-mapping" [attr.title]="'Mapped to role: ' + tmpl.mapped_role_id">
+          <svg viewBox="0 0 24 24" class="pill-icon">
+            <path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
+            <circle cx="12" cy="12" r="2" />
+          </svg>
+          Mapped → <strong>{{ tmpl.mapped_role_id }}</strong>
+        </div>
+        } @else {
+        <div class="mapping-pill unmapped">
+          <svg viewBox="0 0 24 24" class="pill-icon">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v4M12 16h.01" />
+          </svg>
+          Not mapped to any role
+        </div>
+        }
+      </div>
+
+      <div class="card-actions">
+        <button class="btn-map" (click)="openMapModal(tmpl)" [attr.aria-label]="'Map ' + tmpl.name + ' to a role'">
+          <svg viewBox="0 0 24 24" class="lucide-icon">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+          </svg>
+          Map to Role
+        </button>
+        <a [routerLink]="['/dashboard/workflow-builder/new']" class="btn-edit" [attr.aria-label]="'Edit ' + tmpl.name">
+          <svg viewBox="0 0 24 24" class="lucide-icon">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
+          New Version
+        </a>
+      </div>
+    </article>
+    }
+  </div>
+  }
+</section>
+
+<!-- Map to Role Modal -->
+@if (showMapModal()) {
+<div class="modal-backdrop" (click)="closeMapModal()" role="dialog" aria-modal="true"
+  [attr.aria-label]="'Map workflow to role'">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+    <header class="modal-header">
+      <h2>Map Workflow to Role</h2>
+      <button class="modal-close" (click)="closeMapModal()" aria-label="Close modal">✕</button>
+    </header>
+
+    <div class="modal-body">
+      <p class="modal-desc">
+        Select which role should use the <strong>{{ mappingTemplateNme() }}</strong> workflow for its approval process.
+      </p>
+      @if (error()) {
+      <div class="alert alert-error" role="alert">✕ {{ error() }}</div>
+      }
+      <div class="form-group">
+        <label for="map-role-select">Target Role</label>
+        <div class="select-container">
+          <select id="map-role-select" [(ngModel)]="selectedRoleId" class="premium-select">
+            <option value="">-- Select a role --</option>
+            @for (role of roles(); track role.id || role.name) {
+            <option [value]="role.id || role.name">{{ role.name }}</option>
+            }
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <footer class="modal-footer">
+      <button class="btn-cancel" (click)="closeMapModal()">Cancel</button>
+      <button class="btn-confirm" (click)="confirmMap()" [disabled]="isMapping() || !selectedRoleId()">
+        @if (isMapping()) { Mapping… } @else { Confirm Mapping }
+      </button>
+    </footer>
+  </div>
+</div>
+}

@@ -56,9 +56,14 @@ func (s *HandlerServer) RegisterRoutes(mux *http.ServeMux) {
 
 	// Admin workflow definition management
 	mux.HandleFunc("GET /api/v1/workflow/definitions", s.AdminRequired(s.ListWorkflowDefinitionsHandler))
+	mux.HandleFunc("POST /api/v1/workflow/definitions", s.AdminRequired(s.CreateWorkflowTemplateHandler))
+	mux.HandleFunc("GET /api/v1/workflow/definitions/templates", s.AdminRequired(s.ListWorkflowsWithRoleMappingHandler))
+	mux.HandleFunc("GET /api/v1/workflow/definitions/{id}", s.AuthRequired(s.GetWorkflowByIDHandler))
 	mux.HandleFunc("GET /api/v1/workflow/definitions/history/{definition_key}", s.AdminRequired(s.GetDefinitionHistoryHandler))
 	mux.HandleFunc("GET /api/v1/workflow/definitions/roles/{role_id}", s.AuthRequired(s.GetRoleWorkflowHandler))
 	mux.HandleFunc("PUT /api/v1/workflow/definitions/roles/{role_id}", s.AdminRequired(s.UpsertRoleWorkflowHandler))
+	mux.HandleFunc("PUT /api/v1/workflow/definitions/roles/{role_id}/map", s.AdminRequired(s.MapWorkflowToRoleHandler))
+
 }
 
 // ─── Middleware ───────────────────────────────────────────────────────────────

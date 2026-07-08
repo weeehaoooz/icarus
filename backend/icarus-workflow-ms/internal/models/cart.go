@@ -23,7 +23,7 @@ type CartItem struct {
 	RoleID             string     `json:"role_id"`
 	RoleName           string     `json:"role_name"`
 	Status             string     `json:"status"` // PENDING | IN_PROGRESS | APPROVED | REJECTED | CANCELLED
-	WorkflowInstanceID *string    `json:"workflow_instance_id,omitempty"`
+	ExecutionID        *string    `json:"execution_id,omitempty"`
 	CreatedAt          time.Time  `json:"created_at"`
 	UpdatedAt          time.Time  `json:"updated_at"`
 }

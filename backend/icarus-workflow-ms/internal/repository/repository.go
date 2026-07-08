@@ -94,46 +94,41 @@ func InitDB(dbPath string) (*sql.DB, error) {
 }
 
 func parseTime(s string) (time.Time, error) {
-	layouts := []string{
+	formats := []string{
 		time.RFC3339,
+		"2006-01-02T15:04:05Z07:00",
 		"2006-01-02 15:04:05",
-		"2006-01-02T15:04:05Z",
 	}
-	for _, l := range layouts {
-		if t, err := time.Parse(l, s); err == nil {
+	var lastErr error
+	for _, f := range formats {
+		if t, err := time.Parse(f, s); err == nil {
 			return t, nil
+		} else {
+			lastErr = err
 		}
 	}
-	if idx := strings.Index(s, " m="); idx != -1 {
-		s = s[:idx]
-		for _, l := range layouts {
-			if t, err := time.Parse(l, s); err == nil {
-				return t, nil
-			}
-		}
-	}
-	return time.Time{}, errors.New("failed to parse time: " + s)
+	return time.Time{}, lastErr
 }
 
 // ========== WORKFLOW DEFINITIONS ==========
 
-func (r *SQLRepository) GetWorkflowDefinitionByRoleID(roleID string) (*models.WorkflowDefinition, error) {
-	var def models.WorkflowDefinition
+func (r *SQLRepository) GetWorkflowByRoleID(roleID string) (*models.Workflow, error) {
+	var def models.Workflow
 	var createdAtStr string
 	var supersedesID sql.NullString
 
 	err := r.db.QueryRow(`
-		SELECT wd.id, wd.name, wd.definition_key, wd.version, wd.is_current, wd.status,
-		       wd.supersedes_id, wd.created_by, wd.created_at
-		FROM workflow_definitions wd
-		JOIN role_workflow_mappings rwm ON rwm.workflow_definition_id = wd.id
+		SELECT w.id, w.name, w.definition_key, w.version, w.is_current, w.status,
+		       w.supersedes_id, w.created_by, w.created_at
+		FROM workflows w
+		JOIN role_workflow_mappings rwm ON rwm.workflow_id = w.id
 		WHERE rwm.role_id = ? AND rwm.is_active = 1
 		LIMIT 1`, roleID).
 		Scan(&def.ID, &def.Name, &def.DefinitionKey, &def.Version, &def.IsCurrent,
 			&def.Status, &supersedesID, &def.CreatedBy, &createdAtStr)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil // no mapping → caller handles auto-approve
+			return nil, nil // no mapping
 		}
 		return nil, err
 	}
@@ -142,26 +137,29 @@ func (r *SQLRepository) GetWorkflowDefinitionByRoleID(roleID string) (*models.Wo
 	}
 	def.CreatedAt, _ = parseTime(createdAtStr)
 
-	stages, err := r.getStagesForDefinition(def.ID)
+	nodes, err := r.getNodesForWorkflow(def.ID)
 	if err != nil {
 		return nil, err
 	}
-	def.Stages = stages
+	def.Nodes = nodes
 	return &def, nil
 }
 
-func (r *SQLRepository) GetWorkflowDefinitionByID(id string) (*models.WorkflowDefinition, error) {
-	var def models.WorkflowDefinition
+func (r *SQLRepository) GetWorkflowByID(id string) (*models.Workflow, error) {
+	var def models.Workflow
 	var createdAtStr string
 	var supersedesID sql.NullString
 
 	err := r.db.QueryRow(`
 		SELECT id, name, definition_key, version, is_current, status,
 		       supersedes_id, created_by, created_at
-		FROM workflow_definitions WHERE id = ?`, id).
+		FROM workflows WHERE id = ?`, id).
 		Scan(&def.ID, &def.Name, &def.DefinitionKey, &def.Version, &def.IsCurrent,
 			&def.Status, &supersedesID, &def.CreatedBy, &createdAtStr)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	if supersedesID.Valid {
@@ -169,67 +167,61 @@ func (r *SQLRepository) GetWorkflowDefinitionByID(id string) (*models.WorkflowDe
 	}
 	def.CreatedAt, _ = parseTime(createdAtStr)
 
-	stages, err := r.getStagesForDefinition(def.ID)
+	nodes, err := r.getNodesForWorkflow(def.ID)
 	if err != nil {
 		return nil, err
 	}
-	def.Stages = stages
+	def.Nodes = nodes
 	return &def, nil
 }
 
-func (r *SQLRepository) getStagesForDefinition(defID string) ([]models.WorkflowStageDefinition, error) {
+func (r *SQLRepository) getNodesForWorkflow(workflowID string) ([]models.WorkflowNode, error) {
 	rows, err := r.db.Query(`
-		SELECT id, workflow_definition_id, sequence_order, name, type, approval_tree
-		FROM workflow_stage_definitions
-		WHERE workflow_definition_id = ?
-		ORDER BY sequence_order ASC`, defID)
+		SELECT id, workflow_id, name, type, depends_on, max_retries, retry_interval, config
+		FROM workflow_nodes
+		WHERE workflow_id = ?`, workflowID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+	return scanNodes(rows)
+}
 
-	var stages []models.WorkflowStageDefinition
+func (r *SQLRepository) getNodesForWorkflowTx(tx *sql.Tx, workflowID string) ([]models.WorkflowNode, error) {
+	rows, err := tx.Query(`
+		SELECT id, workflow_id, name, type, depends_on, max_retries, retry_interval, config
+		FROM workflow_nodes
+		WHERE workflow_id = ?`, workflowID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanNodes(rows)
+}
+
+func scanNodes(rows *sql.Rows) ([]models.WorkflowNode, error) {
+	var nodes []models.WorkflowNode
 	for rows.Next() {
-		var s models.WorkflowStageDefinition
-		var treeStr sql.NullString
-		if err := rows.Scan(&s.ID, &s.WorkflowDefinitionID, &s.SequenceOrder,
-			&s.Name, &s.Type, &treeStr); err != nil {
+		var n models.WorkflowNode
+		var depStr, configStr sql.NullString
+		if err := rows.Scan(&n.ID, &n.WorkflowID, &n.Name, &n.Type, &depStr, &n.MaxRetries, &n.RetryInterval, &configStr); err != nil {
 			return nil, err
 		}
-		if treeStr.Valid && treeStr.String != "" {
-			var tree models.ApprovalNode
-			if err := json.Unmarshal([]byte(treeStr.String), &tree); err == nil {
-				s.ApprovalTree = &tree
-			}
+		if depStr.Valid && depStr.String != "" {
+			_ = json.Unmarshal([]byte(depStr.String), &n.DependsOn)
+		} else {
+			n.DependsOn = []string{}
 		}
-		stages = append(stages, s)
+		if configStr.Valid && configStr.String != "" {
+			_ = json.Unmarshal([]byte(configStr.String), &n.Config)
+		}
+		nodes = append(nodes, n)
 	}
-	return stages, nil
+	return nodes, nil
 }
 
-func convertUpsertNode(req *models.UpsertNodeRequest, stageID string, counter *int) *models.ApprovalNode {
-	if req == nil {
-		return nil
-	}
-	*counter++
-	node := &models.ApprovalNode{
-		ID:             fmt.Sprintf("%s-node-%d", stageID, *counter),
-		Type:           req.Type,
-		Value:          req.Value,
-		GroupCondition: req.GroupCondition,
-	}
-	for i := range req.Children {
-		child := convertUpsertNode(&req.Children[i], stageID, counter)
-		if child != nil {
-			node.Children = append(node.Children, *child)
-		}
-	}
-	return node
-}
-
-// UpsertWorkflowDefinition creates a new versioned definition and updates the role mapping atomically.
-func (r *SQLRepository) UpsertWorkflowDefinition(roleID, definitionKey, newID, createdBy string,
-	req models.UpsertWorkflowRequest) (*models.WorkflowDefinition, error) {
+func (r *SQLRepository) UpsertWorkflow(roleID, definitionKey, newID, createdBy string,
+	req models.UpsertWorkflowRequest) (*models.Workflow, error) {
 
 	tx, err := r.db.Begin()
 	if err != nil {
@@ -241,9 +233,9 @@ func (r *SQLRepository) UpsertWorkflowDefinition(roleID, definitionKey, newID, c
 	var oldDefID sql.NullString
 	var oldVersion int
 	_ = tx.QueryRow(`
-		SELECT wd.id, wd.version
-		FROM workflow_definitions wd
-		JOIN role_workflow_mappings rwm ON rwm.workflow_definition_id = wd.id
+		SELECT w.id, w.version
+		FROM workflows w
+		JOIN role_workflow_mappings rwm ON rwm.workflow_id = w.id
 		WHERE rwm.role_id = ? AND rwm.is_active = 1
 		LIMIT 1`, roleID).Scan(&oldDefID, &oldVersion)
 
@@ -254,7 +246,7 @@ func (r *SQLRepository) UpsertWorkflowDefinition(roleID, definitionKey, newID, c
 	if oldDefID.Valid {
 		supersedesVal = oldDefID.String
 		if _, err := tx.Exec(`
-			UPDATE workflow_definitions SET is_current = 0, status = 'SUPERSEDED'
+			UPDATE workflows SET is_current = 0, status = 'SUPERSEDED'
 			WHERE id = ?`, oldDefID.String); err != nil {
 			return nil, err
 		}
@@ -262,31 +254,22 @@ func (r *SQLRepository) UpsertWorkflowDefinition(roleID, definitionKey, newID, c
 
 	// Insert new definition
 	if _, err := tx.Exec(`
-		INSERT INTO workflow_definitions (id, name, definition_key, version, is_current, status, supersedes_id, created_by)
+		INSERT INTO workflows (id, name, definition_key, version, is_current, status, supersedes_id, created_by)
 		VALUES (?, ?, ?, ?, 1, 'ACTIVE', ?, ?)`,
 		newID, req.Name, definitionKey, newVersion, supersedesVal, createdBy); err != nil {
 		return nil, err
 	}
 
-	// Insert stages
-	for _, stReq := range req.Stages {
-		stageID := newID + "-stage-" + strings.ReplaceAll(stReq.Name, " ", "_")
-		var treeJSON []byte
-		if stReq.ApprovalTree != nil {
-			counter := 0
-			treeNode := convertUpsertNode(stReq.ApprovalTree, stageID, &counter)
-			var err error
-			treeJSON, err = json.Marshal(treeNode)
-			if err != nil {
-				return nil, err
-			}
-		}
+	// Insert nodes
+	for _, nReq := range req.Nodes {
+		depJSON, _ := json.Marshal(nReq.DependsOn)
+		configJSON, _ := json.Marshal(nReq.Config)
 
 		if _, err := tx.Exec(`
-			INSERT INTO workflow_stage_definitions
-			(id, workflow_definition_id, sequence_order, name, type, approval_tree)
-			VALUES (?, ?, ?, ?, ?, ?)`,
-			stageID, newID, stReq.SequenceOrder, stReq.Name, string(stReq.Type), string(treeJSON)); err != nil {
+			INSERT INTO workflow_nodes
+			(id, workflow_id, name, type, depends_on, max_retries, retry_interval, config)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			nReq.ID, newID, nReq.Name, nReq.Type, string(depJSON), nReq.MaxRetries, nReq.RetryInterval, string(configJSON)); err != nil {
 			return nil, err
 		}
 	}
@@ -294,74 +277,167 @@ func (r *SQLRepository) UpsertWorkflowDefinition(roleID, definitionKey, newID, c
 	// Upsert role mapping
 	mappingID := "rwm-" + roleID
 	if _, err := tx.Exec(`
-		INSERT INTO role_workflow_mappings (id, role_id, workflow_definition_id, is_active, created_by)
+		INSERT INTO role_workflow_mappings (id, role_id, workflow_id, is_active, created_by)
 		VALUES (?, ?, ?, 1, ?)
 		ON CONFLICT(role_id) DO UPDATE SET
-			workflow_definition_id = excluded.workflow_definition_id,
+			workflow_id = excluded.workflow_id,
 			is_active = 1,
 			effective_from = CURRENT_TIMESTAMP,
 			effective_to = NULL`,
 		mappingID, roleID, newID, createdBy); err != nil {
-			return nil, err
+		return nil, err
 	}
 
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 
-	return r.GetWorkflowDefinitionByID(newID)
+	return r.GetWorkflowByID(newID)
 }
 
-func (r *SQLRepository) ListWorkflowDefinitions() ([]models.WorkflowDefinition, error) {
+
+func (r *SQLRepository) ListWorkflowDefinitions() ([]models.Workflow, error) {
 	rows, err := r.db.Query(`
-		SELECT id, name, definition_key, version, is_current, status, created_by, created_at
-		FROM workflow_definitions ORDER BY definition_key, version DESC`)
+		SELECT id, name, COALESCE(description,''), definition_key, version, is_current, status, created_by, created_at
+		FROM workflows
+		ORDER BY definition_key ASC, version DESC`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var list []models.WorkflowDefinition
+	var list []models.Workflow
 	for rows.Next() {
-		var d models.WorkflowDefinition
+		var w models.Workflow
 		var createdAtStr string
-		if err := rows.Scan(&d.ID, &d.Name, &d.DefinitionKey, &d.Version, &d.IsCurrent,
-			&d.Status, &d.CreatedBy, &createdAtStr); err != nil {
+		if err := rows.Scan(&w.ID, &w.Name, &w.Description, &w.DefinitionKey, &w.Version, &w.IsCurrent, &w.Status, &w.CreatedBy, &createdAtStr); err != nil {
 			return nil, err
 		}
-		d.CreatedAt, _ = parseTime(createdAtStr)
-		list = append(list, d)
+		w.CreatedAt, _ = parseTime(createdAtStr)
+		list = append(list, w)
 	}
 	return list, nil
 }
 
-func (r *SQLRepository) GetDefinitionHistory(definitionKey string) ([]models.WorkflowDefinition, error) {
+func (r *SQLRepository) GetDefinitionHistory(definitionKey string) ([]models.Workflow, error) {
 	rows, err := r.db.Query(`
-		SELECT id, name, definition_key, version, is_current, status, supersedes_id, created_by, created_at
-		FROM workflow_definitions WHERE definition_key = ?
+		SELECT id, name, COALESCE(description,''), definition_key, version, is_current, status, created_by, created_at
+		FROM workflows
+		WHERE definition_key = ?
 		ORDER BY version DESC`, definitionKey)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var list []models.WorkflowDefinition
+	var list []models.Workflow
 	for rows.Next() {
-		var d models.WorkflowDefinition
+		var w models.Workflow
 		var createdAtStr string
-		var sup sql.NullString
-		if err := rows.Scan(&d.ID, &d.Name, &d.DefinitionKey, &d.Version, &d.IsCurrent,
-			&d.Status, &sup, &d.CreatedBy, &createdAtStr); err != nil {
+		if err := rows.Scan(&w.ID, &w.Name, &w.Description, &w.DefinitionKey, &w.Version, &w.IsCurrent, &w.Status, &w.CreatedBy, &createdAtStr); err != nil {
 			return nil, err
 		}
-		if sup.Valid {
-			d.SupersedesID = &sup.String
-		}
-		d.CreatedAt, _ = parseTime(createdAtStr)
-		list = append(list, d)
+		w.CreatedAt, _ = parseTime(createdAtStr)
+		list = append(list, w)
 	}
 	return list, nil
 }
+
+// CreateStandaloneWorkflow creates a reusable workflow template not yet bound to any role.
+func (r *SQLRepository) CreateStandaloneWorkflow(createdBy string, req models.UpsertWorkflowRequest) (*models.Workflow, error) {
+	newID := uuid.New().String()
+	definitionKey := strings.ToLower(strings.ReplaceAll(req.Name, " ", "-"))
+
+	tx, err := r.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	// Check for existing current definition with same key and supersede it
+	var oldID sql.NullString
+	var oldVersion int
+	_ = tx.QueryRow(`SELECT id, version FROM workflows WHERE definition_key = ? AND is_current = 1`, definitionKey).
+		Scan(&oldID, &oldVersion)
+
+	newVersion := oldVersion + 1
+	var supersedesVal interface{}
+	if oldID.Valid {
+		supersedesVal = oldID.String
+		if _, err := tx.Exec(`UPDATE workflows SET is_current = 0, status = 'SUPERSEDED' WHERE id = ?`, oldID.String); err != nil {
+			return nil, err
+		}
+	}
+
+	if _, err := tx.Exec(`
+		INSERT INTO workflows (id, name, description, definition_key, version, is_current, status, supersedes_id, created_by)
+		VALUES (?, ?, ?, ?, ?, 1, 'ACTIVE', ?, ?)`,
+		newID, req.Name, req.Description, definitionKey, newVersion, supersedesVal, createdBy); err != nil {
+		return nil, err
+	}
+
+	for _, nReq := range req.Nodes {
+		depJSON, _ := json.Marshal(nReq.DependsOn)
+		configJSON, _ := json.Marshal(nReq.Config)
+		if _, err := tx.Exec(`
+			INSERT INTO workflow_nodes (id, workflow_id, name, type, depends_on, max_retries, retry_interval, config)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			nReq.ID, newID, nReq.Name, nReq.Type, string(depJSON), nReq.MaxRetries, nReq.RetryInterval, string(configJSON)); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return r.GetWorkflowByID(newID)
+}
+
+// MapWorkflowToRole points a role at an existing workflow template (by workflow UUID).
+// This is non-destructive to the template itself — only the mapping is updated.
+func (r *SQLRepository) MapWorkflowToRole(roleID, workflowID, createdBy string) error {
+	mappingID := "rwm-" + roleID
+	_, err := r.db.Exec(`
+		INSERT INTO role_workflow_mappings (id, role_id, workflow_id, is_active, created_by)
+		VALUES (?, ?, ?, 1, ?)
+		ON CONFLICT(role_id) DO UPDATE SET
+			workflow_id = excluded.workflow_id,
+			is_active = 1,
+			effective_from = CURRENT_TIMESTAMP,
+			effective_to = NULL`,
+		mappingID, roleID, workflowID, createdBy)
+	return err
+}
+
+// ListWorkflowsWithRoleMapping returns all current workflow versions annotated with which role (if any) references them.
+func (r *SQLRepository) ListWorkflowsWithRoleMapping() ([]models.WorkflowWithRoleMapping, error) {
+	rows, err := r.db.Query(`
+		SELECT w.id, w.name, COALESCE(w.description,''), w.definition_key, w.version, w.is_current, w.status, w.created_by, w.created_at,
+		       COALESCE(rwm.role_id,'') as mapped_role
+		FROM workflows w
+		LEFT JOIN role_workflow_mappings rwm ON rwm.workflow_id = w.id AND rwm.is_active = 1
+		WHERE w.is_current = 1
+		ORDER BY w.name ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []models.WorkflowWithRoleMapping
+	for rows.Next() {
+		var wm models.WorkflowWithRoleMapping
+		var createdAtStr string
+		if err := rows.Scan(&wm.ID, &wm.Name, &wm.Description, &wm.DefinitionKey,
+			&wm.Version, &wm.IsCurrent, &wm.Status, &wm.CreatedBy, &createdAtStr, &wm.MappedRoleID); err != nil {
+			return nil, err
+		}
+		wm.CreatedAt, _ = parseTime(createdAtStr)
+		list = append(list, wm)
+	}
+	return list, nil
+}
+
+
 
 // ========== CARTS ==========
 
@@ -462,7 +538,7 @@ func (r *SQLRepository) AddCartItem(item *models.CartItem) error {
 
 func (r *SQLRepository) GetCartItems(cartID string) ([]models.CartItem, error) {
 	rows, err := r.db.Query(`
-		SELECT id, cart_id, role_id, role_name, status, workflow_instance_id, created_at, updated_at
+		SELECT id, cart_id, role_id, role_name, status, execution_id, created_at, updated_at
 		FROM access_cart_items WHERE cart_id = ?`, cartID)
 	if err != nil {
 		return nil, err
@@ -473,13 +549,13 @@ func (r *SQLRepository) GetCartItems(cartID string) ([]models.CartItem, error) {
 	for rows.Next() {
 		var item models.CartItem
 		var createdAtStr, updatedAtStr string
-		var wfInstID sql.NullString
+		var execID sql.NullString
 		if err := rows.Scan(&item.ID, &item.CartID, &item.RoleID, &item.RoleName,
-			&item.Status, &wfInstID, &createdAtStr, &updatedAtStr); err != nil {
+			&item.Status, &execID, &createdAtStr, &updatedAtStr); err != nil {
 			return nil, err
 		}
-		if wfInstID.Valid {
-			item.WorkflowInstanceID = &wfInstID.String
+		if execID.Valid {
+			item.ExecutionID = &execID.String
 		}
 		item.CreatedAt, _ = parseTime(createdAtStr)
 		item.UpdatedAt, _ = parseTime(updatedAtStr)
@@ -491,20 +567,20 @@ func (r *SQLRepository) GetCartItems(cartID string) ([]models.CartItem, error) {
 func (r *SQLRepository) GetCartItem(itemID string) (*models.CartItem, error) {
 	var item models.CartItem
 	var createdAtStr, updatedAtStr string
-	var wfInstID sql.NullString
+	var execID sql.NullString
 	err := r.db.QueryRow(`
-		SELECT id, cart_id, role_id, role_name, status, workflow_instance_id, created_at, updated_at
+		SELECT id, cart_id, role_id, role_name, status, execution_id, created_at, updated_at
 		FROM access_cart_items WHERE id = ?`, itemID).
 		Scan(&item.ID, &item.CartID, &item.RoleID, &item.RoleName,
-			&item.Status, &wfInstID, &createdAtStr, &updatedAtStr)
+			&item.Status, &execID, &createdAtStr, &updatedAtStr)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.New("cart item not found")
 		}
 		return nil, err
 	}
-	if wfInstID.Valid {
-		item.WorkflowInstanceID = &wfInstID.String
+	if execID.Valid {
+		item.ExecutionID = &execID.String
 	}
 	item.CreatedAt, _ = parseTime(createdAtStr)
 	item.UpdatedAt, _ = parseTime(updatedAtStr)
@@ -523,14 +599,13 @@ func (r *SQLRepository) RemoveCartItem(itemID, cartID string) error {
 	return nil
 }
 
-func (r *SQLRepository) UpdateCartItemStatus(itemID, status string, wfInstanceID *string) error {
+func (r *SQLRepository) UpdateCartItemStatus(itemID, status string, executionID *string) error {
 	_, err := r.db.Exec(`
-		UPDATE access_cart_items SET status = ?, workflow_instance_id = COALESCE(?, workflow_instance_id),
-		updated_at = CURRENT_TIMESTAMP WHERE id = ?`, status, wfInstanceID, itemID)
+		UPDATE access_cart_items SET status = ?, execution_id = COALESCE(?, execution_id),
+		updated_at = CURRENT_TIMESTAMP WHERE id = ?`, status, executionID, itemID)
 	return err
 }
 
-// CheckAllCartItemsTerminal returns true if every item in the cart is in a terminal state.
 func (r *SQLRepository) CheckAllCartItemsTerminal(cartID string) (bool, string, error) {
 	rows, err := r.db.Query(`SELECT status FROM access_cart_items WHERE cart_id = ?`, cartID)
 	if err != nil {
@@ -550,153 +625,527 @@ func (r *SQLRepository) CheckAllCartItemsTerminal(cartID string) (bool, string, 
 			break
 		}
 		if s == "REJECTED" {
-			overallStatus = "COMPLETED" // cart is completed even with rejections
+			overallStatus = "COMPLETED"
 		}
 	}
 	return allDone, overallStatus, nil
 }
 
-// ========== WORKFLOW INSTANCES ==========
+// ========== RUNS (EXECUTIONS) ==========
 
-func (r *SQLRepository) CreateWorkflowInstance(inst *models.WorkflowInstance) error {
+func (r *SQLRepository) CreateWorkflowInstance(exec *models.Execution) error {
 	_, err := r.db.Exec(`
-		INSERT INTO workflow_instances (id, workflow_definition_id, cart_item_id, status, current_stage_seq)
+		INSERT INTO executions (id, workflow_id, cart_item_id, status, error_message)
 		VALUES (?, ?, ?, 'IN_PROGRESS', ?)`,
-		inst.ID, inst.WorkflowDefinitionID, inst.CartItemID, inst.CurrentStageSeq)
+		exec.ID, exec.WorkflowID, exec.CartItemID, exec.ErrorMessage)
 	return err
 }
 
-func (r *SQLRepository) GetWorkflowInstance(instanceID string) (*models.WorkflowInstance, error) {
-	var inst models.WorkflowInstance
+func (r *SQLRepository) StartExecutionAndProgress(exec *models.Execution, actorUserID string) (
+	newSteps []models.ExecutionNode,
+	err error,
+) {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`
+		INSERT INTO executions (id, workflow_id, cart_item_id, status, error_message)
+		VALUES (?, ?, ?, 'IN_PROGRESS', ?)`,
+		exec.ID, exec.WorkflowID, exec.CartItemID, exec.ErrorMessage)
+	if err != nil {
+		return nil, err
+	}
+
+	_, newSteps, _, err = r.ProgressExecutionTx(tx, exec.ID, actorUserID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return newSteps, nil
+}
+
+func (r *SQLRepository) GetWorkflowInstance(executionID string) (*models.Execution, error) {
+	var exec models.Execution
 	var startedAtStr string
 	var completedAt sql.NullString
+	var errMsg sql.NullString
+
 	err := r.db.QueryRow(`
-		SELECT id, workflow_definition_id, cart_item_id, status, current_stage_seq,
-		       started_at, completed_at, version
-		FROM workflow_instances WHERE id = ?`, instanceID).
-		Scan(&inst.ID, &inst.WorkflowDefinitionID, &inst.CartItemID, &inst.Status,
-			&inst.CurrentStageSeq, &startedAtStr, &completedAt, &inst.Version)
+		SELECT id, workflow_id, cart_item_id, status, error_message, started_at, completed_at, version
+		FROM executions WHERE id = ?`, executionID).
+		Scan(&exec.ID, &exec.WorkflowID, &exec.CartItemID, &exec.Status, &errMsg, &startedAtStr, &completedAt, &exec.Version)
 	if err != nil {
 		return nil, err
 	}
-	inst.StartedAt, _ = parseTime(startedAtStr)
+	if errMsg.Valid {
+		exec.ErrorMessage = &errMsg.String
+	}
+	exec.StartedAt, _ = parseTime(startedAtStr)
 	if completedAt.Valid {
 		t, _ := parseTime(completedAt.String)
-		inst.CompletedAt = &t
+		exec.CompletedAt = &t
 	}
-	return &inst, nil
+	return &exec, nil
 }
 
-func (r *SQLRepository) UpdateWorkflowInstanceStatus(instanceID, status string, nextStageSeq int) error {
+func (r *SQLRepository) UpdateExecutionStatus(execID, status string) error {
 	_, err := r.db.Exec(`
-		UPDATE workflow_instances SET status = ?, current_stage_seq = ?,
-		completed_at = CASE WHEN ? IN ('COMPLETED','REJECTED','CANCELLED') THEN CURRENT_TIMESTAMP ELSE completed_at END,
-		version = version + 1
-		WHERE id = ?`, status, nextStageSeq, status, instanceID)
+		UPDATE executions SET status = ?, completed_at = CASE WHEN ? IN ('COMPLETED', 'REJECTED', 'CANCELLED') THEN CURRENT_TIMESTAMP ELSE NULL END, version = version + 1
+		WHERE id = ?`, status, status, execID)
 	return err
 }
 
-// ========== WORKFLOW STEPS ==========
-
-func (r *SQLRepository) CreateWorkflowStep(step *models.WorkflowStep) error {
+func (r *SQLRepository) UpdateExecutionError(execID string, errMsg string) error {
 	_, err := r.db.Exec(`
-		INSERT INTO workflow_steps
-		(id, workflow_instance_id, stage_definition_id, node_id, assigned_to_user_id, assigned_to_role, status)
-		VALUES (?, ?, ?, ?, ?, ?, 'PENDING')`,
-		step.ID, step.WorkflowInstanceID, step.StageDefinitionID, step.NodeID,
-		step.AssignedToUserID, step.AssignedToRole)
+		UPDATE executions SET error_message = ?, version = version + 1
+		WHERE id = ?`, errMsg, execID)
 	return err
 }
 
-func (r *SQLRepository) GetWorkflowStep(stepID string) (*models.WorkflowStep, error) {
-	var step models.WorkflowStep
+func (r *SQLRepository) CreateWorkflowStep(node *models.ExecutionNode) error {
+	_, err := r.db.Exec(`
+		INSERT INTO execution_nodes
+		(id, execution_id, node_id, node_name, assigned_to_user_id, assigned_to_role, status, retry_attempt)
+		VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?)`,
+		node.ID, node.ExecutionID, node.NodeID, node.NodeName, node.AssignedToUserID, node.AssignedToRole, node.RetryAttempt)
+	return err
+}
+
+func (r *SQLRepository) GetWorkflowStep(nodeID string) (*models.ExecutionNode, error) {
+	var node models.ExecutionNode
 	var assignedAtStr string
 	var actedAt sql.NullString
-	var assignedToUser, assignedToRole, ackedBy sql.NullString
+	var u, ro, ab sql.NullString
+
 	err := r.db.QueryRow(`
-		SELECT id, workflow_instance_id, stage_definition_id, node_id,
-		       assigned_to_user_id, assigned_to_role, status, decision_comment,
-		       acted_by_user_id, assigned_at, acted_at, version
-		FROM workflow_steps WHERE id = ?`, stepID).
-		Scan(&step.ID, &step.WorkflowInstanceID, &step.StageDefinitionID, &step.NodeID,
-			&assignedToUser, &assignedToRole, &step.Status, &step.DecisionComment,
-			&ackedBy, &assignedAtStr, &actedAt, &step.Version)
+		SELECT id, execution_id, node_id, node_name, assigned_to_user_id, assigned_to_role,
+		       status, decision_comment, acted_by_user_id, assigned_at, acted_at, retry_attempt, version
+		FROM execution_nodes WHERE id = ?`, nodeID).
+		Scan(&node.ID, &node.ExecutionID, &node.NodeID, &node.NodeName, &u, &ro,
+			&node.Status, &node.DecisionComment, &ab, &assignedAtStr, &actedAt, &node.RetryAttempt, &node.Version)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.New("step not found")
-		}
 		return nil, err
 	}
-	if assignedToUser.Valid {
-		step.AssignedToUserID = &assignedToUser.String
+	if u.Valid {
+		node.AssignedToUserID = &u.String
 	}
-	if assignedToRole.Valid {
-		step.AssignedToRole = &assignedToRole.String
+	if ro.Valid {
+		node.AssignedToRole = &ro.String
 	}
-	if ackedBy.Valid {
-		step.ActedByUserID = &ackedBy.String
+	if ab.Valid {
+		node.ActedByUserID = &ab.String
 	}
-	step.AssignedAt, _ = parseTime(assignedAtStr)
+	node.AssignedAt, _ = parseTime(assignedAtStr)
 	if actedAt.Valid {
 		t, _ := parseTime(actedAt.String)
-		step.ActedAt = &t
+		node.ActedAt = &t
 	}
-	return &step, nil
+	return &node, nil
 }
 
-func (r *SQLRepository) ActionWorkflowStep(stepID, status, comment, actorUserID string) error {
-	_, err := r.db.Exec(`
-		UPDATE workflow_steps SET status = ?, decision_comment = ?, acted_by_user_id = ?,
+// ========== PROGRESSION ENGINE ==========
+
+func (r *SQLRepository) ProgressExecutionTx(tx *sql.Tx, execID string, actorUserID string) (
+	exec *models.Execution,
+	newSteps []models.ExecutionNode,
+	msg string,
+	err error,
+) {
+	// Load execution
+	exec = &models.Execution{}
+	var startedAtStr string
+	var completedAt sql.NullString
+	var errMsg sql.NullString
+	err = tx.QueryRow(`
+		SELECT id, workflow_id, cart_item_id, status, error_message, started_at, completed_at, version
+		FROM executions WHERE id = ?`, execID).
+		Scan(&exec.ID, &exec.WorkflowID, &exec.CartItemID, &exec.Status, &errMsg, &startedAtStr, &completedAt, &exec.Version)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	if errMsg.Valid {
+		exec.ErrorMessage = &errMsg.String
+	}
+	exec.StartedAt, _ = parseTime(startedAtStr)
+	if completedAt.Valid {
+		t, _ := parseTime(completedAt.String)
+		exec.CompletedAt = &t
+	}
+
+	// Load workflow and nodes
+	var wf models.Workflow
+	err = tx.QueryRow(`SELECT id, name, definition_key, version FROM workflows WHERE id = ?`, exec.WorkflowID).
+		Scan(&wf.ID, &wf.Name, &wf.DefinitionKey, &wf.Version)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	wf.Nodes, err = r.getNodesForWorkflowTx(tx, wf.ID)
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	correlationID := uuid.New().String()
+
+	for {
+		// 1. Load all execution nodes for this execution so far
+		rows, err := tx.Query(`
+			SELECT id, execution_id, node_id, node_name, assigned_to_user_id, assigned_to_role, status, decision_comment, acted_by_user_id, assigned_at, acted_at, retry_attempt, version
+			FROM execution_nodes WHERE execution_id = ?`, exec.ID)
+		if err != nil {
+			return nil, nil, "", err
+		}
+		
+		var steps []models.ExecutionNode
+		for rows.Next() {
+			var step models.ExecutionNode
+			var assignedAtStr string
+			var actedAt sql.NullString
+			var u, ro, ab sql.NullString
+			if err := rows.Scan(&step.ID, &step.ExecutionID, &step.NodeID, &step.NodeName, &u, &ro, &step.Status, &step.DecisionComment, &ab, &assignedAtStr, &actedAt, &step.RetryAttempt, &step.Version); err != nil {
+				rows.Close()
+				return nil, nil, "", err
+			}
+			if u.Valid {
+				step.AssignedToUserID = &u.String
+			}
+			if ro.Valid {
+				step.AssignedToRole = &ro.String
+			}
+			if ab.Valid {
+				step.ActedByUserID = &ab.String
+			}
+			step.AssignedAt, _ = parseTime(assignedAtStr)
+			if actedAt.Valid {
+				t, _ := parseTime(actedAt.String)
+				step.ActedAt = &t
+			}
+			steps = append(steps, step)
+		}
+		rows.Close()
+
+		// Group steps by node ID
+		stepsMap := make(map[string][]models.ExecutionNode)
+		for _, s := range steps {
+			stepsMap[s.NodeID] = append(stepsMap[s.NodeID], s)
+		}
+
+		// 2. Evaluate status of each workflow node
+		nodeStatuses := make(map[string]NodeStatus)
+		for _, node := range wf.Nodes {
+			nodeStatuses[node.ID] = EvaluateNodeStatus(node, stepsMap[node.ID])
+		}
+
+		// 3. Check if any node is REJECTED
+		hasRejections := false
+		var rejectedNodeID string
+		for nodeID, status := range nodeStatuses {
+			if status == NodeStatusRejected {
+				hasRejections = true
+				rejectedNodeID = nodeID
+				break
+			}
+		}
+
+		if hasRejections {
+			// Update execution status to REJECTED
+			_, err = tx.Exec(`
+				UPDATE executions SET status = 'REJECTED', completed_at = CURRENT_TIMESTAMP, version = version + 1
+				WHERE id = ?`, exec.ID)
+			if err != nil {
+				return nil, nil, "", err
+			}
+			exec.Status = "REJECTED"
+
+			// Cancel remaining PENDING execution nodes
+			_, err = tx.Exec(`
+				UPDATE execution_nodes SET status = 'CANCELLED', version = version + 1
+				WHERE execution_id = ? AND status = 'PENDING'`, exec.ID)
+			if err != nil {
+				return nil, nil, "", err
+			}
+
+			// Update access_cart_items status
+			_, err = tx.Exec(`
+				UPDATE access_cart_items SET status = 'REJECTED', updated_at = CURRENT_TIMESTAMP
+				WHERE id = ?`, exec.CartItemID)
+			if err != nil {
+				return nil, nil, "", err
+			}
+
+			// Check and update cart completion
+			if err := r.checkCartCompletionTx(tx, exec.CartItemID); err != nil {
+				return nil, nil, "", err
+			}
+
+			// Write audit log
+			_, err = tx.Exec(`
+				INSERT INTO audit_logs (id, entity_type, entity_id, actor_user_id, action)
+				VALUES (?, 'WORKFLOW_INSTANCE', ?, ?, 'REJECTED')`,
+				uuid.New().String(), exec.ID, actorUserID)
+			if err != nil {
+				return nil, nil, "", err
+			}
+
+			return exec, nil, fmt.Sprintf("Execution rejected at node: %s", rejectedNodeID), nil
+		}
+
+		// 4. Identify nodes ready to be activated
+		nextNodesToActivate := GetNextActiveNodes(&wf, stepsMap, nodeStatuses)
+
+		// 5. If no new nodes can be activated:
+		if len(nextNodesToActivate) == 0 {
+			// Check if there are any active/pending steps
+			hasPendingSteps := false
+			for _, step := range steps {
+				if step.Status == "PENDING" {
+					hasPendingSteps = true
+					break
+				}
+			}
+
+			if !hasPendingSteps {
+				// No pending steps left AND no new nodes can be activated -> all nodes completed successfully!
+				_, err = tx.Exec(`
+					UPDATE executions SET status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP, version = version + 1
+					WHERE id = ?`, exec.ID)
+				if err != nil {
+					return nil, nil, "", err
+				}
+				exec.Status = "COMPLETED"
+
+				// Update access_cart_items status
+				_, err = tx.Exec(`
+					UPDATE access_cart_items SET status = 'APPROVED', updated_at = CURRENT_TIMESTAMP
+					WHERE id = ?`, exec.CartItemID)
+				if err != nil {
+					return nil, nil, "", err
+				}
+
+				// Check and update cart completion
+				if err := r.checkCartCompletionTx(tx, exec.CartItemID); err != nil {
+					return nil, nil, "", err
+				}
+
+				// Write audit log
+				_, err = tx.Exec(`
+					INSERT INTO audit_logs (id, entity_type, entity_id, actor_user_id, action)
+					VALUES (?, 'WORKFLOW_INSTANCE', ?, 'system', 'COMPLETED')`,
+					uuid.New().String(), exec.ID)
+				if err != nil {
+					return nil, nil, "", err
+				}
+
+				return exec, nil, "Workflow execution completed successfully", nil
+			}
+
+			// There are still pending human approvals
+			return exec, newSteps, "Waiting for other approvals", nil
+		}
+
+		// 6. We have new nodes to activate!
+		for _, node := range nextNodesToActivate {
+			if node.Type == "APPROVAL" {
+				candidates, err := parseCandidates(node.Config)
+				if err != nil {
+					// Update error message in executions table and abort progression
+					_, _ = tx.Exec(`UPDATE executions SET error_message = ?, status = 'ERROR', version = version + 1 WHERE id = ?`, "Invalid candidates configuration: "+err.Error(), exec.ID)
+					return exec, nil, "Invalid candidates config", nil
+				}
+				for _, candidate := range candidates {
+					step := models.ExecutionNode{
+						ID:          uuid.New().String(),
+						ExecutionID: exec.ID,
+						NodeID:      node.ID,
+						NodeName:    node.Name,
+						Status:      "PENDING",
+						AssignedAt:  time.Now(),
+					}
+					if candidate.Type == "USER" {
+						val := candidate.Value
+						step.AssignedToUserID = &val
+					} else if candidate.Type == "ROLE" {
+						val := candidate.Value
+						step.AssignedToRole = &val
+					}
+
+					_, err = tx.Exec(`
+						INSERT INTO execution_nodes
+						(id, execution_id, node_id, node_name, assigned_to_user_id, assigned_to_role, status, retry_attempt)
+						VALUES (?, ?, ?, ?, ?, ?, 'PENDING', 0)`,
+						step.ID, step.ExecutionID, step.NodeID, step.NodeName, step.AssignedToUserID, step.AssignedToRole)
+					if err != nil {
+						return nil, nil, "", err
+					}
+
+					// Log audit log for step assignment
+					_, err = tx.Exec(`
+						INSERT INTO audit_logs (id, entity_type, entity_id, actor_user_id, action, after_state, correlation_id)
+						VALUES (?, 'WORKFLOW_STEP', ?, 'system', 'ASSIGNED', ?, ?)`,
+						uuid.New().String(), step.ID, fmt.Sprintf(`{"node":"%s","node_id":"%s"}`, node.Name, node.ID), correlationID)
+					if err != nil {
+						return nil, nil, "", err
+					}
+
+					newSteps = append(newSteps, step)
+				}
+			} else {
+				// Automated operation: auto-approve immediately (can support retries if we implemented error rates, etc.)
+				step := models.ExecutionNode{
+					ID:          uuid.New().String(),
+					ExecutionID: exec.ID,
+					NodeID:      node.ID,
+					NodeName:    node.Name,
+					Status:      "APPROVED",
+					AssignedAt:  time.Now(),
+				}
+				_, err = tx.Exec(`
+					INSERT INTO execution_nodes
+					(id, execution_id, node_id, node_name, status, acted_by_user_id, acted_at)
+					VALUES (?, ?, ?, ?, 'APPROVED', 'system', CURRENT_TIMESTAMP)`,
+					step.ID, step.ExecutionID, step.NodeID, step.NodeName)
+				if err != nil {
+					return nil, nil, "", err
+				}
+
+				// Log audit log for auto execution
+				_, err = tx.Exec(`
+					INSERT INTO audit_logs (id, entity_type, entity_id, actor_user_id, action, after_state)
+					VALUES (?, 'WORKFLOW_STEP', ?, 'system', 'EXECUTED', ?)`,
+					uuid.New().String(), step.ID, fmt.Sprintf(`{"node":"%s","node_id":"%s"}`, node.Name, node.ID))
+				if err != nil {
+					return nil, nil, "", err
+				}
+			}
+		}
+
+		// Keep looping to evaluate and progress further nodes now that these are activated!
+	}
+}
+
+func (r *SQLRepository) ActionStepAndProgress(stepID, actionStatus, comment, actorUserID string) (
+	exec *models.Execution,
+	nextSteps []models.ExecutionNode,
+	nodeStatus NodeStatus,
+	message string,
+	err error,
+) {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	defer tx.Rollback()
+
+	// 1. Update the execution node status
+	res, err := tx.Exec(`
+		UPDATE execution_nodes SET status = ?, decision_comment = ?, acted_by_user_id = ?,
 		acted_at = CURRENT_TIMESTAMP, version = version + 1
-		WHERE id = ? AND status = 'PENDING'`, status, comment, actorUserID, stepID)
-	return err
+		WHERE id = ? AND status = 'PENDING'`, actionStatus, comment, actorUserID, stepID)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		return nil, nil, "", "", errors.New("execution node is no longer pending")
+	}
+
+	// Write audit log for step action
+	stepLogID := uuid.New().String()
+	_, err = tx.Exec(`
+		INSERT INTO audit_logs (id, entity_type, entity_id, actor_user_id, action, after_state)
+		VALUES (?, 'WORKFLOW_STEP', ?, ?, ?, ?)`,
+		stepLogID, stepID, actorUserID, actionStatus, fmt.Sprintf(`{"comment":"%s"}`, comment))
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+
+	// 2. Load execution ID for this step
+	var execID string
+	err = tx.QueryRow(`SELECT execution_id FROM execution_nodes WHERE id = ?`, stepID).Scan(&execID)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+
+	// 3. Progress the execution along the graph DAG
+	exec, nextSteps, message, err = r.ProgressExecutionTx(tx, execID, actorUserID)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, nil, "", "", err
+	}
+
+	return exec, nextSteps, NodeStatus(exec.Status), message, nil
 }
 
-// GetStepsForInstanceStage returns all steps for a given instance at a given stage sequence order.
-func (r *SQLRepository) GetStepsForInstanceStage(instanceID string, stageSeq int) ([]models.WorkflowStep, error) {
-	rows, err := r.db.Query(`
-		SELECT ws.id, ws.workflow_instance_id, ws.stage_definition_id, ws.node_id,
-		       ws.assigned_to_user_id, ws.assigned_to_role, ws.status, ws.decision_comment,
-		       ws.acted_by_user_id, ws.assigned_at, ws.acted_at, ws.version
-		FROM workflow_steps ws
-		JOIN workflow_stage_definitions wsd ON ws.stage_definition_id = wsd.id
-		WHERE ws.workflow_instance_id = ? AND wsd.sequence_order = ?`, instanceID, stageSeq)
+func (r *SQLRepository) DelegateStep(stepID, comment, actorUserID, delegateUserID string, newStepID string) (*models.ExecutionNode, error) {
+	tx, err := r.db.Begin()
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer tx.Rollback()
 
-	var list []models.WorkflowStep
-	for rows.Next() {
-		var step models.WorkflowStep
-		var assignedAtStr string
-		var actedAt sql.NullString
-		var u, ro, ab sql.NullString
-		if err := rows.Scan(&step.ID, &step.WorkflowInstanceID, &step.StageDefinitionID, &step.NodeID,
-			&u, &ro, &step.Status, &step.DecisionComment, &ab,
-			&assignedAtStr, &actedAt, &step.Version); err != nil {
-			return nil, err
-		}
-		if u.Valid {
-			step.AssignedToUserID = &u.String
-		}
-		if ro.Valid {
-			step.AssignedToRole = &ro.String
-		}
-		if ab.Valid {
-			step.ActedByUserID = &ab.String
-		}
-		step.AssignedAt, _ = parseTime(assignedAtStr)
-		if actedAt.Valid {
-			t, _ := parseTime(actedAt.String)
-			step.ActedAt = &t
-		}
-		list = append(list, step)
+	// Update original step
+	res, err := tx.Exec(`
+		UPDATE execution_nodes SET status = 'DELEGATED', decision_comment = ?, acted_by_user_id = ?,
+		acted_at = CURRENT_TIMESTAMP, version = version + 1
+		WHERE id = ? AND status = 'PENDING'`, comment, actorUserID, stepID)
+	if err != nil {
+		return nil, err
 	}
-	return list, nil
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		return nil, errors.New("step is no longer pending")
+	}
+
+	// Get original step details
+	var execID, nodeID, nodeName string
+	err = tx.QueryRow(`SELECT execution_id, node_id, node_name FROM execution_nodes WHERE id = ?`, stepID).Scan(&execID, &nodeID, &nodeName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create new step
+	newStep := &models.ExecutionNode{
+		ID:               newStepID,
+		ExecutionID:      execID,
+		NodeID:           nodeID,
+		NodeName:         nodeName,
+		AssignedToUserID: &delegateUserID,
+		Status:           "PENDING",
+		AssignedAt:       time.Now(),
+	}
+
+	_, err = tx.Exec(`
+		INSERT INTO execution_nodes
+		(id, execution_id, node_id, node_name, assigned_to_user_id, status)
+		VALUES (?, ?, ?, ?, ?, 'PENDING')`,
+		newStep.ID, newStep.ExecutionID, newStep.NodeID, newStep.NodeName, newStep.AssignedToUserID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Write audit log
+	_, err = tx.Exec(`
+		INSERT INTO audit_logs (id, entity_type, entity_id, actor_user_id, action, after_state)
+		VALUES (?, 'WORKFLOW_STEP', ?, ?, 'DELEGATED', ?)`,
+		uuid.New().String(), stepID, actorUserID, fmt.Sprintf(`{"delegated_to":"%s","new_step_id":"%s"}`, delegateUserID, newStep.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return newStep, nil
 }
 
-// GetInboxItems returns pending steps assigned to a user or one of their roles.
 func (r *SQLRepository) GetInboxItems(userID string, roles []string) ([]models.InboxItem, error) {
 	placeholders := make([]string, len(roles))
 	args := []interface{}{userID}
@@ -707,21 +1156,20 @@ func (r *SQLRepository) GetInboxItems(userID string, roles []string) ([]models.I
 
 	roleClause := ""
 	if len(roles) > 0 {
-		roleClause = "OR ws.assigned_to_role IN (" + strings.Join(placeholders, ",") + ")"
+		roleClause = "OR en.assigned_to_role IN (" + strings.Join(placeholders, ",") + ")"
 	}
 
 	query := `
-		SELECT ws.id, aci.id, ac.id, ac.id, ac.requester_id,
-		       aci.role_name, ac.justification, wsd.name,
-		       CASE WHEN ws.assigned_to_user_id IS NOT NULL THEN 'USER' ELSE 'ROLE_QUEUE' END,
-		       ws.assigned_at
-		FROM workflow_steps ws
-		JOIN workflow_instances wi ON ws.workflow_instance_id = wi.id
-		JOIN access_cart_items aci ON wi.cart_item_id = aci.id
+		SELECT en.id, aci.id, ac.id, ac.id, ac.requester_id,
+		       aci.role_name, ac.justification, en.node_name,
+		       CASE WHEN en.assigned_to_user_id IS NOT NULL THEN 'USER' ELSE 'ROLE_QUEUE' END,
+		       en.assigned_at
+		FROM execution_nodes en
+		JOIN executions e ON en.execution_id = e.id
+		JOIN access_cart_items aci ON e.cart_item_id = aci.id
 		JOIN access_carts ac ON aci.cart_id = ac.id
-		JOIN workflow_stage_definitions wsd ON ws.stage_definition_id = wsd.id
-		WHERE ws.status = 'PENDING'
-		AND (ws.assigned_to_user_id = ? ` + roleClause + `)`
+		WHERE en.status = 'PENDING'
+		AND (en.assigned_to_user_id = ? ` + roleClause + `)`
 
 	rows, err := r.db.Query(query, args...)
 	if err != nil {
@@ -748,11 +1196,9 @@ func (r *SQLRepository) GetInboxItems(userID string, roles []string) ([]models.I
 
 func (r *SQLRepository) WriteAuditLog(log *models.AuditLog) error {
 	_, err := r.db.Exec(`
-		INSERT INTO audit_logs (id, entity_type, entity_id, actor_user_id, action,
-		                        before_state, after_state, correlation_id)
+		INSERT INTO audit_logs (id, entity_type, entity_id, actor_user_id, action, before_state, after_state, correlation_id)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		log.ID, log.EntityType, log.EntityID, log.ActorUserID, log.Action,
-		log.BeforeState, log.AfterState, log.CorrelationID)
+		log.ID, log.EntityType, log.EntityID, log.ActorUserID, log.Action, log.BeforeState, log.AfterState, log.CorrelationID)
 	return err
 }
 
@@ -790,17 +1236,18 @@ func (r *SQLRepository) GetAuditTrail(instanceID string) ([]models.AuditLog, err
 // ========== SSE NOTIFICATIONS ==========
 
 func (r *SQLRepository) CreateSSENotification(n *models.SSENotification) error {
-	payload, _ := json.Marshal(n.Payload)
 	_, err := r.db.Exec(`
 		INSERT INTO sse_notifications (id, user_id, event_type, payload)
-		VALUES (?, ?, ?, ?)`, n.ID, n.UserID, n.EventType, string(payload))
+		VALUES (?, ?, ?, ?)`,
+		n.ID, n.UserID, n.EventType, n.Payload)
 	return err
 }
 
 func (r *SQLRepository) GetUnreadSSENotifications(userID string) ([]models.SSENotification, error) {
 	rows, err := r.db.Query(`
 		SELECT id, user_id, event_type, payload, is_read, created_at
-		FROM sse_notifications WHERE user_id = ? AND is_read = 0
+		FROM sse_notifications
+		WHERE user_id = ? AND is_read = 0
 		ORDER BY created_at ASC`, userID)
 	if err != nil {
 		return nil, err
@@ -811,11 +1258,9 @@ func (r *SQLRepository) GetUnreadSSENotifications(userID string) ([]models.SSENo
 	for rows.Next() {
 		var n models.SSENotification
 		var createdAtStr string
-		var isRead int
-		if err := rows.Scan(&n.ID, &n.UserID, &n.EventType, &n.Payload, &isRead, &createdAtStr); err != nil {
+		if err := rows.Scan(&n.ID, &n.UserID, &n.EventType, &n.Payload, &n.IsRead, &createdAtStr); err != nil {
 			return nil, err
 		}
-		n.IsRead = isRead == 1
 		n.CreatedAt, _ = parseTime(createdAtStr)
 		list = append(list, n)
 	}
@@ -823,402 +1268,13 @@ func (r *SQLRepository) GetUnreadSSENotifications(userID string) ([]models.SSENo
 }
 
 func (r *SQLRepository) MarkNotificationsRead(userID string) error {
-	_, err := r.db.Exec(`UPDATE sse_notifications SET is_read = 1 WHERE user_id = ?`, userID)
+	_, err := r.db.Exec(`
+		UPDATE sse_notifications SET is_read = 1
+		WHERE user_id = ? AND is_read = 0`, userID)
 	return err
 }
 
-type NodeStatus string
-
-const (
-	NodeStatusPending  NodeStatus = "PENDING"
-	NodeStatusApproved NodeStatus = "APPROVED"
-	NodeStatusRejected NodeStatus = "REJECTED"
-)
-
-func (r *SQLRepository) ActionStepAndProgress(stepID, actionStatus, comment, actorUserID string) (
-	inst *models.WorkflowInstance,
-	nextSteps []models.WorkflowStep,
-	stageStatus NodeStatus,
-	message string,
-	err error,
-) {
-	tx, err := r.db.Begin()
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-	defer tx.Rollback()
-
-	// 1. Update the step status
-	res, err := tx.Exec(`
-		UPDATE workflow_steps SET status = ?, decision_comment = ?, acted_by_user_id = ?,
-		acted_at = CURRENT_TIMESTAMP, version = version + 1
-		WHERE id = ? AND status = 'PENDING'`, actionStatus, comment, actorUserID, stepID)
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-	rowsAffected, _ := res.RowsAffected()
-	if rowsAffected == 0 {
-		return nil, nil, "", "", errors.New("step is no longer pending")
-	}
-
-	// Write audit log for step action
-	stepLogID := uuid.New().String()
-	_, err = tx.Exec(`
-		INSERT INTO audit_logs (id, entity_type, entity_id, actor_user_id, action, after_state)
-		VALUES (?, 'WORKFLOW_STEP', ?, ?, ?, ?)`,
-		stepLogID, stepID, actorUserID, actionStatus, fmt.Sprintf(`{"comment":"%s"}`, comment))
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-
-	// 2. Load step details
-	var instanceID, stageDefID, nodeID string
-	err = tx.QueryRow(`
-		SELECT workflow_instance_id, stage_definition_id, node_id
-		FROM workflow_steps WHERE id = ?`, stepID).Scan(&instanceID, &stageDefID, &nodeID)
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-
-	// 3. Load workflow instance
-	inst = &models.WorkflowInstance{}
-	var startedAtStr string
-	var completedAt sql.NullString
-	err = tx.QueryRow(`
-		SELECT id, workflow_definition_id, cart_item_id, status, current_stage_seq, started_at, completed_at, version
-		FROM workflow_instances WHERE id = ?`, instanceID).
-		Scan(&inst.ID, &inst.WorkflowDefinitionID, &inst.CartItemID, &inst.Status,
-			&inst.CurrentStageSeq, &startedAtStr, &completedAt, &inst.Version)
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-	inst.StartedAt, _ = parseTime(startedAtStr)
-	if completedAt.Valid {
-		t, _ := parseTime(completedAt.String)
-		inst.CompletedAt = &t
-	}
-
-	// 4. Load all stages for this definition (read-only, can be done via tx)
-	stages, err := r.getStagesForDefinitionTx(tx, inst.WorkflowDefinitionID)
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-
-	var currentStage *models.WorkflowStageDefinition
-	for i, st := range stages {
-		if st.SequenceOrder == inst.CurrentStageSeq {
-			currentStage = &stages[i]
-			break
-		}
-	}
-	if currentStage == nil {
-		return nil, nil, "", "", errors.New("current stage not found in definition")
-	}
-
-	// 5. Load steps for current stage (using tx)
-	rows, err := tx.Query(`
-		SELECT ws.id, ws.workflow_instance_id, ws.stage_definition_id, ws.node_id,
-		       ws.assigned_to_user_id, ws.assigned_to_role, ws.status, ws.decision_comment,
-		       ws.acted_by_user_id, ws.assigned_at, ws.acted_at, ws.version
-		FROM workflow_steps ws
-		JOIN workflow_stage_definitions wsd ON ws.stage_definition_id = wsd.id
-		WHERE ws.workflow_instance_id = ? AND wsd.sequence_order = ?`, inst.ID, inst.CurrentStageSeq)
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-	defer rows.Close()
-
-	var stageSteps []models.WorkflowStep
-	for rows.Next() {
-		var step models.WorkflowStep
-		var assignedAtStr string
-		var actedAt sql.NullString
-		var u, ro, ab sql.NullString
-		if err := rows.Scan(&step.ID, &step.WorkflowInstanceID, &step.StageDefinitionID, &step.NodeID,
-			&u, &ro, &step.Status, &step.DecisionComment, &ab,
-			&assignedAtStr, &actedAt, &step.Version); err != nil {
-			return nil, nil, "", "", err
-		}
-		if u.Valid {
-			step.AssignedToUserID = &u.String
-		}
-		if ro.Valid {
-			step.AssignedToRole = &ro.String
-		}
-		if ab.Valid {
-			step.ActedByUserID = &ab.String
-		}
-		step.AssignedAt, _ = parseTime(assignedAtStr)
-		if actedAt.Valid {
-			t, _ := parseTime(actedAt.String)
-			step.ActedAt = &t
-		}
-		stageSteps = append(stageSteps, step)
-	}
-
-	// 6. Construct steps map and evaluate
-	stepsMap := make(map[string][]models.WorkflowStep)
-	for _, s2 := range stageSteps {
-		stepsMap[s2.NodeID] = append(stepsMap[s2.NodeID], s2)
-	}
-
-	stageStatus = evaluateStageTree(currentStage.ApprovalTree, stepsMap)
-
-	if stageStatus == NodeStatusRejected {
-		// Update workflow instance to REJECTED
-		_, err = tx.Exec(`
-			UPDATE workflow_instances SET status = 'REJECTED',
-			completed_at = CURRENT_TIMESTAMP, version = version + 1
-			WHERE id = ?`, inst.ID)
-		if err != nil {
-			return nil, nil, "", "", err
-		}
-		inst.Status = "REJECTED"
-
-		// Update cart item to REJECTED
-		_, err = tx.Exec(`
-			UPDATE access_cart_items SET status = 'REJECTED', updated_at = CURRENT_TIMESTAMP
-			WHERE id = ?`, inst.CartItemID)
-		if err != nil {
-			return nil, nil, "", "", err
-		}
-
-		// Check and update cart completion
-		if err := r.checkCartCompletionTx(tx, inst.CartItemID); err != nil {
-			return nil, nil, "", "", err
-		}
-
-		// Write audit log
-		_, err = tx.Exec(`
-			INSERT INTO audit_logs (id, entity_type, entity_id, actor_user_id, action)
-			VALUES (?, 'WORKFLOW_INSTANCE', ?, ?, 'REJECTED')`,
-			uuid.New().String(), inst.ID, actorUserID)
-		if err != nil {
-			return nil, nil, "", "", err
-		}
-
-		if err := tx.Commit(); err != nil {
-			return nil, nil, "", "", err
-		}
-		return inst, nil, stageStatus, "Request rejected", nil
-	}
-
-	if stageStatus == NodeStatusPending {
-		if err := tx.Commit(); err != nil {
-			return nil, nil, "", "", err
-		}
-		return inst, nil, stageStatus, "Waiting for other approvals", nil
-	}
-
-	// stageStatus == NodeStatusApproved -> Advance to next stage or complete
-	nextSeq := -1
-	for _, st := range stages {
-		if st.SequenceOrder > inst.CurrentStageSeq {
-			if nextSeq == -1 || st.SequenceOrder < nextSeq {
-				nextSeq = st.SequenceOrder
-			}
-		}
-	}
-
-	if nextSeq == -1 {
-		// No more stages — COMPLETED
-		_, err = tx.Exec(`
-			UPDATE workflow_instances SET status = 'COMPLETED',
-			completed_at = CURRENT_TIMESTAMP, version = version + 1
-			WHERE id = ?`, inst.ID)
-		if err != nil {
-			return nil, nil, "", "", err
-		}
-		inst.Status = "COMPLETED"
-
-		_, err = tx.Exec(`
-			UPDATE access_cart_items SET status = 'APPROVED', updated_at = CURRENT_TIMESTAMP
-			WHERE id = ?`, inst.CartItemID)
-		if err != nil {
-			return nil, nil, "", "", err
-		}
-
-		// Check and update cart completion
-		if err := r.checkCartCompletionTx(tx, inst.CartItemID); err != nil {
-			return nil, nil, "", "", err
-		}
-
-		// Write audit log
-		_, err = tx.Exec(`
-			INSERT INTO audit_logs (id, entity_type, entity_id, actor_user_id, action)
-			VALUES (?, 'WORKFLOW_INSTANCE', ?, ?, 'COMPLETED')`,
-			uuid.New().String(), inst.ID, actorUserID)
-		if err != nil {
-			return nil, nil, "", "", err
-		}
-
-		if err := tx.Commit(); err != nil {
-			return nil, nil, "", "", err
-		}
-		return inst, nil, stageStatus, "All stages approved — access granted", nil
-	}
-
-	// Advance to next stage
-	_, err = tx.Exec(`
-		UPDATE workflow_instances SET current_stage_seq = ?, version = version + 1
-		WHERE id = ?`, nextSeq, inst.ID)
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-	inst.CurrentStageSeq = nextSeq
-
-	var nextStage *models.WorkflowStageDefinition
-	for i, st := range stages {
-		if st.SequenceOrder == nextSeq {
-			nextStage = &stages[i]
-			break
-		}
-	}
-	if nextStage == nil {
-		return nil, nil, "", "", errors.New("next stage not found in definition")
-	}
-
-	correlationID := uuid.New().String()
-	nextLeaves := GetLeafNodes(nextStage.ApprovalTree)
-	for _, leaf := range nextLeaves {
-		ns := models.WorkflowStep{
-			ID:                 uuid.New().String(),
-			WorkflowInstanceID: inst.ID,
-			StageDefinitionID:  nextStage.ID,
-			NodeID:             leaf.ID,
-			Status:             "PENDING",
-			AssignedAt:         time.Now(),
-		}
-		switch leaf.Type {
-		case "USER":
-			val := leaf.Value
-			ns.AssignedToUserID = &val
-		case "ROLE":
-			val := leaf.Value
-			ns.AssignedToRole = &val
-		}
-
-		_, err = tx.Exec(`
-			INSERT INTO workflow_steps
-			(id, workflow_instance_id, stage_definition_id, node_id, assigned_to_user_id, assigned_to_role, status)
-			VALUES (?, ?, ?, ?, ?, ?, 'PENDING')`,
-			ns.ID, ns.WorkflowInstanceID, ns.StageDefinitionID, ns.NodeID,
-			ns.AssignedToUserID, ns.AssignedToRole)
-		if err != nil {
-			return nil, nil, "", "", err
-		}
-
-		_, err = tx.Exec(`
-			INSERT INTO audit_logs (id, entity_type, entity_id, actor_user_id, action, after_state, correlation_id)
-			VALUES (?, 'WORKFLOW_STEP', ?, 'system', 'ASSIGNED', ?, ?)`,
-			uuid.New().String(), ns.ID, fmt.Sprintf(`{"stage":"%s","seq":%d,"node_id":"%s"}`, nextStage.Name, nextSeq, leaf.ID), correlationID)
-		if err != nil {
-			return nil, nil, "", "", err
-		}
-
-		nextSteps = append(nextSteps, ns)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, nil, "", "", err
-	}
-
-	return inst, nextSteps, stageStatus, fmt.Sprintf("Advanced to stage %d", nextSeq), nil
-}
-
-func (r *SQLRepository) DelegateStep(stepID, comment, actorUserID, delegateUserID string, newStepID string) (*models.WorkflowStep, error) {
-	tx, err := r.db.Begin()
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	// Update original step
-	res, err := tx.Exec(`
-		UPDATE workflow_steps SET status = 'DELEGATED', decision_comment = ?, acted_by_user_id = ?,
-		acted_at = CURRENT_TIMESTAMP, version = version + 1
-		WHERE id = ? AND status = 'PENDING'`, comment, actorUserID, stepID)
-	if err != nil {
-		return nil, err
-	}
-	rowsAffected, _ := res.RowsAffected()
-	if rowsAffected == 0 {
-		return nil, errors.New("step is no longer pending")
-	}
-
-	// Get original step details
-	var instID, stageDefID, nodeID string
-	err = tx.QueryRow(`
-		SELECT workflow_instance_id, stage_definition_id, node_id
-		FROM workflow_steps WHERE id = ?`, stepID).Scan(&instID, &stageDefID, &nodeID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create new step
-	newStep := &models.WorkflowStep{
-		ID:                 newStepID,
-		WorkflowInstanceID: instID,
-		StageDefinitionID:  stageDefID,
-		NodeID:             nodeID,
-		AssignedToUserID:   &delegateUserID,
-		Status:             "PENDING",
-		AssignedAt:         time.Now(),
-	}
-
-	_, err = tx.Exec(`
-		INSERT INTO workflow_steps
-		(id, workflow_instance_id, stage_definition_id, node_id, assigned_to_user_id, status)
-		VALUES (?, ?, ?, ?, ?, 'PENDING')`,
-		newStep.ID, newStep.WorkflowInstanceID, newStep.StageDefinitionID, newStep.NodeID, newStep.AssignedToUserID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Write audit log
-	_, err = tx.Exec(`
-		INSERT INTO audit_logs (id, entity_type, entity_id, actor_user_id, action, after_state)
-		VALUES (?, 'WORKFLOW_STEP', ?, ?, 'DELEGATED', ?)`,
-		uuid.New().String(), stepID, actorUserID, fmt.Sprintf(`{"delegated_to":"%s","new_step_id":"%s"}`, delegateUserID, newStep.ID))
-	if err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-	return newStep, nil
-}
-
-func (r *SQLRepository) getStagesForDefinitionTx(tx *sql.Tx, defID string) ([]models.WorkflowStageDefinition, error) {
-	rows, err := tx.Query(`
-		SELECT id, workflow_definition_id, sequence_order, name, type, approval_tree
-		FROM workflow_stage_definitions
-		WHERE workflow_definition_id = ?
-		ORDER BY sequence_order ASC`, defID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var stages []models.WorkflowStageDefinition
-	for rows.Next() {
-		var s models.WorkflowStageDefinition
-		var treeStr sql.NullString
-		if err := rows.Scan(&s.ID, &s.WorkflowDefinitionID, &s.SequenceOrder,
-			&s.Name, &s.Type, &treeStr); err != nil {
-			return nil, err
-		}
-		if treeStr.Valid && treeStr.String != "" {
-			var tree models.ApprovalNode
-			if err := json.Unmarshal([]byte(treeStr.String), &tree); err == nil {
-				s.ApprovalTree = &tree
-			}
-		}
-		stages = append(stages, s)
-	}
-	return stages, nil
-}
+// ========== TRANSACTION HELPERS ==========
 
 func (r *SQLRepository) checkCartCompletionTx(tx *sql.Tx, cartItemID string) error {
 	var cartID string
@@ -1252,95 +1308,4 @@ func (r *SQLRepository) checkCartCompletionTx(tx *sql.Tx, cartItemID string) err
 		return err
 	}
 	return nil
-}
-
-func evaluateStageTree(node *models.ApprovalNode, stepsMap map[string][]models.WorkflowStep) NodeStatus {
-	if node == nil {
-		return NodeStatusApproved
-	}
-
-	if node.Type == "USER" || node.Type == "ROLE" {
-		steps := stepsMap[node.ID]
-		if len(steps) == 0 {
-			return NodeStatusPending
-		}
-
-		var activeStep *models.WorkflowStep
-		for _, step := range steps {
-			if step.Status != "DELEGATED" {
-				if activeStep == nil || step.AssignedAt.After(activeStep.AssignedAt) {
-					activeStep = &step
-				}
-			}
-		}
-
-		if activeStep == nil {
-			return NodeStatusPending
-		}
-
-		switch activeStep.Status {
-		case "APPROVED":
-			return NodeStatusApproved
-		case "REJECTED":
-			return NodeStatusRejected
-		default:
-			return NodeStatusPending
-		}
-	}
-
-	if node.Type == "GROUP" {
-		if len(node.Children) == 0 {
-			return NodeStatusApproved
-		}
-
-		if node.GroupCondition == models.ConditionOr {
-			allRejected := true
-			for i := range node.Children {
-				status := evaluateStageTree(&node.Children[i], stepsMap)
-				if status == NodeStatusApproved {
-					return NodeStatusApproved
-				}
-				if status != NodeStatusRejected {
-					allRejected = false
-				}
-			}
-			if allRejected {
-				return NodeStatusRejected
-			}
-			return NodeStatusPending
-		}
-
-		if node.GroupCondition == models.ConditionAnd {
-			allApproved := true
-			for i := range node.Children {
-				status := evaluateStageTree(&node.Children[i], stepsMap)
-				if status == NodeStatusRejected {
-					return NodeStatusRejected
-				}
-				if status != NodeStatusApproved {
-					allApproved = false
-				}
-			}
-			if allApproved {
-				return NodeStatusApproved
-			}
-			return NodeStatusPending
-		}
-	}
-
-	return NodeStatusPending
-}
-
-func GetLeafNodes(node *models.ApprovalNode) []*models.ApprovalNode {
-	if node == nil {
-		return nil
-	}
-	if node.Type == "USER" || node.Type == "ROLE" {
-		return []*models.ApprovalNode{node}
-	}
-	var leaves []*models.ApprovalNode
-	for i := range node.Children {
-		leaves = append(leaves, GetLeafNodes(&node.Children[i])...)
-	}
-	return leaves
 }

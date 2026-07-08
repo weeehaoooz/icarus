@@ -37,42 +37,48 @@ export interface InboxItem {
   assigned_at: string;
 }
 
-export interface WorkflowDefinition {
+export interface Workflow {
   id: string;
   name: string;
+  description?: string;
   definition_key: string;
   version: number;
   is_current: boolean;
   status: string;
-  stages: WorkflowStage[];
+  supersedes_id?: string;
+  nodes: WorkflowNode[];
+  created_by: string;
   created_at: string;
 }
 
-export interface WorkflowStage {
+
+export interface WorkflowNode {
   id: string;
-  sequence_order: number;
-  execution_mode: string;
   name: string;
-  approval_quorum: number;
-  approvers: WorkflowApprover[];
+  type: 'APPROVAL' | 'OPERATION';
+  depends_on: string[];
+  max_retries?: number;
+  retry_interval?: number;
+  retry_interval_seconds?: number;
+  config?: Record<string, any>;
 }
 
-export interface WorkflowApprover {
-  id?: string;
-  resolver_type: string;
-  resolver_value: string;
+export interface WorkflowCandidate {
+  type: 'USER' | 'ROLE';
+  value: string;
 }
 
 export interface UpsertWorkflowRequest {
   name: string;
-  stages: {
-    sequence_order: number;
-    execution_mode: string;
-    name: string;
-    approval_quorum: number;
-    approvers: { resolver_type: string; resolver_value: string }[];
-  }[];
+  description?: string;
+  nodes: WorkflowNode[];
 }
+
+export interface WorkflowWithRoleMapping extends Workflow {
+  mapped_role_id?: string;
+}
+
+
 
 export interface AuditLog {
   id: string;
@@ -161,28 +167,51 @@ export class WorkflowService {
 
   // ── Workflow Definitions ───────────────────────────────────────────────────
 
-  listWorkflowDefinitions(): Observable<WorkflowDefinition[]> {
-    return this.http.get<WorkflowDefinition[]>(`${this.baseUrl}/workflow/definitions`);
+  listWorkflowDefinitions(): Observable<Workflow[]> {
+    return this.http.get<Workflow[]>(`${this.baseUrl}/workflow/definitions`);
   }
 
-  getWorkflowDefinition(roleId: string): Observable<WorkflowDefinition | null> {
-    return this.http.get<WorkflowDefinition | null>(
+  getWorkflowDefinition(roleId: string): Observable<Workflow | null> {
+    return this.http.get<Workflow | null>(
       `${this.baseUrl}/workflow/definitions/roles/${roleId}`
     );
   }
 
-  getDefinitionHistory(definitionKey: string): Observable<WorkflowDefinition[]> {
-    return this.http.get<WorkflowDefinition[]>(
+  getWorkflowDefinitionById(id: string): Observable<Workflow> {
+    return this.http.get<Workflow>(`${this.baseUrl}/workflow/definitions/${id}`);
+  }
+
+  getDefinitionHistory(definitionKey: string): Observable<Workflow[]> {
+    return this.http.get<Workflow[]>(
       `${this.baseUrl}/workflow/definitions/history/${definitionKey}`
     );
   }
 
-  upsertWorkflowDefinition(roleId: string, req: UpsertWorkflowRequest): Observable<WorkflowDefinition> {
-    return this.http.put<WorkflowDefinition>(
+  upsertWorkflowDefinition(roleId: string, req: UpsertWorkflowRequest): Observable<Workflow> {
+    return this.http.put<Workflow>(
       `${this.baseUrl}/workflow/definitions/roles/${roleId}`,
       req
     );
   }
+
+  /** Creates a standalone workflow template not yet bound to any role. */
+  createWorkflowTemplate(req: UpsertWorkflowRequest): Observable<Workflow> {
+    return this.http.post<Workflow>(`${this.baseUrl}/workflow/definitions`, req);
+  }
+
+  /** Lists all current workflow templates enriched with which role (if any) maps to each. */
+  listWorkflowTemplates(): Observable<WorkflowWithRoleMapping[]> {
+    return this.http.get<WorkflowWithRoleMapping[]>(`${this.baseUrl}/workflow/definitions/templates`);
+  }
+
+  /** Maps an existing workflow template to a role. */
+  mapWorkflowToRole(roleId: string, workflowId: string): Observable<{ role_id: string; workflow_id: string; status: string }> {
+    return this.http.put<{ role_id: string; workflow_id: string; status: string }>(
+      `${this.baseUrl}/workflow/definitions/roles/${roleId}/map`,
+      { workflow_id: workflowId }
+    );
+  }
+
 
   // ── SSE ────────────────────────────────────────────────────────────────────
 

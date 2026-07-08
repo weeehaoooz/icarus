@@ -1,0 +1,348 @@
+:host {
+  --dag-edge-color: var(--border-color-hover, #4b5563);
+  --dag-critical-color: var(--primary, #14b8a6);
+  --dag-node-bg: var(--bg-panel, #1e293b);
+  --dag-node-border: var(--border-color, #334155);
+  --dag-approval-accent: var(--primary, #14b8a6);
+  --dag-operation-accent: #6366f1;
+
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.dag-preview {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+
+// ── Header ──────────────────────────────────────────────────────────────────
+
+.dag-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-panel);
+  flex-shrink: 0;
+}
+
+.dag-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+}
+
+.dag-stats {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.stat-pill {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+
+  &.parallel {
+    border-color: rgba(99, 102, 241, 0.4);
+    color: #6366f1;
+    background: rgba(99, 102, 241, 0.08);
+  }
+
+  &.nodes-count {
+    border-color: rgba(20, 184, 166, 0.3);
+    color: var(--primary);
+    background: var(--primary-glow);
+  }
+}
+
+// ── Empty state ──────────────────────────────────────────────────────────────
+
+.dag-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 20px;
+
+  .empty-icon {
+    width: 52px;
+    height: 52px;
+    color: var(--text-muted);
+    opacity: 0.35;
+
+    svg {
+      width: 100%;
+      height: 100%;
+    }
+  }
+
+  p {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0;
+  }
+}
+
+// ── Grid Layout ──────────────────────────────────────────────────────────────
+
+.dag-grid-wrapper {
+  position: relative;
+  flex: 1;
+  overflow: auto;
+  padding: 24px 20px;
+}
+
+.dag-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  min-height: 100%;
+}
+
+.dag-level {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.level-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  opacity: 0.55;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  padding: 6px 2px;
+  width: 18px;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.level-nodes {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: center; /* Center nodes in the stage */
+  gap: 12px;
+  flex: 1;
+  padding: 10px 8px;
+}
+
+// ── Stage Connectors ─────────────────────────────────────────────────────────
+
+.stage-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: -2px 0;
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  padding-left: 26px; /* Offset the 18px level-label + 8px gap to center perfectly with the nodes */
+
+  .connector-line {
+    width: 2px;
+    height: 18px;
+    background: var(--border-color);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .connector-arrow {
+    width: 14px;
+    height: 14px;
+    color: var(--text-muted);
+    opacity: 0.45;
+    margin-top: -3px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  &.is-critical {
+    .connector-line {
+      background: var(--dag-critical-color);
+      box-shadow: 0 0 6px rgba(20, 184, 166, 0.4);
+    }
+
+    .connector-arrow {
+      color: var(--dag-critical-color);
+      opacity: 1;
+      filter: drop-shadow(0 0 3px rgba(20, 184, 166, 0.4));
+    }
+  }
+}
+
+// ── Node cards ───────────────────────────────────────────────────────────────
+
+.dag-node {
+  flex-shrink: 0;
+  position: relative;
+  background: var(--dag-node-bg);
+  border: 1.5px solid var(--dag-node-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  width: 148px;
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+
+  &:hover {
+    border-color: var(--text-muted);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  }
+
+  &.is-approval {
+    border-left: 3px solid var(--dag-approval-accent);
+  }
+
+  &.is-operation {
+    border-left: 3px solid var(--dag-operation-accent);
+  }
+
+  &.is-critical {
+    border-color: var(--dag-critical-color);
+    box-shadow: 0 0 0 1px var(--dag-critical-color), 0 2px 8px rgba(20, 184, 166, 0.15);
+  }
+}
+
+.node-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.node-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.3;
+  flex: 1;
+  word-break: break-word;
+}
+
+.type-badge {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: rgba(20, 184, 166, 0.12);
+  color: var(--dag-approval-accent);
+  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  &.type-op {
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--dag-operation-accent);
+  }
+}
+
+.node-policy {
+  display: flex;
+}
+
+.policy-pill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(20, 184, 166, 0.1);
+  color: var(--dag-approval-accent);
+  border: 1px solid rgba(20, 184, 166, 0.2);
+  letter-spacing: 0.03em;
+}
+
+.node-candidates {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.node-op-detail {
+  font-size: 0.68rem;
+  color: var(--dag-operation-accent);
+  font-weight: 500;
+}
+
+.critical-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dag-critical-color);
+  margin-top: auto;
+  padding-top: 2px;
+}
+
+// ── Legend ───────────────────────────────────────────────────────────────────
+
+.dag-legend {
+  display: flex;
+  gap: 14px;
+  padding: 10px 18px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-panel);
+  flex-shrink: 0;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border-left: 3px solid transparent;
+
+  &.approval {
+    background: rgba(20, 184, 166, 0.1);
+    border-left-color: var(--dag-approval-accent);
+  }
+
+  &.operation {
+    background: rgba(99, 102, 241, 0.1);
+    border-left-color: var(--dag-operation-accent);
+  }
+
+  &.critical {
+    background: rgba(20, 184, 166, 0.15);
+    border: 1.5px solid var(--dag-critical-color);
+    border-radius: 3px;
+  }
+}

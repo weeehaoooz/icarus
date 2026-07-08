@@ -4,9 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"icarus-workflow-ms/internal/models"
-	"icarus-workflow-ms/internal/repository"
 	"net/http"
-	"time"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -123,7 +122,6 @@ func (s *HandlerServer) RemoveCartItemHandler(w http.ResponseWriter, r *http.Req
 }
 
 // SubmitCartHandler POST /api/v1/access/carts/{cart_id}/submit
-// Core orchestration logic: fans out workflow instances per item, handles auto-approve.
 func (s *HandlerServer) SubmitCartHandler(w http.ResponseWriter, r *http.Request) {
 	claims := s.claimsFrom(r)
 	cartID := r.PathValue("cart_id")
@@ -163,7 +161,7 @@ func (s *HandlerServer) SubmitCartHandler(w http.ResponseWriter, r *http.Request
 
 	for _, item := range cart.Items {
 		// Look up workflow definition for this role
-		def, err := s.Repo.GetWorkflowDefinitionByRoleID(item.RoleID)
+		def, err := s.Repo.GetWorkflowByRoleID(item.RoleID)
 		if err != nil {
 			s.respondWithError(w, http.StatusInternalServerError, "workflow lookup failed: "+err.Error())
 			return
@@ -175,36 +173,60 @@ func (s *HandlerServer) SubmitCartHandler(w http.ResponseWriter, r *http.Request
 			_ = s.Repo.WriteAuditLog(&models.AuditLog{
 				ID: uuid.New().String(), EntityType: "CART_ITEM", EntityID: item.ID,
 				ActorUserID: "system", Action: "AUTO_APPROVED",
-				AfterState: `{"reason":"no workflow mapping for role"}`,
+				AfterState:    `{"reason":"no workflow mapping for role"}`,
 				CorrelationID: correlationID,
 			})
 			continue
 		}
 
-		// Create workflow instance pinned to this definition version
-		instanceID := uuid.New().String()
-		inst := &models.WorkflowInstance{
-			ID:                   instanceID,
-			WorkflowDefinitionID: def.ID,
-			CartItemID:           item.ID,
-			CurrentStageSeq:      1,
+		// Create execution run pinned to this workflow version
+		executionID := uuid.New().String()
+		exec := &models.Execution{
+			ID:         executionID,
+			WorkflowID: def.ID,
+			CartItemID: item.ID,
+			Status:     "IN_PROGRESS",
 		}
-		if err := s.Repo.CreateWorkflowInstance(inst); err != nil {
-			s.respondWithError(w, http.StatusInternalServerError, "failed to create workflow instance")
-			return
-		}
-
-		_ = s.Repo.UpdateCartItemStatus(item.ID, "IN_PROGRESS", &instanceID)
-
-		// Create steps for stage 1
-		stage1Steps, err := s.createStepsForStage(instanceID, def, 1, correlationID)
+		newSteps, err := s.Repo.StartExecutionAndProgress(exec, claims.Subject)
 		if err != nil {
-			s.respondWithError(w, http.StatusInternalServerError, "failed to create approval steps")
+			s.respondWithError(w, http.StatusInternalServerError, "failed to start execution: "+err.Error())
 			return
+		}
+
+		_ = s.Repo.UpdateCartItemStatus(item.ID, "IN_PROGRESS", &executionID)
+
+		// Check blockers: if any new step is assigned to a role with 0 members, record it
+		var blockerMsgs []string
+		for _, step := range newSteps {
+			if step.AssignedToRole != nil {
+				members := s.fetchRoleMembers(*step.AssignedToRole)
+				if len(members) == 0 {
+					blockerMsg := fmt.Sprintf("Role '%s' assigned to step '%s' (node '%s') has no active members.", *step.AssignedToRole, step.ID, step.NodeName)
+					blockerMsgs = append(blockerMsgs, blockerMsg)
+					// Write audit blocker log
+					_ = s.Repo.WriteAuditLog(&models.AuditLog{
+						ID: uuid.New().String(), EntityType: "WORKFLOW_STEP", EntityID: step.ID,
+						ActorUserID: "system", Action: "BLOCKED",
+						AfterState:    fmt.Sprintf(`{"reason":"%s"}`, blockerMsg),
+						CorrelationID: correlationID,
+					})
+				}
+			}
+		}
+
+		if len(blockerMsgs) > 0 {
+			combinedBlocker := strings.Join(blockerMsgs, "; ")
+			_ = s.Repo.UpdateExecutionError(executionID, combinedBlocker)
+			_ = s.Repo.WriteAuditLog(&models.AuditLog{
+				ID: uuid.New().String(), EntityType: "WORKFLOW_INSTANCE", EntityID: executionID,
+				ActorUserID: "system", Action: "BLOCKED",
+				AfterState:    fmt.Sprintf(`{"reason":"%s"}`, combinedBlocker),
+				CorrelationID: correlationID,
+			})
 		}
 
 		// Notify approvers via SSE
-		for _, step := range stage1Steps {
+		for _, step := range newSteps {
 			notifUsers := s.resolveNotificationTargets(step)
 			for _, uid := range notifUsers {
 				payload := fmt.Sprintf(`{"step_id":"%s","role":"%s","cart_id":"%s"}`,
@@ -218,7 +240,7 @@ func (s *HandlerServer) SubmitCartHandler(w http.ResponseWriter, r *http.Request
 		}
 
 		_ = s.Repo.WriteAuditLog(&models.AuditLog{
-			ID: uuid.New().String(), EntityType: "WORKFLOW_INSTANCE", EntityID: instanceID,
+			ID: uuid.New().String(), EntityType: "WORKFLOW_INSTANCE", EntityID: executionID,
 			ActorUserID: "system", Action: "STARTED", CorrelationID: correlationID,
 		})
 
@@ -226,7 +248,6 @@ func (s *HandlerServer) SubmitCartHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	if !anyInProgress {
-		// All items auto-approved — cart is immediately completed
 		_ = s.Repo.UpdateCartStatus(cartID, "COMPLETED")
 	} else {
 		_ = s.Repo.UpdateCartStatus(cartID, "IN_PROGRESS")
@@ -241,55 +262,11 @@ func (s *HandlerServer) SubmitCartHandler(w http.ResponseWriter, r *http.Request
 	})
 }
 
-// createStepsForStage instantiates WorkflowStep rows for all approvers at the given stage sequence.
-func (s *HandlerServer) createStepsForStage(instanceID string, def *models.WorkflowDefinition,
-	stageSeq int, correlationID string) ([]models.WorkflowStep, error) {
-
-	var createdSteps []models.WorkflowStep
-	for _, stage := range def.Stages {
-		if stage.SequenceOrder != stageSeq {
-			continue
-		}
-		
-		leaves := repository.GetLeafNodes(stage.ApprovalTree)
-		for _, leaf := range leaves {
-			step := models.WorkflowStep{
-				ID:                 uuid.New().String(),
-				WorkflowInstanceID: instanceID,
-				StageDefinitionID:  stage.ID,
-				NodeID:             leaf.ID,
-				AssignedAt:         time.Now(),
-			}
-			switch leaf.Type {
-			case "USER":
-				val := leaf.Value
-				step.AssignedToUserID = &val
-			case "ROLE":
-				val := leaf.Value
-				step.AssignedToRole = &val
-			}
-			if err := s.Repo.CreateWorkflowStep(&step); err != nil {
-				return nil, err
-			}
-			_ = s.Repo.WriteAuditLog(&models.AuditLog{
-				ID: uuid.New().String(), EntityType: "WORKFLOW_STEP", EntityID: step.ID,
-				ActorUserID: "system", Action: "ASSIGNED",
-				AfterState: fmt.Sprintf(`{"stage":"%s","seq":%d,"node_id":"%s"}`, stage.Name, stageSeq, leaf.ID),
-				CorrelationID: correlationID,
-			})
-			createdSteps = append(createdSteps, step)
-		}
-	}
-	return createdSteps, nil
-}
-
-
 // resolveNotificationTargets returns user IDs to notify for a given step.
-func (s *HandlerServer) resolveNotificationTargets(step models.WorkflowStep) []string {
+func (s *HandlerServer) resolveNotificationTargets(step models.ExecutionNode) []string {
 	if step.AssignedToUserID != nil {
 		return []string{*step.AssignedToUserID}
 	}
-	// For ROLE_QUEUE: fetch members from admin-ms
 	if step.AssignedToRole != nil {
 		members := s.fetchRoleMembers(*step.AssignedToRole)
 		return members

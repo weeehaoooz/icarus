@@ -5,6 +5,7 @@ import (
 	"icarus-workflow-ms/internal/crypto"
 	"icarus-workflow-ms/internal/models"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -85,6 +86,7 @@ func (s *HandlerServer) DelegateStepHandler(w http.ResponseWriter, r *http.Reque
 func (s *HandlerServer) actionStep(w http.ResponseWriter, r *http.Request, newStatus string) {
 	claims := s.claimsFrom(r)
 	stepID := r.PathValue("step_id")
+	correlationID := uuid.New().String()
 
 	var body models.StepActionRequest
 	_ = s.decodeJSON(r, &body)
@@ -103,6 +105,36 @@ func (s *HandlerServer) actionStep(w http.ResponseWriter, r *http.Request, newSt
 	if err != nil {
 		s.respondWithError(w, http.StatusInternalServerError, "failed to action step: "+err.Error())
 		return
+	}
+
+	// Check blockers: if any of the new steps are assigned to a role with 0 members, report it!
+	var blockerMsgs []string
+	for _, ns := range nextSteps {
+		if ns.AssignedToRole != nil {
+			members := s.fetchRoleMembers(*ns.AssignedToRole)
+			if len(members) == 0 {
+				blockerMsg := fmt.Sprintf("Role '%s' assigned to step '%s' (node '%s') has no active members.", *ns.AssignedToRole, ns.ID, ns.NodeName)
+				blockerMsgs = append(blockerMsgs, blockerMsg)
+				// Write audit blocker log
+				_ = s.Repo.WriteAuditLog(&models.AuditLog{
+					ID: uuid.New().String(), EntityType: "WORKFLOW_STEP", EntityID: ns.ID,
+					ActorUserID: "system", Action: "BLOCKED",
+					AfterState:    fmt.Sprintf(`{"reason":"%s"}`, blockerMsg),
+					CorrelationID: correlationID,
+				})
+			}
+		}
+	}
+
+	if len(blockerMsgs) > 0 {
+		combinedBlocker := strings.Join(blockerMsgs, "; ")
+		_ = s.Repo.UpdateExecutionError(inst.ID, combinedBlocker)
+		_ = s.Repo.WriteAuditLog(&models.AuditLog{
+			ID: uuid.New().String(), EntityType: "WORKFLOW_INSTANCE", EntityID: inst.ID,
+			ActorUserID: "system", Action: "BLOCKED",
+			AfterState:    fmt.Sprintf(`{"reason":"%s"}`, combinedBlocker),
+			CorrelationID: correlationID,
+		})
 	}
 
 	// Notify new approvers (if stage advanced)
@@ -134,15 +166,15 @@ func (s *HandlerServer) actionStep(w http.ResponseWriter, r *http.Request, newSt
 	}
 
 	s.respondWithJSON(w, http.StatusOK, map[string]interface{}{
-		"step_id":                 stepID,
-		"status":                  newStatus,
+		"step_id":                  stepID,
+		"status":                   newStatus,
 		"workflow_instance_status": inst.Status,
-		"message":                 nextMsg,
+		"message":                  nextMsg,
 	})
 }
 
 // isAuthorizedApprover checks if the acting user is the direct assignee or holds the assigned role.
-func (s *HandlerServer) isAuthorizedApprover(claims *crypto.CustomClaims, step *models.WorkflowStep) bool {
+func (s *HandlerServer) isAuthorizedApprover(claims *crypto.CustomClaims, step *models.ExecutionNode) bool {
 	if step.AssignedToUserID != nil && *step.AssignedToUserID == claims.Subject {
 		return true
 	}
