@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, fromEvent, merge, EMPTY } from 'rxjs';
+import { Observable, fromEvent, merge, EMPTY, defer, of } from 'rxjs';
 import { map, switchMap, retry, delay } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 
@@ -220,41 +220,74 @@ export class WorkflowService {
    * Returns an Observable<SseEvent> that emits on every server-sent event.
    * Automatically reconnects with exponential back-off on error.
    */
-  connectSSE(): Observable<SseEvent> {
-    const token = this.authService.accessToken();
+  private isTokenExpired(token: string | null): boolean {
     if (!token) {
-      return EMPTY;
+      return true;
     }
+    try {
+      const payload = token.split('.')[1];
+      const decoded = JSON.parse(atob(payload));
+      // Expiration time is in seconds. Buffer of 10 seconds to handle network latency / clock drift.
+      return Date.now() >= (decoded.exp * 1000 - 10000);
+    } catch {
+      return true;
+    }
+  }
 
-    // NOTE: EventSource does not support custom headers. We pass the token as a
-    // query param here for compatibility. The server should accept this fallback.
-    const url = `${this.baseUrl}/workflow/events?token=${encodeURIComponent(token)}`;
+  /**
+   * Opens an SSE connection to the workflow service.
+   * Returns an Observable<SseEvent> that emits on every server-sent event.
+   * Automatically reconnects with exponential back-off on error.
+   */
+  connectSSE(): Observable<SseEvent> {
+    return defer(() => {
+      const token = this.authService.accessToken();
+      if (!token) {
+        return EMPTY;
+      }
 
-    return new Observable<SseEvent>(subscriber => {
-      const es = new EventSource(url);
+      const token$ = this.isTokenExpired(token)
+        ? this.authService.refresh()
+        : of(token);
 
-      const handleEvent = (eventType: string) => (event: Event) => {
-        try {
-          const msgEvent = event as MessageEvent;
-          subscriber.next({
-            type: eventType,
-            payload: JSON.parse(msgEvent.data),
+      return token$.pipe(
+        switchMap(activeToken => {
+          if (!activeToken) {
+            return EMPTY;
+          }
+
+          // NOTE: EventSource does not support custom headers. We pass the token as a
+          // query param here for compatibility. The server should accept this fallback.
+          const url = `${this.baseUrl}/workflow/events?token=${encodeURIComponent(activeToken)}`;
+
+          return new Observable<SseEvent>(subscriber => {
+            const es = new EventSource(url);
+
+            const handleEvent = (eventType: string) => (event: Event) => {
+              try {
+                const msgEvent = event as MessageEvent;
+                subscriber.next({
+                  type: eventType,
+                  payload: JSON.parse(msgEvent.data),
+                });
+              } catch {
+                // Ignore malformed events
+              }
+            };
+
+            es.addEventListener('inbox.new', handleEvent('inbox.new'));
+            es.addEventListener('cart.updated', handleEvent('cart.updated'));
+            es.addEventListener('step.actioned', handleEvent('step.actioned'));
+
+            es.onerror = () => {
+              // Let the retry() operator handle reconnection
+              subscriber.error(new Error('SSE connection lost'));
+            };
+
+            return () => es.close();
           });
-        } catch {
-          // Ignore malformed events
-        }
-      };
-
-      es.addEventListener('inbox.new', handleEvent('inbox.new'));
-      es.addEventListener('cart.updated', handleEvent('cart.updated'));
-      es.addEventListener('step.actioned', handleEvent('step.actioned'));
-
-      es.onerror = () => {
-        // Let the retry() operator handle reconnection
-        subscriber.error(new Error('SSE connection lost'));
-      };
-
-      return () => es.close();
+        })
+      );
     }).pipe(
       retry({ delay: 5000 }) // Reconnect after 5 seconds on error
     );
