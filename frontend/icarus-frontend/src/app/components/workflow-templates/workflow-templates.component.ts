@@ -58,7 +58,7 @@ export class WorkflowTemplatesComponent implements OnInit {
   openMapModal(template: WorkflowWithRoleMapping): void {
     this.mappingTemplateId.set(template.id);
     this.mappingTemplateNme.set(template.name);
-    this.selectedRoleId.set(template.mapped_role_id ?? '');
+    this.selectedRoleId.set(template.mapped_role_ids?.[0] ?? '');
     this.showMapModal.set(true);
     this.error.set(null);
     this.success.set(null);
@@ -99,8 +99,8 @@ export class WorkflowTemplatesComponent implements OnInit {
 
   navigateToEdit(template: WorkflowWithRoleMapping): void {
     // Edit by loading via its role mapping if exists, else go to a template-specific route.
-    if (template.mapped_role_id) {
-      this.router.navigate(['/dashboard/workflow-builder', template.mapped_role_id]);
+    if (template.mapped_role_ids && template.mapped_role_ids.length > 0) {
+      this.router.navigate(['/dashboard/workflow-builder', template.mapped_role_ids[0]]);
     } else {
       this.router.navigate(['/dashboard/workflow-builder/new']);
     }

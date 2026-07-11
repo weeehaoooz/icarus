@@ -200,7 +200,30 @@
                                   </select>
                                 </div>
                               } @else {
-                                <input [id]="'c-val-' + nIdx + '-' + cIdx" type="text" placeholder="User ID (e.g. user_101)..." [(ngModel)]="c.value" class="c-val-input" />
+                                <div class="user-search-container">
+                                  <input 
+                                    [id]="'c-val-' + nIdx + '-' + cIdx" 
+                                    type="text" 
+                                    placeholder="Search user by name or username..." 
+                                    [(ngModel)]="c.value" 
+                                    class="c-val-input"
+                                    (focus)="setActiveDropdown(nIdx, cIdx)"
+                                    (blur)="clearActiveDropdown()"
+                                    autocomplete="off"
+                                  />
+                                  @if (isDropdownActive(nIdx, cIdx)) {
+                                    <div class="user-dropdown-menu">
+                                      @for (user of getFilteredUsers(c.value); track user.id) {
+                                        <div class="user-dropdown-item" (mousedown)="selectUser(c, user.username)">
+                                          <span class="user-full-name">{{ user.first_name }} {{ user.last_name }}</span>
+                                          <span class="user-meta-info">@{{ user.username }} • {{ user.email }}</span>
+                                        </div>
+                                      } @empty {
+                                        <div class="no-results">No matching users found</div>
+                                      }
+                                    </div>
+                                  }
+                                </div>
                               }
                               <button class="btn-remove-c" (click)="removeCandidate(nIdx, cIdx)" [disabled]="node.candidates.length <= 1" aria-label="Remove candidate">✕</button>
                             </li>

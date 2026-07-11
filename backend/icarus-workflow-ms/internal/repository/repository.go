@@ -413,10 +413,11 @@ func (r *SQLRepository) MapWorkflowToRole(roleID, workflowID, createdBy string) 
 func (r *SQLRepository) ListWorkflowsWithRoleMapping() ([]models.WorkflowWithRoleMapping, error) {
 	rows, err := r.db.Query(`
 		SELECT w.id, w.name, COALESCE(w.description,''), w.definition_key, w.version, w.is_current, w.status, w.created_by, w.created_at,
-		       COALESCE(rwm.role_id,'') as mapped_role
+		       COALESCE(group_concat(rwm.role_id, ','), '') as mapped_roles
 		FROM workflows w
 		LEFT JOIN role_workflow_mappings rwm ON rwm.workflow_id = w.id AND rwm.is_active = 1
 		WHERE w.is_current = 1
+		GROUP BY w.id
 		ORDER BY w.name ASC`)
 	if err != nil {
 		return nil, err
@@ -427,11 +428,17 @@ func (r *SQLRepository) ListWorkflowsWithRoleMapping() ([]models.WorkflowWithRol
 	for rows.Next() {
 		var wm models.WorkflowWithRoleMapping
 		var createdAtStr string
+		var mappedRolesStr string
 		if err := rows.Scan(&wm.ID, &wm.Name, &wm.Description, &wm.DefinitionKey,
-			&wm.Version, &wm.IsCurrent, &wm.Status, &wm.CreatedBy, &createdAtStr, &wm.MappedRoleID); err != nil {
+			&wm.Version, &wm.IsCurrent, &wm.Status, &wm.CreatedBy, &createdAtStr, &mappedRolesStr); err != nil {
 			return nil, err
 		}
 		wm.CreatedAt, _ = parseTime(createdAtStr)
+		if mappedRolesStr != "" {
+			wm.MappedRoleIDs = strings.Split(mappedRolesStr, ",")
+		} else {
+			wm.MappedRoleIDs = []string{}
+		}
 		list = append(list, wm)
 	}
 	return list, nil

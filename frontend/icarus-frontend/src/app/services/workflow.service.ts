@@ -75,7 +75,7 @@ export interface UpsertWorkflowRequest {
 }
 
 export interface WorkflowWithRoleMapping extends Workflow {
-  mapped_role_id?: string;
+  mapped_role_ids?: string[];
 }
 
 

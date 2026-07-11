@@ -37,6 +37,8 @@ export class WorkflowBuilderComponent implements OnInit {
   readonly nodes = signal<FormNode[]>([]);
 
   readonly roles = signal<BuilderRole[]>([]);
+  readonly users = signal<any[]>([]);
+  readonly activeDropdownId = signal<string | null>(null);
   readonly isLoading = signal(true);
   readonly isSaving = signal(false);
   readonly error = signal<string | null>(null);
@@ -63,6 +65,7 @@ export class WorkflowBuilderComponent implements OnInit {
 
     this.loadRoles();
     this.loadExistingDefinitions();
+    this.loadUsers();
   }
 
   loadRoles(): void {
@@ -93,6 +96,47 @@ export class WorkflowBuilderComponent implements OnInit {
           this.existingWorkflows.set(list);
         }
       });
+  }
+
+  loadUsers(): void {
+    this.adminService.listUsers()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data) => this.users.set(data ?? []),
+        error: () => this.error.set('Failed to load users list.')
+      });
+  }
+
+  setActiveDropdown(nodeIdx: number, candidateIdx: number): void {
+    this.activeDropdownId.set(`${nodeIdx}-${candidateIdx}`);
+  }
+
+  clearActiveDropdown(): void {
+    setTimeout(() => {
+      this.activeDropdownId.set(null);
+    }, 150);
+  }
+
+  isDropdownActive(nodeIdx: number, candidateIdx: number): boolean {
+    return this.activeDropdownId() === `${nodeIdx}-${candidateIdx}`;
+  }
+
+  getFilteredUsers(query: string): any[] {
+    if (!query) {
+      return this.users();
+    }
+    const q = query.toLowerCase();
+    return this.users().filter(u =>
+      (u.username || '').toLowerCase().includes(q) ||
+      (u.first_name || '').toLowerCase().includes(q) ||
+      (u.last_name || '').toLowerCase().includes(q) ||
+      (u.email || '').toLowerCase().includes(q)
+    );
+  }
+
+  selectUser(candidate: { type: 'USER' | 'ROLE'; value: string }, username: string): void {
+    candidate.value = username;
+    this.activeDropdownId.set(null);
   }
 
   onWorkflowSourceChange(source: 'new' | 'existing'): void {
@@ -450,8 +494,15 @@ export class WorkflowBuilderComponent implements OnInit {
       if (n.type === 'APPROVAL') {
         if (n.candidates.length === 0) { this.error.set(`Node "${n.name}" must have at least one candidate.`); return; }
         for (let cIdx = 0; cIdx < n.candidates.length; cIdx++) {
-          if (!n.candidates[cIdx].value.trim()) {
+          const candidate = n.candidates[cIdx];
+          if (!candidate.value.trim()) {
             this.error.set(`Node "${n.name}", Candidate ${cIdx + 1} is missing target user/role value.`); return;
+          }
+          if (candidate.type === 'USER') {
+            const val = candidate.value.trim();
+            if (!this.users().some(u => u.username === val)) {
+              this.error.set(`Node "${n.name}", Candidate ${cIdx + 1}: User "${val}" does not exist.`); return;
+            }
           }
         }
       }

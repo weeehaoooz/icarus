@@ -79,14 +79,16 @@
       </div>
 
       <div class="card-mapping">
-        @if (tmpl.mapped_role_id) {
-        <div class="mapping-pill active-mapping" [attr.title]="'Mapped to role: ' + tmpl.mapped_role_id">
+        @if (tmpl.mapped_role_ids && tmpl.mapped_role_ids.length > 0) {
+        @for (roleId of tmpl.mapped_role_ids; track roleId) {
+        <div class="mapping-pill active-mapping" [attr.title]="'Mapped to role: ' + roleId">
           <svg viewBox="0 0 24 24" class="pill-icon">
             <path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
             <circle cx="12" cy="12" r="2" />
           </svg>
-          Mapped → <strong>{{ tmpl.mapped_role_id }}</strong>
+          Mapped → <strong>{{ roleId }}</strong>
         </div>
+        }
         } @else {
         <div class="mapping-pill unmapped">
           <svg viewBox="0 0 24 24" class="pill-icon">

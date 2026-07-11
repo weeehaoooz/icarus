@@ -273,6 +273,9 @@
 .card-mapping {
   padding: 12px 20px;
   border-bottom: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .mapping-pill {

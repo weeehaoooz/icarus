@@ -82,6 +82,6 @@ type UpsertNodeRequest struct {
 // WorkflowWithRoleMapping is a Workflow enriched with which role (if any) maps to it.
 type WorkflowWithRoleMapping struct {
 	Workflow
-	MappedRoleID string `json:"mapped_role_id,omitempty"`
+	MappedRoleIDs []string `json:"mapped_role_ids"`
 }
 
