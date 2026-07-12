@@ -14,6 +14,16 @@
       <span class="alert-icon">✕</span> {{ submitError() }}
     </div>
   }
+  @if (draftMessage()) {
+    <div class="alert alert-success" role="alert">
+      <span class="alert-icon">✓</span> {{ draftMessage() }}
+    </div>
+  }
+  @if (draftError()) {
+    <div class="alert alert-error" role="alert">
+      <span class="alert-icon">✕</span> {{ draftError() }}
+    </div>
+  }
   @if (actionSuccess()) {
     <div class="alert alert-success" role="alert">
       <span class="alert-icon">✓</span> {{ actionSuccess() }}
@@ -104,17 +114,40 @@
         </span>
       </div>
 
+      @if (hasSavedDraft()) {
+        <div class="draft-indicator">
+          <span class="draft-badge">📝 Draft saved</span>
+        </div>
+      }
+
       @if (cartItemCount() === 0) {
         <p class="cart-empty">No roles added yet. Browse the catalogue to get started.</p>
-      } @else {
+      } @else if (currentCart()?.items?.length) {
+        <!-- Persisted items (saved draft) -->
         <ul class="cart-items" role="list">
-          @for (item of currentCart()?.items ?? []; track item.id) {
+          @for (item of currentCart()!.items; track item.id) {
             <li class="cart-item">
               <span class="cart-role-name">{{ item.role_name }}</span>
               <button
                 class="btn-remove"
                 (click)="removeFromCart(item)"
                 [attr.aria-label]="'Remove ' + item.role_name + ' from cart'"
+              >
+                ✕
+              </button>
+            </li>
+          }
+        </ul>
+      } @else {
+        <!-- Local pending roles (not yet saved) -->
+        <ul class="cart-items" role="list">
+          @for (role of pendingRoles(); track role.id) {
+            <li class="cart-item">
+              <span class="cart-role-name">{{ role.name }}</span>
+              <button
+                class="btn-remove"
+                (click)="removePendingRole(role)"
+                [attr.aria-label]="'Remove ' + role.name + ' from cart'"
               >
                 ✕
               </button>
@@ -132,91 +165,157 @@
           [(ngModel)]="justification"
           aria-required="true"
         ></textarea>
+        @if (hasSavedDraft()) {
+          <p class="justification-hint">Justification changes are applied when you submit the request.</p>
+        }
       </div>
 
-      <button
-        id="submit-cart"
-        class="btn-submit"
-        [disabled]="isSubmitting() || cartItemCount() === 0"
-        (click)="submitCart()"
-        aria-live="polite"
-      >
-        @if (isSubmitting()) {
-          <span>Submitting…</span>
-        } @else {
-          <span>Submit Request ({{ cartItemCount() }})</span>
-        }
-      </button>
+      <div class="cart-actions">
+        <button
+          id="save-draft"
+          class="btn-save-draft"
+          [disabled]="isSavingDraft() || cartItemCount() === 0"
+          (click)="saveDraft()"
+          aria-live="polite"
+        >
+          @if (isSavingDraft()) {
+            <span>Saving…</span>
+          } @else if (hasSavedDraft()) {
+            <span>✓ Draft Saved</span>
+          } @else {
+            <span>Save Draft</span>
+          }
+        </button>
+
+        <button
+          id="submit-cart"
+          class="btn-submit"
+          [disabled]="isSubmitting() || cartItemCount() === 0"
+          (click)="submitCart()"
+          aria-live="polite"
+        >
+          @if (isSubmitting()) {
+            <span>Submitting…</span>
+          } @else {
+            <span>Submit Request ({{ cartItemCount() }})</span>
+          }
+        </button>
+      </div>
     </aside>
   </div>
 
   <!-- Request History -->
   @if (cartHistory().length > 0) {
     <section class="history" aria-label="Request history">
-      <h2>Request History</h2>
-      <p class="history-help">Click on any request card to view full details and active reviewers.</p>
+      <h2>My Requests</h2>
+      <p class="history-help">Click on any request card to view full details and active reviewers. Draft requests can be resumed or deleted.</p>
       <div class="history-list">
         @for (cart of cartHistory(); track cart.id) {
-          <div
-            class="history-card clickable"
-            tabindex="0"
-            role="button"
-            [attr.aria-label]="'View details of request ' + cart.id"
-            (click)="selectRequest(cart)"
-            (keydown.enter)="selectRequest(cart)"
-          >
-            <div class="history-meta">
-              <span class="history-id">{{ cart.id.slice(0, 8) }}…</span>
-              <span class="history-date">{{ cart.submitted_at | date:'dd MMM yyyy, HH:mm' }}</span>
-              <span class="history-overall" [class]="statusClass(cart.status)">{{ cart.status }}</span>
-            </div>
-            <ul class="history-items" role="list">
-              @for (item of cart.items; track item.id) {
-                <li class="history-item">
-                  <span class="history-role">{{ item.role_name }}</span>
-                  <span class="history-item-status" [class]="statusClass(item.status)">
-                    {{ item.status }}
-                  </span>
-                  @if (item.execution_id) {
-                    <a
-                      [routerLink]="['/dashboard/request-detail', item.execution_id]"
-                      (click)="$event.stopPropagation()"
-                      class="history-trail-link"
-                      aria-label="View audit trail for {{ item.role_name }}"
-                    >View Trail</a>
+          @if (cart.status === 'DRAFT') {
+            <!-- Draft card: not clickable for details, has resume/delete actions -->
+            <div class="history-card history-card--draft">
+              <div class="history-meta">
+                <span class="history-id">{{ cart.id.slice(0, 8) }}…</span>
+                <span class="history-date">{{ cart.created_at | date:'dd MMM yyyy, HH:mm' }}</span>
+                <span class="history-overall status-draft">DRAFT</span>
+              </div>
+              @if (cart.items?.length) {
+                <ul class="history-items" role="list">
+                  @for (item of cart.items; track item.id) {
+                    <li class="history-item">
+                      <span class="history-role">{{ item.role_name }}</span>
+                    </li>
                   }
-                </li>
+                </ul>
+              } @else {
+                <p class="history-empty">No roles in this draft.</p>
               }
-            </ul>
-            @if (cart.status === 'SUBMITTED' || cart.status === 'IN_PROGRESS') {
               <div class="history-actions">
                 <button
-                  class="btn-action-bump"
-                  [disabled]="actionsLoading()[cart.id] === 'bump' || actionsLoading()[cart.id] === 'withdraw'"
-                  (click)="bumpRequest(cart.id); $event.stopPropagation()"
-                  [attr.aria-label]="'Bump request ' + cart.id"
+                  class="btn-action-resume"
+                  [disabled]="actionsLoading()[cart.id] === 'delete'"
+                  (click)="resumeDraft(cart)"
+                  [attr.aria-label]="'Resume draft ' + cart.id"
                 >
-                  @if (actionsLoading()[cart.id] === 'bump') {
-                    <span class="spinner"></span> Bumping…
-                  } @else {
-                    <span>⚡ Bump Approvers</span>
-                  }
+                  <span>↩ Resume Draft</span>
                 </button>
                 <button
                   class="btn-action-withdraw"
-                  [disabled]="actionsLoading()[cart.id] === 'withdraw' || actionsLoading()[cart.id] === 'bump'"
-                  (click)="withdrawRequest(cart.id); $event.stopPropagation()"
-                  [attr.aria-label]="'Withdraw request ' + cart.id"
+                  [disabled]="actionsLoading()[cart.id] === 'delete'"
+                  (click)="deleteDraft(cart.id); $event.stopPropagation()"
+                  [attr.aria-label]="'Delete draft ' + cart.id"
                 >
-                  @if (actionsLoading()[cart.id] === 'withdraw') {
-                    <span class="spinner"></span> Withdrawing…
+                  @if (actionsLoading()[cart.id] === 'delete') {
+                    <span class="spinner"></span> Deleting…
                   } @else {
-                    <span>✕ Withdraw Request</span>
+                    <span>🗑 Delete Draft</span>
                   }
                 </button>
               </div>
-            }
-          </div>
+            </div>
+          } @else {
+            <!-- Submitted / in-progress / completed card -->
+            <div
+              class="history-card clickable"
+              tabindex="0"
+              role="button"
+              [attr.aria-label]="'View details of request ' + cart.id"
+              (click)="selectRequest(cart)"
+              (keydown.enter)="selectRequest(cart)"
+            >
+              <div class="history-meta">
+                <span class="history-id">{{ cart.id.slice(0, 8) }}…</span>
+                <span class="history-date">{{ cart.submitted_at | date:'dd MMM yyyy, HH:mm' }}</span>
+                <span class="history-overall" [class]="statusClass(cart.status)">{{ cart.status }}</span>
+              </div>
+              <ul class="history-items" role="list">
+                @for (item of cart.items; track item.id) {
+                  <li class="history-item">
+                    <span class="history-role">{{ item.role_name }}</span>
+                    <span class="history-item-status" [class]="statusClass(item.status)">
+                      {{ item.status }}
+                    </span>
+                    @if (item.execution_id) {
+                      <a
+                        [routerLink]="['/dashboard/request-detail', item.execution_id]"
+                        (click)="$event.stopPropagation()"
+                        class="history-trail-link"
+                        aria-label="View audit trail for {{ item.role_name }}"
+                      >View Trail</a>
+                    }
+                  </li>
+                }
+              </ul>
+              @if (cart.status === 'SUBMITTED' || cart.status === 'IN_PROGRESS') {
+                <div class="history-actions">
+                  <button
+                    class="btn-action-bump"
+                    [disabled]="actionsLoading()[cart.id] === 'bump' || actionsLoading()[cart.id] === 'withdraw'"
+                    (click)="bumpRequest(cart.id); $event.stopPropagation()"
+                    [attr.aria-label]="'Bump request ' + cart.id"
+                  >
+                    @if (actionsLoading()[cart.id] === 'bump') {
+                      <span class="spinner"></span> Bumping…
+                    } @else {
+                      <span>⚡ Bump Approvers</span>
+                    }
+                  </button>
+                  <button
+                    class="btn-action-withdraw"
+                    [disabled]="actionsLoading()[cart.id] === 'withdraw' || actionsLoading()[cart.id] === 'bump'"
+                    (click)="withdrawRequest(cart.id); $event.stopPropagation()"
+                    [attr.aria-label]="'Withdraw request ' + cart.id"
+                  >
+                    @if (actionsLoading()[cart.id] === 'withdraw') {
+                      <span class="spinner"></span> Withdrawing…
+                    } @else {
+                      <span>✕ Withdraw Request</span>
+                    }
+                  </button>
+                </div>
+              }
+            </div>
+          }
         }
       </div>
     </section>

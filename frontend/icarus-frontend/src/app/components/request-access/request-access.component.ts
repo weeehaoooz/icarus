@@ -2,8 +2,8 @@ import { Component, signal, computed, inject, OnInit, OnDestroy } from '@angular
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
-import { Subscription, Subject, fromEvent } from 'rxjs';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { Subscription, Subject, fromEvent, forkJoin, of } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { AuthService } from '../../services/auth.service';
 import { AdminService } from '../../services/admin.service';
 import { WorkflowService, AccessCart, CartItem } from '../../services/workflow.service';
@@ -29,22 +29,33 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
   private readonly adminService = inject(AdminService);
   private readonly workflowService = inject(WorkflowService);
 
-  // Cart state
+  // ── Local (unsaved) cart state ──────────────────────────────────────────────
+  /** Roles the user has added locally, before a draft is saved to the backend */
+  readonly pendingRoles = signal<Role[]>([]);
+
+  // ── Persisted cart state (after Save Draft or during Submit) ───────────────
   readonly currentCart = signal<AccessCart | null>(null);
   readonly cartId = signal<string | null>(null);
+
+  // ── Draft save state ────────────────────────────────────────────────────────
+  readonly isSavingDraft = signal(false);
+  readonly draftMessage = signal<string | null>(null);
+  readonly draftError = signal<string | null>(null);
+
+  // ── Submit state ────────────────────────────────────────────────────────────
   readonly isSubmitting = signal(false);
   readonly submitMessage = signal<string | null>(null);
   readonly submitError = signal<string | null>(null);
 
-  // Actions state
-  readonly actionsLoading = signal<Record<string, 'withdraw' | 'bump' | null>>({});
+  // ── Actions state (withdraw / bump / delete) ────────────────────────────────
+  readonly actionsLoading = signal<Record<string, 'withdraw' | 'bump' | 'delete' | null>>({});
   readonly actionError = signal<string | null>(null);
   readonly actionSuccess = signal<string | null>(null);
 
-  // Selected request for details view
+  // ── Selected request for details view ──────────────────────────────────────
   readonly selectedRequest = signal<AccessCart | null>(null);
 
-  // Role catalogue
+  // ── Role catalogue ──────────────────────────────────────────────────────────
   readonly rawAvailableRoles = signal<Role[]>([]);
   readonly userRoles = signal<Role[]>([]);
 
@@ -64,27 +75,42 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
   private offset = 0;
   private readonly limit = 12;
 
-  // History
+  // ── History ─────────────────────────────────────────────────────────────────
   readonly cartHistory = signal<AccessCart[]>([]);
   readonly isLoadingHistory = signal(false);
 
-  // Justification
+  // ── Justification ───────────────────────────────────────────────────────────
   justification = '';
 
   private pollInterval: ReturnType<typeof setInterval> | null = null;
   private subs: Subscription[] = [];
 
-  readonly cartItemCount = computed(() => this.currentCart()?.items?.length ?? 0);
+  // ── Computed helpers ─────────────────────────────────────────────────────────
 
-  readonly cartRoleIds = computed(() =>
-    new Set(this.currentCart()?.items?.map(i => i.role_id) ?? [])
-  );
+  /** Total items in the active cart: persisted items OR local pending roles */
+  readonly cartItemCount = computed(() => {
+    const saved = this.currentCart()?.items?.length ?? 0;
+    return saved > 0 ? saved : this.pendingRoles().length;
+  });
+
+  /** Role IDs currently in the active cart (persisted or pending) */
+  readonly cartRoleIds = computed(() => {
+    const cart = this.currentCart();
+    if (cart?.items?.length) {
+      return new Set(cart.items.map(i => i.role_id));
+    }
+    return new Set(this.pendingRoles().map(r => r.id).filter(Boolean) as string[]);
+  });
+
+  /** True when we have a saved (persisted) DRAFT cart */
+  readonly hasSavedDraft = computed(() => !!this.cartId());
 
   ngOnInit(): void {
     this.loadUserRoles();
     this.resetAndLoadRoles();
     this.loadHistory();
-    this.initCart();
+    // NOTE: No automatic cart creation here — drafts are only created when the
+    // user explicitly clicks "Save Draft" or submits the request.
 
     // Setup search input debounce
     const searchSub = this.searchSubject.pipe(
@@ -96,7 +122,7 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
     });
     this.subs.push(searchSub);
 
-    // Setup infinite scroll scroll listener
+    // Setup infinite scroll listener
     const scrollSub = fromEvent(window, 'scroll').subscribe(() => {
       this.onWindowScroll();
     });
@@ -182,7 +208,8 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
     this.isLoadingHistory.set(true);
     const sub = this.workflowService.listCarts().subscribe({
       next: (carts) => {
-        this.cartHistory.set(carts.filter(c => c.status !== 'DRAFT'));
+        // Include DRAFT carts so the user can manage their own saved drafts
+        this.cartHistory.set(carts);
         this.isLoadingHistory.set(false);
       },
       error: () => this.isLoadingHistory.set(false),
@@ -190,24 +217,22 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
     this.subs.push(sub);
   }
 
-  initCart(): void {
-    // Create a fresh DRAFT cart on page load
-    const sub = this.workflowService.createCart('').subscribe({
-      next: (cart) => {
-        this.cartId.set(cart.id);
-        this.currentCart.set(cart);
-      },
-    });
-    this.subs.push(sub);
-  }
+  // ── Add / Remove (local-only until draft is saved) ─────────────────────────
 
   addToCart(role: Role): void {
+    if (!role.id) return;
     const cartId = this.cartId();
-    if (!cartId || !role.id) return;
-    const sub = this.workflowService.addItemToCart(cartId, role.id, role.name).subscribe({
-      next: () => this.refreshCart(),
-    });
-    this.subs.push(sub);
+
+    if (cartId) {
+      // Cart already persisted — add directly via API
+      const sub = this.workflowService.addItemToCart(cartId, role.id, role.name).subscribe({
+        next: () => this.refreshCart(),
+      });
+      this.subs.push(sub);
+    } else {
+      // No saved cart yet — track locally
+      this.pendingRoles.update(roles => [...roles, role]);
+    }
   }
 
   removeFromCart(item: CartItem): void {
@@ -219,10 +244,70 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
     this.subs.push(sub);
   }
 
-  submitCart(): void {
-    const cartId = this.cartId();
-    if (!cartId) return;
+  removePendingRole(role: Role): void {
+    this.pendingRoles.update(roles => roles.filter(r => r.id !== role.id));
+  }
 
+  // ── Save Draft ──────────────────────────────────────────────────────────────
+
+  /**
+   * Persists the current local selection to the backend as a DRAFT.
+   * Only called when the user explicitly clicks "Save Draft".
+   */
+  saveDraft(): void {
+    const pending = this.pendingRoles();
+    if (pending.length === 0 && !this.cartId()) {
+      this.draftError.set('Add at least one role before saving a draft.');
+      setTimeout(() => this.draftError.set(null), 4000);
+      return;
+    }
+
+    const existingCartId = this.cartId();
+    if (existingCartId) {
+      // Already persisted — nothing more to do
+      this.draftMessage.set('Draft is already saved.');
+      setTimeout(() => this.draftMessage.set(null), 3000);
+      return;
+    }
+
+    this.isSavingDraft.set(true);
+    this.draftMessage.set(null);
+    this.draftError.set(null);
+
+    const sub = this.workflowService.createCart(this.justification).pipe(
+      switchMap(cart => {
+        this.cartId.set(cart.id);
+        this.currentCart.set(cart);
+        if (pending.length === 0) {
+          return of(cart);
+        }
+        const addOps = pending.map(role =>
+          this.workflowService.addItemToCart(cart.id, role.id!, role.name)
+        );
+        return forkJoin(addOps).pipe(
+          switchMap(() => this.workflowService.getCart(cart.id))
+        );
+      })
+    ).subscribe({
+      next: (cart) => {
+        this.currentCart.set(cart as AccessCart);
+        this.pendingRoles.set([]);
+        this.isSavingDraft.set(false);
+        this.draftMessage.set('Draft saved successfully.');
+        this.loadHistory();
+        setTimeout(() => this.draftMessage.set(null), 4000);
+      },
+      error: (err) => {
+        this.draftError.set(err.error?.error ?? 'Failed to save draft. Please try again.');
+        this.isSavingDraft.set(false);
+      },
+    });
+    this.subs.push(sub);
+  }
+
+  // ── Submit ──────────────────────────────────────────────────────────────────
+
+  submitCart(): void {
     if (this.cartItemCount() === 0) {
       this.submitError.set('Add at least one role before submitting.');
       return;
@@ -236,20 +321,105 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
     this.submitMessage.set(null);
     this.submitError.set(null);
 
+    const existingCartId = this.cartId();
+    if (existingCartId) {
+      // Already have a persisted draft — submit directly
+      this.doSubmitCart(existingCartId);
+    } else {
+      // No saved draft — create cart, add items, then submit
+      const pending = this.pendingRoles();
+      const sub = this.workflowService.createCart('').pipe(
+        switchMap(cart => {
+          this.cartId.set(cart.id);
+          const addOps = pending.map(role =>
+            this.workflowService.addItemToCart(cart.id, role.id!, role.name)
+          );
+          return forkJoin(addOps.length ? addOps : [of(null)]).pipe(
+            switchMap(() => of(cart.id))
+          );
+        })
+      ).subscribe({
+        next: (id) => {
+          this.pendingRoles.set([]);
+          this.doSubmitCart(id as string);
+        },
+        error: (err) => {
+          this.submitError.set(err.error?.error ?? 'Failed to prepare request. Please try again.');
+          this.isSubmitting.set(false);
+        }
+      });
+      this.subs.push(sub);
+    }
+  }
+
+  private doSubmitCart(cartId: string): void {
     const sub = this.workflowService.submitCart(cartId, this.justification).subscribe({
       next: (res) => {
         this.submitMessage.set(res.message);
         this.isSubmitting.set(false);
+        this.cartId.set(null);
+        this.currentCart.set(null);
+        this.pendingRoles.set([]);
+        this.justification = '';
         this.startPolling(cartId);
         this.loadHistory();
-        // Create a fresh cart for next request
-        this.initCart();
-        this.justification = '';
       },
       error: (err) => {
         this.submitError.set(err.error?.error ?? 'Submission failed. Please try again.');
         this.isSubmitting.set(false);
       },
+    });
+    this.subs.push(sub);
+  }
+
+  // ── Delete Draft ────────────────────────────────────────────────────────────
+
+  deleteDraft(cartId: string): void {
+    this.actionsLoading.update(l => ({ ...l, [cartId]: 'delete' }));
+    this.actionError.set(null);
+    this.actionSuccess.set(null);
+
+    const sub = this.workflowService.deleteCarts(0, 'ALL', true, [cartId]).subscribe({
+      next: () => {
+        this.actionSuccess.set('Draft deleted.');
+        this.actionsLoading.update(l => ({ ...l, [cartId]: null }));
+        // If this was the currently loaded draft, reset the cart UI
+        if (this.cartId() === cartId) {
+          this.cartId.set(null);
+          this.currentCart.set(null);
+          this.pendingRoles.set([]);
+        }
+        this.loadHistory();
+        setTimeout(() => this.actionSuccess.set(null), 4000);
+      },
+      error: (err) => {
+        this.actionError.set(err.error?.error || 'Failed to delete draft.');
+        this.actionsLoading.update(l => ({ ...l, [cartId]: null }));
+        setTimeout(() => this.actionError.set(null), 5000);
+      }
+    });
+    this.subs.push(sub);
+  }
+
+  // ── Resume Draft ─────────────────────────────────────────────────────────────
+
+  resumeDraft(cart: AccessCart): void {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Fetch the full cart so items are populated and roles show as "In Cart"
+    const sub = this.workflowService.getCart(cart.id).subscribe({
+      next: (fullCart) => {
+        this.cartId.set(fullCart.id);
+        this.currentCart.set(fullCart);
+        this.pendingRoles.set([]);
+        this.justification = fullCart.justification ?? '';
+      },
+      error: () => {
+        // Fallback to the list-provided cart data
+        this.cartId.set(cart.id);
+        this.currentCart.set(cart);
+        this.pendingRoles.set([]);
+        this.justification = cart.justification ?? '';
+      }
     });
     this.subs.push(sub);
   }
@@ -295,6 +465,7 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
       case 'IN_PROGRESS': return 'status-progress';
       case 'COMPLETED': return 'status-completed';
       case 'CANCELLED': return 'status-cancelled';
+      case 'DRAFT': return 'status-draft';
       default: return 'status-pending';
     }
   }
