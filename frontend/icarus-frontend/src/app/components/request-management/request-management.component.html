@@ -1,0 +1,338 @@
+<section class="request-management">
+  <div class="page-header">
+    <div class="header-content">
+      <h1>Request Management</h1>
+      @if (isAdmin) {
+        <p class="subtitle">Administrator tool to override pending approvals and perform platform housekeeping.</p>
+      } @else {
+        <p class="subtitle">View and track the status of all your access requests.</p>
+      }
+    </div>
+    
+    <!-- Housekeeping Dashboard Panel -->
+    @if (isAdmin) {
+      <div class="housekeeping-card">
+        <div class="housekeeping-title">
+          <svg class="lucide-icon text-warning" viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; margin-right: 8px; fill: none; stroke: currentColor; stroke-width: 2;">
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+          </svg>
+          <span>Housekeeping & Bulk Actions</span>
+        </div>
+        <div class="housekeeping-grid">
+          <div class="housekeeping-field">
+            <label for="bulkStatus">Filter Status:</label>
+            <select id="bulkStatus" [(ngModel)]="bulkStatus" aria-label="Bulk selection status filter">
+              <option value="ALL">All Closed Carts</option>
+              <option value="DRAFT">Drafts</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
+              <option value="ARCHIVED">Archived</option>
+            </select>
+          </div>
+          
+          <div class="housekeeping-field">
+            <label for="bulkDays">Older Than:</label>
+            <div class="days-input-group">
+              <input
+                id="bulkDays"
+                type="number"
+                min="0"
+                [(ngModel)]="bulkDays"
+                aria-label="Bulk selection age cutoff in days"
+              />
+              <span class="days-suffix">days</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="housekeeping-options" style="margin-top: 12px; display: flex; align-items: center; gap: 8px;">
+          @if (bulkStatus() === 'ALL') {
+            <input 
+              type="checkbox" 
+              id="bulkIncludeDrafts" 
+              [(ngModel)]="bulkIncludeDrafts"
+            />
+            <label for="bulkIncludeDrafts" style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer; user-select: none;">Include drafts in selection</label>
+          }
+        </div>
+        
+        <div class="housekeeping-actions" style="margin-top: 16px; display: flex; gap: 10px;">
+          <button
+            class="btn btn-warning btn-sm"
+            (click)="selectByDaysAndStatus()"
+          >
+            Apply Selection
+          </button>
+          <button
+            class="btn btn-secondary btn-sm"
+            (click)="clearSelection()"
+            [disabled]="selectedCount() === 0"
+          >
+            Clear Checked
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Main Action Status Alerts -->
+  @if (actionSuccess()) {
+    <div class="alert alert-success animate-fade-in" role="status">✓ {{ actionSuccess() }}</div>
+  }
+  @if (actionError()) {
+    <div class="alert alert-error animate-fade-in" role="alert">✕ {{ actionError() }}</div>
+  }
+
+  <!-- Filters -->
+  <div class="filter-bar">
+    <div class="search-box">
+      <svg class="lucide-icon search-icon" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2;">
+        <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+      </svg>
+      <input
+        type="text"
+        [placeholder]="isAdmin ? 'Search by Requester ID, Cart ID, or justification…' : 'Search by Cart ID or justification…'"
+        [(ngModel)]="searchQuery"
+        aria-label="Search requests"
+      />
+    </div>
+    
+    <div class="filter-group">
+      <label for="statusSelect">Status Filter:</label>
+      <select id="statusSelect" [(ngModel)]="statusFilter" aria-label="Filter by Status">
+        <option value="ALL">All Statuses</option>
+        <option value="DRAFT">Draft</option>
+        <option value="SUBMITTED">Submitted</option>
+        <option value="IN_PROGRESS">In Progress</option>
+        <option value="COMPLETED">Completed</option>
+        <option value="CANCELLED">Cancelled</option>
+        <option value="ARCHIVED">Archived</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Loading / Empty states -->
+  @if (isLoading()) {
+    <div class="loading-state" aria-busy="true">Loading access requests…</div>
+  } @else if (error()) {
+    <div class="error-state" role="alert">{{ error() }}</div>
+  } @else if (filteredRequests().length === 0) {
+    <div class="empty-state">
+      <span class="empty-icon" aria-hidden="true">📋</span>
+      <p>No requests found matching current filters.</p>
+    </div>
+  } @else {
+    <!-- List Header for Selection Info -->
+    @if (isAdmin) {
+      <div class="list-header" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 12px;">
+        <div class="select-all-wrapper" style="display: flex; align-items: center; gap: 8px;">
+          <input 
+            type="checkbox" 
+            id="selectAllCarts"
+            [checked]="areAllSelected()"
+            (change)="toggleSelectAll()"
+            aria-label="Select all requests"
+            style="width: 16px; height: 16px; cursor: pointer;"
+          />
+          <label for="selectAllCarts" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); cursor: pointer; user-select: none;">Select All Shown</label>
+        </div>
+        <span class="results-count" style="font-size: 0.8rem; color: var(--text-muted);">
+          Showing {{ filteredRequests().length }} requests
+        </span>
+      </div>
+    }
+
+    <!-- Requests Grid / List -->
+    <div class="requests-list">
+      @for (cart of filteredRequests(); track cart.id) {
+        <article class="request-card" [class.expanded]="isCartExpanded(cart.id)" [class.selected]="selectedRequestIds().has(cart.id)">
+          <!-- Card Header (Summary) -->
+          <header class="card-summary" (click)="toggleExpandCart(cart.id)" tabindex="0" (keydown.enter)="toggleExpandCart(cart.id)" aria-label="Request details for user account">
+            <div class="summary-main">
+              @if (isAdmin) {
+                <div class="card-select-checkbox" (click)="$event.stopPropagation()" style="display: flex; align-items: center; margin-right: 12px;">
+                  <input
+                    type="checkbox"
+                    [checked]="selectedRequestIds().has(cart.id)"
+                    (change)="toggleSelectRequest(cart.id)"
+                    [id]="'select-' + cart.id"
+                    aria-label="Select request"
+                    style="width: 16px; height: 16px; cursor: pointer;"
+                  />
+                </div>
+              }
+              <span class="status-pill {{ statusClass(cart.status) }}">{{ cart.status }}</span>
+              @if (isAdmin) {
+                <span class="requester-label">Requester: <strong>{{ cart.requester_id }}</strong></span>
+              }
+              <span class="cart-id-label">ID: <code class="cart-code">{{ cart.id }}</code></span>
+            </div>
+            <div class="summary-meta">
+              <span class="date-label">Created: {{ cart.created_at | date:'dd MMM yyyy, HH:mm' }}</span>
+              <svg class="lucide-icon chevron-icon" viewBox="0 0 24 24" aria-hidden="true" [class.rotated]="isCartExpanded(cart.id)" style="fill: none; stroke: currentColor; stroke-width: 2;">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </div>
+          </header>
+
+          <!-- Card Details (Expanded view) -->
+          @if (isCartExpanded(cart.id)) {
+            <div class="card-details animate-slide-down">
+              <div class="justification-section">
+                <strong>Justification:</strong>
+                <p class="justification-text">{{ cart.justification || 'No justification provided.' }}</p>
+              </div>
+
+              <!-- Cart Items List -->
+              <div class="items-section">
+                <h4>Requested Roles (Nodes)</h4>
+                @if (!cart.items || cart.items.length === 0) {
+                  <p class="no-items">No items requested in this cart.</p>
+                } @else {
+                  <div class="items-grid">
+                    @for (item of cart.items; track item.id) {
+                      <div class="item-card">
+                        <div class="item-header">
+                          <span class="role-name">{{ item.role_name }}</span>
+                          <span class="status-pill {{ statusClass(item.status) }}">{{ item.status }}</span>
+                        </div>
+                        <div class="item-meta">
+                          <span>Role ID: <code>{{ item.role_id }}</code></span>
+                          @if (item.execution_id) {
+                            <span>Execution ID: <a [routerLink]="['/dashboard/request-detail', item.execution_id]" class="audit-link"><code>{{ item.execution_id }}</code></a></span>
+                          }
+                        </div>
+
+                        <!-- Step actions if pending steps exist for this item -->
+                        @if (cart.pending_steps) {
+                          @for (step of cart.pending_steps; track step.step_id) {
+                            <!-- We match pending steps related to this cart -->
+                            @if (step.cart_id === cart.id && step.role_name === item.role_name) {
+                              <div class="admin-action-box">
+                                <div class="action-box-header">
+                                  <span class="action-assigned">
+                                    Pending Approval: 
+                                    @if (step.assigned_to_user_id) {
+                                      User (<code>{{ step.assigned_to_user_id }}</code>)
+                                    } @else if (step.assigned_to_role) {
+                                      Role Queue (<code>{{ step.assigned_to_role }}</code>)
+                                    } @else {
+                                      Unassigned
+                                    }
+                                  </span>
+                                </div>
+                                
+                                @if (isAdmin) {
+                                  <div class="override-inputs">
+                                    <textarea
+                                      [id]="'comment-' + step.step_id"
+                                      rows="2"
+                                      placeholder="Enter reason for administrator override decision..."
+                                      [(ngModel)]="activeComments[step.step_id]"
+                                      aria-label="Override comment"
+                                    ></textarea>
+                                    
+                                    <div class="override-actions">
+                                      <button
+                                        class="btn-approve btn-sm"
+                                        (click)="approveStep(step.step_id)"
+                                        [disabled]="actioningStepId() === step.step_id"
+                                      >
+                                        ✓ Override Approve
+                                      </button>
+                                      <button
+                                        class="btn-reject btn-sm"
+                                        (click)="rejectStep(step.step_id)"
+                                        [disabled]="actioningStepId() === step.step_id"
+                                      >
+                                        ✕ Override Reject
+                                      </button>
+                                    </div>
+                                  </div>
+                                }
+                              </div>
+                            }
+                          }
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+
+              <!-- User Request Actions -->
+              @if (!isAdmin && (cart.status === 'SUBMITTED' || cart.status === 'IN_PROGRESS')) {
+                <div class="request-actions">
+                  <button
+                    class="btn-action-bump"
+                    [disabled]="actioningStepId() === cart.id"
+                    (click)="bumpRequest(cart.id)"
+                    aria-label="Bump approvers"
+                  >
+                    @if (actioningStepId() === cart.id) {
+                      <span class="spinner"></span> Bumping…
+                    } @else {
+                      <span>⚡ Bump Approvers</span>
+                    }
+                  </button>
+                  <button
+                    class="btn-action-withdraw"
+                    [disabled]="actioningStepId() === cart.id"
+                    (click)="withdrawRequest(cart.id)"
+                    aria-label="Withdraw request"
+                  >
+                    @if (actioningStepId() === cart.id) {
+                      <span class="spinner"></span> Withdrawing…
+                    } @else {
+                      <span>✕ Withdraw Request</span>
+                    }
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </article>
+      }
+    </div>
+  }
+
+  <!-- Floating Batch Actions Drawer -->
+  @if (isAdmin && selectedCount() > 0) {
+    <div class="batch-action-drawer animate-slide-up">
+      <div class="drawer-content">
+        <div class="drawer-info">
+          <span class="selected-badge">{{ selectedCount() }}</span>
+          <span class="selected-text">
+            request(s) selected
+            @if (hasDraftsSelected()) {
+              <strong class="text-warning">(includes drafts)</strong>
+            }
+          </span>
+        </div>
+        <div class="drawer-actions">
+          <button 
+            class="btn btn-warning btn-sm" 
+            (click)="runBatchArchive()"
+            [disabled]="isBatchActionLoading()"
+          >
+            @if (isBatchActionLoading()) { Working… } @else { Archive Selected }
+          </button>
+          <button 
+            class="btn btn-danger btn-sm" 
+            (click)="runBatchDelete()"
+            [disabled]="isBatchActionLoading()"
+          >
+            @if (isBatchActionLoading()) { Working… } @else { Delete Selected }
+          </button>
+          <button 
+            class="btn btn-secondary btn-sm" 
+            (click)="clearSelection()"
+            [disabled]="isBatchActionLoading()"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</section>

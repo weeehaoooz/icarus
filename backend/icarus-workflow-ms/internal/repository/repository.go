@@ -295,7 +295,6 @@ func (r *SQLRepository) UpsertWorkflow(roleID, definitionKey, newID, createdBy s
 	return r.GetWorkflowByID(newID)
 }
 
-
 func (r *SQLRepository) ListWorkflowDefinitions() ([]models.Workflow, error) {
 	rows, err := r.db.Query(`
 		SELECT id, name, COALESCE(description,''), definition_key, version, is_current, status, created_by, created_at
@@ -444,8 +443,6 @@ func (r *SQLRepository) ListWorkflowsWithRoleMapping() ([]models.WorkflowWithRol
 	return list, nil
 }
 
-
-
 // ========== CARTS ==========
 
 func (r *SQLRepository) CreateCart(cart *models.AccessCart) error {
@@ -490,15 +487,33 @@ func (r *SQLRepository) GetCart(cartID string) (*models.AccessCart, error) {
 		return nil, err
 	}
 	c.Items = items
+
+	if c.Status == "SUBMITTED" || c.Status == "IN_PROGRESS" {
+		steps, err := r.GetPendingStepsForCart(cartID)
+		if err == nil {
+			c.PendingSteps = steps
+		}
+	}
+
 	return &c, nil
 }
 
-func (r *SQLRepository) ListCarts(requesterID string) ([]models.AccessCart, error) {
-	rows, err := r.db.Query(`
-		SELECT id, requester_id, status, justification, submitted_at, completed_at,
-		       version, created_at, updated_at
-		FROM access_carts WHERE requester_id = ?
-		ORDER BY created_at DESC`, requesterID)
+func (r *SQLRepository) ListCarts(requesterID string, includeArchived bool) ([]models.AccessCart, error) {
+	var query string
+	if includeArchived {
+		query = `
+			SELECT id, requester_id, status, justification, submitted_at, completed_at,
+			       version, created_at, updated_at
+			FROM access_carts WHERE requester_id = ?
+			ORDER BY created_at DESC`
+	} else {
+		query = `
+			SELECT id, requester_id, status, justification, submitted_at, completed_at,
+			       version, created_at, updated_at
+			FROM access_carts WHERE requester_id = ? AND status != 'ARCHIVED'
+			ORDER BY created_at DESC`
+	}
+	rows, err := r.db.Query(query, requesterID)
 	if err != nil {
 		return nil, err
 	}
@@ -524,12 +539,343 @@ func (r *SQLRepository) ListCarts(requesterID string) ([]models.AccessCart, erro
 	return list, nil
 }
 
+func (r *SQLRepository) ListAllCarts() ([]models.AccessCart, error) {
+	rows, err := r.db.Query(`
+		SELECT id, requester_id, status, justification, submitted_at, completed_at,
+		       version, created_at, updated_at
+		FROM access_carts
+		ORDER BY created_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []models.AccessCart
+	for rows.Next() {
+		var c models.AccessCart
+		var createdAtStr, updatedAtStr string
+		var submittedAt, completedAt sql.NullString
+		if err := rows.Scan(&c.ID, &c.RequesterID, &c.Status, &c.Justification,
+			&submittedAt, &completedAt, &c.Version, &createdAtStr, &updatedAtStr); err != nil {
+			return nil, err
+		}
+		c.CreatedAt, _ = parseTime(createdAtStr)
+		c.UpdatedAt, _ = parseTime(updatedAtStr)
+		if submittedAt.Valid {
+			t, _ := parseTime(submittedAt.String)
+			c.SubmittedAt = &t
+		}
+		if completedAt.Valid {
+			t, _ := parseTime(completedAt.String)
+			c.CompletedAt = &t
+		}
+
+		items, err := r.GetCartItems(c.ID)
+		if err != nil {
+			return nil, err
+		}
+		c.Items = items
+
+		if c.Status == "SUBMITTED" || c.Status == "IN_PROGRESS" {
+			steps, err := r.GetPendingStepsForCart(c.ID)
+			if err == nil {
+				c.PendingSteps = steps
+			}
+		}
+
+		list = append(list, c)
+	}
+	return list, nil
+}
+
+func (r *SQLRepository) ArchiveClosedCarts(olderThanDays int) (int64, error) {
+	var res sql.Result
+	var err error
+	if olderThanDays <= 0 {
+		tx, err := r.db.Begin()
+		if err != nil {
+			return 0, err
+		}
+		defer tx.Rollback()
+
+		res, err = tx.Exec(`
+			UPDATE access_carts 
+			SET status = 'ARCHIVED', updated_at = CURRENT_TIMESTAMP 
+			WHERE status IN ('COMPLETED', 'CANCELLED')`)
+		if err != nil {
+			return 0, err
+		}
+
+		rowsAffected, _ := res.RowsAffected()
+
+		if rowsAffected > 0 {
+			_, err = tx.Exec(`
+				UPDATE access_cart_items 
+				SET status = 'ARCHIVED', updated_at = CURRENT_TIMESTAMP 
+				WHERE cart_id IN (
+					SELECT id FROM access_carts WHERE status = 'ARCHIVED'
+				) AND status IN ('APPROVED', 'REJECTED', 'CANCELLED')`)
+			if err != nil {
+				return 0, err
+			}
+		}
+
+		if err := tx.Commit(); err != nil {
+			return 0, err
+		}
+		return rowsAffected, nil
+	}
+
+	cutoff := time.Now().AddDate(0, 0, -olderThanDays)
+	cutoffStr := cutoff.UTC().Format("2006-01-02 15:04:05")
+
+	tx, err := r.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	res, err = tx.Exec(`
+		UPDATE access_carts 
+		SET status = 'ARCHIVED', updated_at = CURRENT_TIMESTAMP 
+		WHERE status IN ('COMPLETED', 'CANCELLED') AND completed_at < ?`, cutoffStr)
+	if err != nil {
+		return 0, err
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+
+	if rowsAffected > 0 {
+		_, err = tx.Exec(`
+			UPDATE access_cart_items 
+			SET status = 'ARCHIVED', updated_at = CURRENT_TIMESTAMP 
+			WHERE cart_id IN (
+				SELECT id FROM access_carts WHERE status = 'ARCHIVED'
+			) AND status IN ('APPROVED', 'REJECTED', 'CANCELLED')`)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+
+	return rowsAffected, nil
+}
+
+func (r *SQLRepository) ArchiveSelectedCarts(status string, olderThanDays int, ids []string) (int64, error) {
+	var targetIDs []interface{}
+
+	if len(ids) > 0 {
+		for _, id := range ids {
+			targetIDs = append(targetIDs, id)
+		}
+	} else {
+		// Select based on criteria
+		var query string
+		var args []interface{}
+		query = `SELECT id FROM access_carts WHERE 1=1`
+
+		if status == "ALL" {
+			query += ` AND status IN ('COMPLETED', 'CANCELLED')`
+		} else {
+			query += ` AND status = ?`
+			args = append(args, status)
+		}
+
+		if olderThanDays > 0 {
+			cutoff := time.Now().AddDate(0, 0, -olderThanDays)
+			cutoffStr := cutoff.UTC().Format("2006-01-02 15:04:05")
+			query += ` AND COALESCE(completed_at, created_at) < ?`
+			args = append(args, cutoffStr)
+		}
+
+		rows, err := r.db.Query(query, args...)
+		if err != nil {
+			return 0, err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				return 0, err
+			}
+			targetIDs = append(targetIDs, id)
+		}
+	}
+
+	if len(targetIDs) == 0 {
+		return 0, nil
+	}
+
+	placeholders := make([]string, len(targetIDs))
+	for i := range targetIDs {
+		placeholders[i] = "?"
+	}
+	inClause := strings.Join(placeholders, ",")
+
+	tx, err := r.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	// Update access_carts
+	queryCarts := fmt.Sprintf(`
+		UPDATE access_carts 
+		SET status = 'ARCHIVED', updated_at = CURRENT_TIMESTAMP 
+		WHERE id IN (%s)`, inClause)
+	res, err := tx.Exec(queryCarts, targetIDs...)
+	if err != nil {
+		return 0, err
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+
+	// Update access_cart_items
+	queryItems := fmt.Sprintf(`
+		UPDATE access_cart_items 
+		SET status = 'ARCHIVED', updated_at = CURRENT_TIMESTAMP 
+		WHERE cart_id IN (%s) AND status IN ('APPROVED', 'REJECTED', 'CANCELLED', 'PENDING')`, inClause)
+	_, err = tx.Exec(queryItems, targetIDs...)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+
+	return rowsAffected, nil
+}
+
+func (r *SQLRepository) DeleteSelectedCarts(status string, olderThanDays int, includeDrafts bool, ids []string) (int64, error) {
+	var targetIDs []interface{}
+
+	if len(ids) > 0 {
+		for _, id := range ids {
+			targetIDs = append(targetIDs, id)
+		}
+	} else {
+		// Select based on criteria
+		var query string
+		var args []interface{}
+		query = `SELECT id FROM access_carts WHERE 1=1`
+
+		if status == "ALL" {
+			if includeDrafts {
+				query += ` AND status IN ('COMPLETED', 'CANCELLED', 'ARCHIVED', 'DRAFT')`
+			} else {
+				query += ` AND status IN ('COMPLETED', 'CANCELLED', 'ARCHIVED')`
+			}
+		} else {
+			query += ` AND status = ?`
+			args = append(args, status)
+		}
+
+		if olderThanDays > 0 {
+			cutoff := time.Now().AddDate(0, 0, -olderThanDays)
+			cutoffStr := cutoff.UTC().Format("2006-01-02 15:04:05")
+			query += ` AND COALESCE(completed_at, created_at) < ?`
+			args = append(args, cutoffStr)
+		}
+
+		rows, err := r.db.Query(query, args...)
+		if err != nil {
+			return 0, err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				return 0, err
+			}
+			targetIDs = append(targetIDs, id)
+		}
+	}
+
+	if len(targetIDs) == 0 {
+		return 0, nil
+	}
+
+	placeholders := make([]string, len(targetIDs))
+	for i := range targetIDs {
+		placeholders[i] = "?"
+	}
+	inClause := strings.Join(placeholders, ",")
+
+	tx, err := r.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	// 1. Delete execution_nodes
+	querySteps := fmt.Sprintf(`
+		DELETE FROM execution_nodes 
+		WHERE execution_id IN (
+			SELECT id FROM executions 
+			WHERE cart_item_id IN (
+				SELECT id FROM access_cart_items 
+				WHERE cart_id IN (%s)
+			)
+		)`, inClause)
+	_, err = tx.Exec(querySteps, targetIDs...)
+	if err != nil {
+		return 0, err
+	}
+
+	// 2. Delete executions
+	queryInstances := fmt.Sprintf(`
+		DELETE FROM executions 
+		WHERE cart_item_id IN (
+			SELECT id FROM access_cart_items 
+			WHERE cart_id IN (%s)
+		)`, inClause)
+	_, err = tx.Exec(queryInstances, targetIDs...)
+	if err != nil {
+		return 0, err
+	}
+
+	// 3. Delete access_cart_items
+	queryItems := fmt.Sprintf(`
+		DELETE FROM access_cart_items WHERE cart_id IN (%s)`, inClause)
+	_, err = tx.Exec(queryItems, targetIDs...)
+	if err != nil {
+		return 0, err
+	}
+
+	// 4. Delete access_carts
+	queryCarts := fmt.Sprintf(`
+		DELETE FROM access_carts WHERE id IN (%s)`, inClause)
+	res, err := tx.Exec(queryCarts, targetIDs...)
+	if err != nil {
+		return 0, err
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return rowsAffected, nil
+}
+
 func (r *SQLRepository) UpdateCartStatus(cartID, status string) error {
 	_, err := r.db.Exec(`
 		UPDATE access_carts SET status = ?, updated_at = CURRENT_TIMESTAMP,
 		submitted_at = CASE WHEN ? = 'SUBMITTED' THEN CURRENT_TIMESTAMP ELSE submitted_at END,
 		completed_at = CASE WHEN ? IN ('COMPLETED', 'CANCELLED') THEN CURRENT_TIMESTAMP ELSE completed_at END
 		WHERE id = ?`, status, status, status, cartID)
+	return err
+}
+
+func (r *SQLRepository) UpdateCartJustification(cartID, justification string) error {
+	_, err := r.db.Exec(`
+		UPDATE access_carts SET justification = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE id = ?`, justification, cartID)
 	return err
 }
 
@@ -732,7 +1078,7 @@ func (r *SQLRepository) GetWorkflowStep(nodeID string) (*models.ExecutionNode, e
 
 	err := r.db.QueryRow(`
 		SELECT id, execution_id, node_id, node_name, assigned_to_user_id, assigned_to_role,
-		       status, decision_comment, acted_by_user_id, assigned_at, acted_at, retry_attempt, version
+		       status, COALESCE(decision_comment, ''), acted_by_user_id, assigned_at, acted_at, retry_attempt, version
 		FROM execution_nodes WHERE id = ?`, nodeID).
 		Scan(&node.ID, &node.ExecutionID, &node.NodeID, &node.NodeName, &u, &ro,
 			&node.Status, &node.DecisionComment, &ab, &assignedAtStr, &actedAt, &node.RetryAttempt, &node.Version)
@@ -802,12 +1148,12 @@ func (r *SQLRepository) ProgressExecutionTx(tx *sql.Tx, execID string, actorUser
 	for {
 		// 1. Load all execution nodes for this execution so far
 		rows, err := tx.Query(`
-			SELECT id, execution_id, node_id, node_name, assigned_to_user_id, assigned_to_role, status, decision_comment, acted_by_user_id, assigned_at, acted_at, retry_attempt, version
+			SELECT id, execution_id, node_id, node_name, assigned_to_user_id, assigned_to_role, status, COALESCE(decision_comment, ''), acted_by_user_id, assigned_at, acted_at, retry_attempt, version
 			FROM execution_nodes WHERE execution_id = ?`, exec.ID)
 		if err != nil {
 			return nil, nil, "", err
 		}
-		
+
 		var steps []models.ExecutionNode
 		for rows.Next() {
 			var step models.ExecutionNode
@@ -1315,4 +1661,116 @@ func (r *SQLRepository) checkCartCompletionTx(tx *sql.Tx, cartItemID string) err
 		return err
 	}
 	return nil
+}
+
+// WithdrawCart cancels a submitted cart and all its pending executions and items.
+func (r *SQLRepository) WithdrawCart(cartID string, actorUserID string) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Update access_carts status
+	_, err = tx.Exec(`
+		UPDATE access_carts 
+		SET status = 'CANCELLED', completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP 
+		WHERE id = ? AND status IN ('SUBMITTED', 'IN_PROGRESS')`, cartID)
+	if err != nil {
+		return err
+	}
+
+	// Update access_cart_items status
+	_, err = tx.Exec(`
+		UPDATE access_cart_items 
+		SET status = 'CANCELLED', updated_at = CURRENT_TIMESTAMP 
+		WHERE cart_id = ? AND status IN ('PENDING', 'IN_PROGRESS')`, cartID)
+	if err != nil {
+		return err
+	}
+
+	// Find all executions in-progress for this cart
+	rows, err := tx.Query(`
+		SELECT id FROM executions 
+		WHERE cart_item_id IN (SELECT id FROM access_cart_items WHERE cart_id = ?) 
+		  AND status = 'IN_PROGRESS'`, cartID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var execIDs []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return err
+		}
+		execIDs = append(execIDs, id)
+	}
+	rows.Close() // Close early before executing updates within transaction
+
+	for _, execID := range execIDs {
+		// Update execution status
+		_, err = tx.Exec(`
+			UPDATE executions 
+			SET status = 'CANCELLED', completed_at = CURRENT_TIMESTAMP, version = version + 1 
+			WHERE id = ?`, execID)
+		if err != nil {
+			return err
+		}
+
+		// Cancel pending nodes
+		_, err = tx.Exec(`
+			UPDATE execution_nodes 
+			SET status = 'CANCELLED', version = version + 1 
+			WHERE execution_id = ? AND status = 'PENDING'`, execID)
+		if err != nil {
+			return err
+		}
+
+		// Write audit log for the execution instance
+		_, err = tx.Exec(`
+			INSERT INTO audit_logs (id, entity_type, entity_id, actor_user_id, action, before_state, after_state, occurred_at)
+			VALUES (?, 'WORKFLOW_INSTANCE', ?, ?, 'WITHDRAWN', 'IN_PROGRESS', 'CANCELLED', CURRENT_TIMESTAMP)`,
+			uuid.New().String(), execID, actorUserID)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Write audit log for the cart
+	_, err = tx.Exec(`
+		INSERT INTO audit_logs (id, entity_type, entity_id, actor_user_id, action, before_state, after_state, occurred_at)
+		VALUES (?, 'CART', ?, ?, 'WITHDRAWN', 'IN_PROGRESS', 'CANCELLED', CURRENT_TIMESTAMP)`,
+		uuid.New().String(), cartID, actorUserID)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// GetPendingStepsForCart returns details of all pending steps for a given cart.
+func (r *SQLRepository) GetPendingStepsForCart(cartID string) ([]models.PendingStepDetail, error) {
+	rows, err := r.db.Query(`
+		SELECT en.id, aci.role_name, ac.id, en.assigned_to_user_id, en.assigned_to_role
+		FROM execution_nodes en
+		JOIN executions e ON en.execution_id = e.id
+		JOIN access_cart_items aci ON e.cart_item_id = aci.id
+		JOIN access_carts ac ON aci.cart_id = ac.id
+		WHERE ac.id = ? AND en.status = 'PENDING'`, cartID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []models.PendingStepDetail
+	for rows.Next() {
+		var pd models.PendingStepDetail
+		if err := rows.Scan(&pd.StepID, &pd.RoleName, &pd.CartID, &pd.AssignedToUserID, &pd.AssignedToRole); err != nil {
+			return nil, err
+		}
+		list = append(list, pd)
+	}
+	return list, nil
 }

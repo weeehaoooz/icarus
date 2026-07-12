@@ -28,6 +28,7 @@ export const routes: Routes = [
       { path: 'request-access', loadComponent: () => import('./components/request-access/request-access.component').then(m => m.RequestAccessComponent) },
       { path: 'approval-inbox', loadComponent: () => import('./components/approval-inbox/approval-inbox.component').then(m => m.ApprovalInboxComponent) },
       { path: 'request-detail/:instanceId', loadComponent: () => import('./components/request-detail/request-detail.component').then(m => m.RequestDetailComponent) },
+      { path: 'request-management', loadComponent: () => import('./components/request-management/request-management.component').then(m => m.RequestManagementComponent), canActivate: [adminGuard] },
       { path: 'workflows', loadComponent: () => import('./components/workflow-templates/workflow-templates.component').then(m => m.WorkflowTemplatesComponent), canActivate: [adminGuard] },
       { path: 'workflow-builder/new', loadComponent: () => import('./components/workflow-builder/workflow-builder.component').then(m => m.WorkflowBuilderComponent), canActivate: [adminGuard] },
       { path: 'workflow-builder/:roleId', loadComponent: () => import('./components/workflow-builder/workflow-builder.component').then(m => m.WorkflowBuilderComponent), canActivate: [adminGuard] },

@@ -4,12 +4,21 @@ import { Observable, fromEvent, merge, EMPTY, defer, of } from 'rxjs';
 import { map, switchMap, retry, delay } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 
+export interface PendingStepDetail {
+  step_id: string;
+  role_name: string;
+  cart_id: string;
+  assigned_to_user_id?: string;
+  assigned_to_role?: string;
+}
+
 export interface AccessCart {
   id: string;
   requester_id: string;
   status: string;
   justification: string;
   items: CartItem[];
+  pending_steps?: PendingStepDetail[];
   submitted_at?: string;
   completed_at?: string;
   created_at: string;
@@ -21,7 +30,7 @@ export interface CartItem {
   role_id: string;
   role_name: string;
   status: string;
-  workflow_instance_id?: string;
+  execution_id?: string;
   created_at: string;
 }
 
@@ -110,8 +119,8 @@ export class WorkflowService {
     return this.http.post<AccessCart>(`${this.baseUrl}/access/carts`, { justification });
   }
 
-  listCarts(): Observable<AccessCart[]> {
-    return this.http.get<AccessCart[]>(`${this.baseUrl}/access/carts`);
+  listCarts(includeArchived: boolean = false): Observable<AccessCart[]> {
+    return this.http.get<AccessCart[]>(`${this.baseUrl}/access/carts?include_archived=${includeArchived}`);
   }
 
   getCart(cartId: string): Observable<AccessCart> {
@@ -129,12 +138,45 @@ export class WorkflowService {
     return this.http.delete<void>(`${this.baseUrl}/access/carts/${cartId}/items/${itemId}`);
   }
 
-  submitCart(cartId: string): Observable<{ cart_id: string; status: string; message: string }> {
+  submitCart(cartId: string, justification?: string): Observable<{ cart_id: string; status: string; message: string }> {
     return this.http.post<{ cart_id: string; status: string; message: string }>(
       `${this.baseUrl}/access/carts/${cartId}/submit`,
+      { justification }
+    );
+  }
+
+  withdrawCart(cartId: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(
+      `${this.baseUrl}/access/carts/${cartId}/withdraw`,
       {}
     );
   }
+
+  bumpCart(cartId: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(
+      `${this.baseUrl}/access/carts/${cartId}/bump`,
+      {}
+    );
+  }
+
+  listAllCarts(): Observable<AccessCart[]> {
+    return this.http.get<AccessCart[]>(`${this.baseUrl}/admin/carts`);
+  }
+
+  archiveCarts(olderThanDays: number, status: string = 'ALL', ids: string[] = []): Observable<{ archived_count: number; message: string }> {
+    return this.http.post<{ archived_count: number; message: string }>(
+      `${this.baseUrl}/admin/housekeeping/archive`,
+      { older_than_days: olderThanDays, status, ids }
+    );
+  }
+
+  deleteCarts(olderThanDays: number, status: string = 'ALL', includeDrafts: boolean = false, ids: string[] = []): Observable<{ deleted_count: number; message: string }> {
+    return this.http.post<{ deleted_count: number; message: string }>(
+      `${this.baseUrl}/admin/housekeeping/delete`,
+      { older_than_days: olderThanDays, status, include_drafts: includeDrafts, ids }
+    );
+  }
+
 
   // ── Inbox ──────────────────────────────────────────────────────────────────
 
@@ -276,6 +318,7 @@ export class WorkflowService {
             };
 
             es.addEventListener('inbox.new', handleEvent('inbox.new'));
+            es.addEventListener('inbox.bumped', handleEvent('inbox.bumped'));
             es.addEventListener('cart.updated', handleEvent('cart.updated'));
             es.addEventListener('step.actioned', handleEvent('step.actioned'));
 

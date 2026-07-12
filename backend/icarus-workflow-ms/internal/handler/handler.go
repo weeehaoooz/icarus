@@ -41,6 +41,8 @@ func (s *HandlerServer) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/access/carts/{cart_id}/items", s.AuthRequired(s.AddCartItemHandler))
 	mux.HandleFunc("DELETE /api/v1/access/carts/{cart_id}/items/{item_id}", s.AuthRequired(s.RemoveCartItemHandler))
 	mux.HandleFunc("POST /api/v1/access/carts/{cart_id}/submit", s.AuthRequired(s.SubmitCartHandler))
+	mux.HandleFunc("POST /api/v1/access/carts/{cart_id}/withdraw", s.AuthRequired(s.WithdrawCartHandler))
+	mux.HandleFunc("POST /api/v1/access/carts/{cart_id}/bump", s.AuthRequired(s.BumpCartHandler))
 
 	// Approver inbox (auth required)
 	mux.HandleFunc("GET /api/v1/workflow/inbox", s.AuthRequired(s.GetInboxHandler))
@@ -63,6 +65,11 @@ func (s *HandlerServer) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/workflow/definitions/roles/{role_id}", s.AuthRequired(s.GetRoleWorkflowHandler))
 	mux.HandleFunc("PUT /api/v1/workflow/definitions/roles/{role_id}", s.AdminRequired(s.UpsertRoleWorkflowHandler))
 	mux.HandleFunc("PUT /api/v1/workflow/definitions/roles/{role_id}/map", s.AdminRequired(s.MapWorkflowToRoleHandler))
+
+	// Admin request management
+	mux.HandleFunc("GET /api/v1/admin/carts", s.AdminRequired(s.AdminListCartsHandler))
+	mux.HandleFunc("POST /api/v1/admin/housekeeping/archive", s.AdminRequired(s.AdminHousekeepingArchiveHandler))
+	mux.HandleFunc("POST /api/v1/admin/housekeeping/delete", s.AdminRequired(s.AdminHousekeepingDeleteHandler))
 
 }
 

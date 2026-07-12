@@ -173,8 +173,14 @@ func (s *HandlerServer) actionStep(w http.ResponseWriter, r *http.Request, newSt
 	})
 }
 
-// isAuthorizedApprover checks if the acting user is the direct assignee or holds the assigned role.
+// isAuthorizedApprover checks if the acting user is the direct assignee, holds the assigned role, or is an admin.
 func (s *HandlerServer) isAuthorizedApprover(claims *crypto.CustomClaims, step *models.ExecutionNode) bool {
+	// Admins are always authorized approvers
+	for _, r := range claims.Roles {
+		if r == "admin" {
+			return true
+		}
+	}
 	if step.AssignedToUserID != nil && *step.AssignedToUserID == claims.Subject {
 		return true
 	}

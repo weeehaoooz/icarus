@@ -19,7 +19,10 @@ interface Role {
   selector: 'app-request-access',
   imports: [FormsModule, RouterLink, DatePipe],
   templateUrl: './request-access.component.html',
-  styleUrl: './request-access.component.scss'
+  styleUrl: './request-access.component.scss',
+  host: {
+    '(document:keydown.escape)': 'onEscapeKey()'
+  }
 })
 export class RequestAccessComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
@@ -32,6 +35,14 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
   readonly isSubmitting = signal(false);
   readonly submitMessage = signal<string | null>(null);
   readonly submitError = signal<string | null>(null);
+
+  // Actions state
+  readonly actionsLoading = signal<Record<string, 'withdraw' | 'bump' | null>>({});
+  readonly actionError = signal<string | null>(null);
+  readonly actionSuccess = signal<string | null>(null);
+
+  // Selected request for details view
+  readonly selectedRequest = signal<AccessCart | null>(null);
 
   // Role catalogue
   readonly rawAvailableRoles = signal<Role[]>([]);
@@ -225,7 +236,7 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
     this.submitMessage.set(null);
     this.submitError.set(null);
 
-    const sub = this.workflowService.submitCart(cartId).subscribe({
+    const sub = this.workflowService.submitCart(cartId, this.justification).subscribe({
       next: (res) => {
         this.submitMessage.set(res.message);
         this.isSubmitting.set(false);
@@ -283,7 +294,88 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
       case 'REJECTED': return 'status-rejected';
       case 'IN_PROGRESS': return 'status-progress';
       case 'COMPLETED': return 'status-completed';
+      case 'CANCELLED': return 'status-cancelled';
       default: return 'status-pending';
+    }
+  }
+
+  withdrawRequest(cartId: string): void {
+    this.actionsLoading.update(loading => ({ ...loading, [cartId]: 'withdraw' }));
+    this.actionError.set(null);
+    this.actionSuccess.set(null);
+
+    const sub = this.workflowService.withdrawCart(cartId).subscribe({
+      next: (res) => {
+        this.actionSuccess.set(res.message || 'Request withdrawn successfully.');
+        this.actionsLoading.update(loading => ({ ...loading, [cartId]: null }));
+        this.loadHistory();
+
+        // Refresh selectedRequest if it is currently open
+        const currentSelected = this.selectedRequest();
+        if (currentSelected && currentSelected.id === cartId) {
+          this.workflowService.getCart(cartId).subscribe({
+            next: (updatedCart) => this.selectedRequest.set(updatedCart)
+          });
+        }
+
+        setTimeout(() => this.actionSuccess.set(null), 5000);
+      },
+      error: (err) => {
+        this.actionError.set(err.error?.error || 'Failed to withdraw request.');
+        this.actionsLoading.update(loading => ({ ...loading, [cartId]: null }));
+        setTimeout(() => this.actionError.set(null), 5000);
+      }
+    });
+    this.subs.push(sub);
+  }
+
+  bumpRequest(cartId: string): void {
+    this.actionsLoading.update(loading => ({ ...loading, [cartId]: 'bump' }));
+    this.actionError.set(null);
+    this.actionSuccess.set(null);
+
+    const sub = this.workflowService.bumpCart(cartId).subscribe({
+      next: (res) => {
+        this.actionSuccess.set(res.message || 'Request bumped successfully. Approvers notified.');
+        this.actionsLoading.update(loading => ({ ...loading, [cartId]: null }));
+
+        // Refresh selectedRequest if it is currently open
+        const currentSelected = this.selectedRequest();
+        if (currentSelected && currentSelected.id === cartId) {
+          this.workflowService.getCart(cartId).subscribe({
+            next: (updatedCart) => this.selectedRequest.set(updatedCart)
+          });
+        }
+
+        setTimeout(() => this.actionSuccess.set(null), 5000);
+      },
+      error: (err) => {
+        this.actionError.set(err.error?.error || 'Failed to bump request.');
+        this.actionsLoading.update(loading => ({ ...loading, [cartId]: null }));
+        setTimeout(() => this.actionError.set(null), 5000);
+      }
+    });
+    this.subs.push(sub);
+  }
+
+  selectRequest(cart: AccessCart): void {
+    this.workflowService.getCart(cart.id).subscribe({
+      next: (fullCart) => {
+        this.selectedRequest.set(fullCart);
+      },
+      error: () => {
+        this.selectedRequest.set(cart);
+      }
+    });
+  }
+
+  closeDetails(): void {
+    this.selectedRequest.set(null);
+  }
+
+  onEscapeKey(): void {
+    if (this.selectedRequest()) {
+      this.closeDetails();
     }
   }
 

@@ -58,6 +58,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
         if (event.type === 'inbox.new') {
           this.refreshInboxCount();
           this.showToast('New pending access request received in your inbox.');
+        } else if (event.type === 'inbox.bumped') {
+          this.refreshInboxCount();
+          this.showToast('Reminder: A pending access request is awaiting your approval.');
         } else if (event.type === 'cart.updated') {
           this.showToast('One of your access requests has been updated.');
         }

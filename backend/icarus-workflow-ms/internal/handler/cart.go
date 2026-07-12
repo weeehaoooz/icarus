@@ -36,7 +36,8 @@ func (s *HandlerServer) CreateCartHandler(w http.ResponseWriter, r *http.Request
 // ListCartsHandler GET /api/v1/access/carts
 func (s *HandlerServer) ListCartsHandler(w http.ResponseWriter, r *http.Request) {
 	claims := s.claimsFrom(r)
-	carts, err := s.Repo.ListCarts(claims.Subject)
+	includeArchived := r.URL.Query().Get("include_archived") == "true"
+	carts, err := s.Repo.ListCarts(claims.Subject, includeArchived)
 	if err != nil {
 		s.respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -143,6 +144,18 @@ func (s *HandlerServer) SubmitCartHandler(w http.ResponseWriter, r *http.Request
 	if len(cart.Items) == 0 {
 		s.respondWithError(w, http.StatusBadRequest, "cart has no items")
 		return
+	}
+
+	var body struct {
+		Justification string `json:"justification"`
+	}
+	_ = s.decodeJSON(r, &body)
+
+	if body.Justification != "" {
+		if err := s.Repo.UpdateCartJustification(cartID, body.Justification); err != nil {
+			s.respondWithError(w, http.StatusInternalServerError, "failed to update cart justification: "+err.Error())
+			return
+		}
 	}
 
 	// Transition cart to SUBMITTED
@@ -285,3 +298,195 @@ func (s *HandlerServer) fetchRoleMembers(roleName string) []string {
 	_ = json.NewDecoder(resp.Body).Decode(&members)
 	return members
 }
+
+// WithdrawCartHandler POST /api/v1/access/carts/{cart_id}/withdraw
+func (s *HandlerServer) WithdrawCartHandler(w http.ResponseWriter, r *http.Request) {
+	claims := s.claimsFrom(r)
+	cartID := r.PathValue("cart_id")
+
+	cart, err := s.Repo.GetCart(cartID)
+	if err != nil {
+		s.respondWithError(w, http.StatusNotFound, "cart not found")
+		return
+	}
+	if cart.RequesterID != claims.Subject {
+		s.respondWithError(w, http.StatusForbidden, "not your cart")
+		return
+	}
+	if cart.Status != "SUBMITTED" && cart.Status != "IN_PROGRESS" {
+		s.respondWithError(w, http.StatusBadRequest, "only submitted or in-progress requests can be withdrawn")
+		return
+	}
+
+	// Get pending steps before withdrawal to notify approvers to refresh their inbox
+	pendingSteps, _ := s.Repo.GetPendingStepsForCart(cartID)
+
+	if err := s.Repo.WithdrawCart(cartID, claims.Subject); err != nil {
+		s.respondWithError(w, http.StatusInternalServerError, "failed to withdraw request: "+err.Error())
+		return
+	}
+
+	// Notify requester (cart.updated)
+	payload := fmt.Sprintf(`{"cart_id":"%s","status":"CANCELLED"}`, cartID)
+	_ = s.Repo.CreateSSENotification(&models.SSENotification{
+		ID: uuid.New().String(), UserID: claims.Subject,
+		EventType: "cart.updated", Payload: payload,
+	})
+	s.SSEBroker.Publish(claims.Subject, "cart.updated", payload)
+
+	// Notify approvers so their inbox count updates
+	notifiedUsers := make(map[string]bool)
+	for _, step := range pendingSteps {
+		var targets []string
+		if step.AssignedToUserID != nil {
+			targets = []string{*step.AssignedToUserID}
+		} else if step.AssignedToRole != nil {
+			targets = s.fetchRoleMembers(*step.AssignedToRole)
+		}
+		for _, uid := range targets {
+			if notifiedUsers[uid] {
+				continue
+			}
+			notifiedUsers[uid] = true
+			s.SSEBroker.Publish(uid, "inbox.new", `{"action":"withdrawn"}`)
+		}
+	}
+
+	s.respondWithJSON(w, http.StatusOK, map[string]string{
+		"message": "Request withdrawn successfully.",
+	})
+}
+
+// BumpCartHandler POST /api/v1/access/carts/{cart_id}/bump
+func (s *HandlerServer) BumpCartHandler(w http.ResponseWriter, r *http.Request) {
+	claims := s.claimsFrom(r)
+	cartID := r.PathValue("cart_id")
+
+	cart, err := s.Repo.GetCart(cartID)
+	if err != nil {
+		s.respondWithError(w, http.StatusNotFound, "cart not found")
+		return
+	}
+	if cart.RequesterID != claims.Subject {
+		s.respondWithError(w, http.StatusForbidden, "not your cart")
+		return
+	}
+	if cart.Status != "SUBMITTED" && cart.Status != "IN_PROGRESS" {
+		s.respondWithError(w, http.StatusBadRequest, "only submitted or in-progress requests can be bumped")
+		return
+	}
+
+	steps, err := s.Repo.GetPendingStepsForCart(cartID)
+	if err != nil {
+		s.respondWithError(w, http.StatusInternalServerError, "failed to query pending steps: "+err.Error())
+		return
+	}
+
+	if len(steps) == 0 {
+		s.respondWithError(w, http.StatusBadRequest, "no pending approval steps found to bump")
+		return
+	}
+
+	// Audit: cart bumped
+	_ = s.Repo.WriteAuditLog(&models.AuditLog{
+		ID: uuid.New().String(), EntityType: "CART", EntityID: cartID,
+		ActorUserID: claims.Subject, Action: "BUMPED",
+	})
+
+	// Notify approvers via SSE with inbox.bumped
+	notifiedUsers := make(map[string]bool)
+	for _, step := range steps {
+		var targets []string
+		if step.AssignedToUserID != nil {
+			targets = []string{*step.AssignedToUserID}
+		} else if step.AssignedToRole != nil {
+			targets = s.fetchRoleMembers(*step.AssignedToRole)
+		}
+
+		for _, uid := range targets {
+			if notifiedUsers[uid] {
+				continue
+			}
+			notifiedUsers[uid] = true
+
+			payload := fmt.Sprintf(`{"step_id":"%s","role":"%s","cart_id":"%s"}`,
+				step.StepID, step.RoleName, cartID)
+			_ = s.Repo.CreateSSENotification(&models.SSENotification{
+				ID: uuid.New().String(), UserID: uid,
+				EventType: "inbox.bumped", Payload: payload,
+			})
+			s.SSEBroker.Publish(uid, "inbox.bumped", payload)
+		}
+	}
+
+	s.respondWithJSON(w, http.StatusOK, map[string]string{
+		"message": "Request bumped successfully. Approvers have been notified.",
+	})
+}
+
+// AdminListCartsHandler GET /api/v1/admin/carts
+func (s *HandlerServer) AdminListCartsHandler(w http.ResponseWriter, r *http.Request) {
+	carts, err := s.Repo.ListAllCarts()
+	if err != nil {
+		s.respondWithError(w, http.StatusInternalServerError, "failed to fetch carts: "+err.Error())
+		return
+	}
+	if carts == nil {
+		carts = []models.AccessCart{}
+	}
+	s.respondWithJSON(w, http.StatusOK, carts)
+}
+
+// AdminHousekeepingArchiveHandler POST /api/v1/admin/housekeeping/archive
+func (s *HandlerServer) AdminHousekeepingArchiveHandler(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		OlderThanDays int      `json:"older_than_days"`
+		Status        string   `json:"status"`
+		IDs           []string `json:"ids"`
+	}
+	_ = s.decodeJSON(r, &body) // Ignore error, body is optional
+
+	if body.Status == "" {
+		body.Status = "ALL"
+	}
+
+	rows, err := s.Repo.ArchiveSelectedCarts(body.Status, body.OlderThanDays, body.IDs)
+	if err != nil {
+		s.respondWithError(w, http.StatusInternalServerError, "failed to archive carts: "+err.Error())
+		return
+	}
+
+	s.respondWithJSON(w, http.StatusOK, map[string]interface{}{
+		"archived_count": rows,
+		"message":        fmt.Sprintf("Housekeeping complete. Archived %d requests.", rows),
+	})
+}
+
+// AdminHousekeepingDeleteHandler POST /api/v1/admin/housekeeping/delete
+func (s *HandlerServer) AdminHousekeepingDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		OlderThanDays int      `json:"older_than_days"`
+		Status        string   `json:"status"`
+		IncludeDrafts bool     `json:"include_drafts"`
+		IDs           []string `json:"ids"`
+	}
+	_ = s.decodeJSON(r, &body) // Ignore error, body is optional
+
+	if body.Status == "" {
+		body.Status = "ALL"
+	}
+
+	rows, err := s.Repo.DeleteSelectedCarts(body.Status, body.OlderThanDays, body.IncludeDrafts, body.IDs)
+	if err != nil {
+		s.respondWithError(w, http.StatusInternalServerError, "failed to delete carts: "+err.Error())
+		return
+	}
+
+	s.respondWithJSON(w, http.StatusOK, map[string]interface{}{
+		"deleted_count": rows,
+		"message":        fmt.Sprintf("Housekeeping complete. Deleted %d requests.", rows),
+	})
+}
+
+
+
