@@ -65,6 +65,11 @@ func (s *HandlerServer) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/workflow/definitions/roles/{role_id}", s.AuthRequired(s.GetRoleWorkflowHandler))
 	mux.HandleFunc("PUT /api/v1/workflow/definitions/roles/{role_id}", s.AdminRequired(s.UpsertRoleWorkflowHandler))
 	mux.HandleFunc("PUT /api/v1/workflow/definitions/roles/{role_id}/map", s.AdminRequired(s.MapWorkflowToRoleHandler))
+	mux.HandleFunc("DELETE /api/v1/workflow/definitions/roles/{role_id}/map", s.AdminRequired(s.UnmapWorkflowFromRoleHandler))
+	// Workflow-level mapping endpoints (preferred)
+	mux.HandleFunc("PUT /api/v1/workflow/definitions/{id}/roles", s.AdminRequired(s.MapRoleToWorkflowHandler))
+	mux.HandleFunc("DELETE /api/v1/workflow/definitions/{id}/roles/{role_id}", s.AdminRequired(s.UnmapRoleFromWorkflowHandler))
+
 
 	// Admin request management
 	mux.HandleFunc("GET /api/v1/admin/carts", s.AdminRequired(s.AdminListCartsHandler))

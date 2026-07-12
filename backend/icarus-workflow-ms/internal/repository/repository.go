@@ -408,6 +408,44 @@ func (r *SQLRepository) MapWorkflowToRole(roleID, workflowID, createdBy string) 
 	return err
 }
 
+// UnmapWorkflowFromRole deactivates the role→workflow mapping (sets is_active=0) without deleting the record.
+func (r *SQLRepository) UnmapWorkflowFromRole(roleID string) error {
+	res, err := r.db.Exec(`
+		UPDATE role_workflow_mappings
+		SET is_active = 0, effective_to = CURRENT_TIMESTAMP
+		WHERE role_id = ? AND is_active = 1`, roleID)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return errors.New("no active mapping found for role")
+	}
+	return nil
+}
+
+// UnmapRoleFromWorkflow deactivates a specific role→workflow mapping identified by both workflow ID and role ID.
+func (r *SQLRepository) UnmapRoleFromWorkflow(workflowID, roleID string) error {
+	res, err := r.db.Exec(`
+		UPDATE role_workflow_mappings
+		SET is_active = 0, effective_to = CURRENT_TIMESTAMP
+		WHERE workflow_id = ? AND role_id = ? AND is_active = 1`, workflowID, roleID)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return errors.New("no active mapping found for this workflow/role combination")
+	}
+	return nil
+}
+
 // ListWorkflowsWithRoleMapping returns all current workflow versions annotated with which role (if any) references them.
 func (r *SQLRepository) ListWorkflowsWithRoleMapping() ([]models.WorkflowWithRoleMapping, error) {
 	rows, err := r.db.Query(`

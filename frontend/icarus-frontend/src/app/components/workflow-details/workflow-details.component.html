@@ -1,0 +1,205 @@
+<section class="wd-page">
+  <!-- ── Back navigation ─────────────────────────────────────────────────── -->
+  <button class="btn-back" (click)="goBack()" aria-label="Back to workflow templates">
+    <svg viewBox="0 0 24 24" class="lucide-icon" aria-hidden="true">
+      <path d="M19 12H5M12 19l-7-7 7-7" />
+    </svg>
+    All Workflows
+  </button>
+
+  @if (isLoading()) {
+    <div class="loading-state" aria-busy="true">Loading workflow details…</div>
+  } @else if (!workflow()) {
+    <div class="error-state" role="alert">
+      <p>Workflow not found.</p>
+      <button class="btn-back" (click)="goBack()">← Back</button>
+    </div>
+  } @else {
+
+    <!-- ── Alerts ─────────────────────────────────────────────────────────── -->
+    @if (success()) {
+      <div class="alert alert-success" role="status">✓ {{ success() }}</div>
+    }
+    @if (error()) {
+      <div class="alert alert-error" role="alert">✕ {{ error() }}</div>
+    }
+
+    <!-- ── Header ─────────────────────────────────────────────────────────── -->
+    <header class="wd-header">
+      <div class="header-title-row">
+        <span class="wf-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="6" cy="12" r="2" />
+            <circle cx="18" cy="6" r="2" />
+            <circle cx="18" cy="18" r="2" />
+            <path d="M8 12h8M8 11l6-4M8 13l6 4" />
+          </svg>
+        </span>
+        <div>
+          <div class="header-name-row">
+            <h1>{{ workflow()!.name }}</h1>
+            <span class="status-badge" [class]="statusClass(workflow()!.status)">{{ workflow()!.status }}</span>
+          </div>
+          @if (workflow()!.description) {
+            <p class="header-desc">{{ workflow()!.description }}</p>
+          }
+        </div>
+      </div>
+
+      <div class="header-meta">
+        <div class="meta-chip">
+          <span class="meta-label">Version</span>
+          <span class="meta-value">v{{ workflow()!.version }}</span>
+        </div>
+        <div class="meta-chip">
+          <span class="meta-label">Key</span>
+          <span class="meta-value mono">{{ workflow()!.definition_key }}</span>
+        </div>
+        <div class="meta-chip">
+          <span class="meta-label">Nodes</span>
+          <span class="meta-value">{{ dagNodes().length }}</span>
+        </div>
+        <div class="meta-chip">
+          <span class="meta-label">Created by</span>
+          <span class="meta-value">{{ workflow()!.created_by }}</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ── Main body ──────────────────────────────────────────────────────── -->
+    <div class="wd-body">
+
+      <!-- Left: DAG Preview ─────────────────────────────────────────────── -->
+      <div class="dag-section">
+        <div class="section-header">
+          <h2>DAG Structure</h2>
+          <p class="section-desc">Visual representation of the approval workflow graph.</p>
+        </div>
+        <div class="dag-container">
+          <app-dag-preview [nodes]="dagNodes()" />
+        </div>
+      </div>
+
+      <!-- Right: Role Assignments ──────────────────────────────────────── -->
+      <aside class="roles-section">
+        <div class="section-header">
+          <div>
+            <h2>Role Assignments</h2>
+            <p class="section-desc">Roles that use this workflow for approvals.</p>
+          </div>
+          <button class="btn-add-role" (click)="openMapModal()" id="assign-role-btn" aria-label="Assign a new role to this workflow">
+            <svg viewBox="0 0 24 24" class="lucide-icon" aria-hidden="true">
+              <path d="M5 12h14M12 5v14" />
+            </svg>
+            Assign Role
+          </button>
+        </div>
+
+        @if (mappedRoleIds().length === 0) {
+          <div class="roles-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            <p>No roles assigned yet.</p>
+            <span>Click <strong>Assign Role</strong> to map this workflow to an approval role.</span>
+          </div>
+        } @else {
+          <ul class="roles-list" aria-label="Assigned roles">
+            @for (roleId of mappedRoleIds(); track roleId) {
+              <li class="role-item">
+                <div class="role-info">
+                  <span class="role-dot" aria-hidden="true"></span>
+                  <span class="role-id">{{ roleId }}</span>
+                </div>
+                <button
+                  class="btn-unmap"
+                  (click)="promptUnmap(roleId)"
+                  [attr.aria-label]="'Remove role ' + roleId + ' from this workflow'"
+                  [attr.id]="'unmap-btn-' + roleId">
+                  <svg viewBox="0 0 24 24" class="lucide-icon" aria-hidden="true">
+                    <path d="M18 6 6 18M6 6l12 12" />
+                  </svg>
+                  Remove
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </aside>
+    </div>
+  }
+</section>
+
+<!-- ── Assign Role Modal ──────────────────────────────────────────────────── -->
+@if (showMapModal()) {
+  <div class="modal-backdrop" (click)="closeMapModal()" role="dialog" aria-modal="true" aria-label="Assign role to workflow">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <header class="modal-header">
+        <h2>Assign Role</h2>
+        <button class="modal-close" (click)="closeMapModal()" aria-label="Close modal">✕</button>
+      </header>
+      <div class="modal-body">
+        <p class="modal-desc">
+          Select a role that should use <strong>{{ workflow()?.name }}</strong> as its approval workflow.
+        </p>
+        @if (error()) {
+          <div class="alert alert-error" role="alert">✕ {{ error() }}</div>
+        }
+        @if (availableRoles().length === 0) {
+          <p class="no-roles-msg">All roles are already assigned to this workflow.</p>
+        } @else {
+          <div class="form-group">
+            <label for="assign-role-select">Target Role</label>
+            <div class="select-container">
+              <select id="assign-role-select" [(ngModel)]="selectedRoleId" class="premium-select">
+                <option value="">-- Select a role --</option>
+                @for (role of availableRoles(); track role.id || role.name) {
+                  <option [value]="role.id || role.name">{{ role.name }}</option>
+                }
+              </select>
+            </div>
+          </div>
+        }
+      </div>
+      <footer class="modal-footer">
+        <button class="btn-cancel" (click)="closeMapModal()">Cancel</button>
+        <button class="btn-confirm" (click)="confirmMap()" [disabled]="isMapping() || !selectedRoleId() || availableRoles().length === 0">
+          @if (isMapping()) { Assigning… } @else { Confirm Assignment }
+        </button>
+      </footer>
+    </div>
+  </div>
+}
+
+<!-- ── Unmap Confirmation Dialog ─────────────────────────────────────────── -->
+@if (showUnmapConfirm()) {
+  <div class="modal-backdrop" (click)="cancelUnmap()" role="dialog" aria-modal="true" aria-label="Confirm role removal">
+    <div class="modal-card confirm-card" (click)="$event.stopPropagation()">
+      <header class="modal-header">
+        <h2>Remove Role Assignment</h2>
+        <button class="modal-close" (click)="cancelUnmap()" aria-label="Close modal">✕</button>
+      </header>
+      <div class="modal-body">
+        <div class="confirm-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        </div>
+        <p class="modal-desc">
+          Are you sure you want to remove role <strong>{{ unmappingRoleId() }}</strong> from this workflow?
+          Future requests for this role will fall back to auto-approve.
+        </p>
+      </div>
+      <footer class="modal-footer">
+        <button class="btn-cancel" (click)="cancelUnmap()">Cancel</button>
+        <button class="btn-danger" (click)="confirmUnmap()" [disabled]="isUnmapping()" [attr.id]="'confirm-unmap-' + unmappingRoleId()">
+          @if (isUnmapping()) { Removing… } @else { Yes, Remove }
+        </button>
+      </footer>
+    </div>
+  </div>
+}

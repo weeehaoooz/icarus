@@ -248,6 +248,11 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
+
+  &.span-2 {
+    grid-column: span 2;
+  }
 }
 
 .meta-label {
@@ -263,10 +268,18 @@
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--text-main);
+  word-break: break-word;
 
   &.mono {
     font-family: monospace;
     font-size: 0.75rem;
+    word-break: break-all;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    padding: 4px 8px;
+    border-radius: 6px;
+    display: block;
+    margin-top: 2px;
   }
 }
 
@@ -284,7 +297,7 @@
   gap: 6px;
   font-size: 0.78rem;
   font-weight: 500;
-  padding: 6px 10px;
+  padding: 6px 8px 6px 10px;
   border-radius: 6px;
 
   .pill-icon {
@@ -294,6 +307,14 @@
     fill: none;
     stroke-width: 2;
     flex-shrink: 0;
+  }
+
+  .pill-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   &.active-mapping {
@@ -313,18 +334,54 @@
   }
 }
 
-.card-actions {
-  padding: 14px 20px;
-  display: flex;
-  gap: 10px;
-  margin-top: auto;
-}
-
-.btn-map, .btn-edit {
+.pill-unmap-btn {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
   display: flex;
   align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--primary);
+  opacity: 0.5;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+  padding: 0;
+
+  svg {
+    width: 10px;
+    height: 10px;
+  }
+
+  &:hover {
+    opacity: 1;
+    background: rgba(248, 113, 113, 0.12);
+    color: var(--danger, #f87171);
+  }
+}
+
+.card-actions {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+
+  .action-row {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+}
+
+.btn-map, .btn-edit, .btn-view {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 8px 14px;
+  padding: 10px 14px;
   border-radius: 8px;
   font-size: 0.8rem;
   font-weight: 600;
@@ -346,10 +403,11 @@
   background: var(--primary);
   color: var(--text-inverse);
   border: none;
-  flex: 1;
+  width: 100%;
 
   &:hover {
     background: var(--primary-hover);
+    box-shadow: 0 2px 8px rgba(20, 184, 166, 0.2);
   }
 }
 
@@ -357,11 +415,25 @@
   background: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-muted);
+  flex: 1;
 
   &:hover {
     border-color: var(--primary);
     color: var(--primary);
     background: var(--primary-glow);
+  }
+}
+
+.btn-view {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  flex: 1;
+
+  &:hover {
+    border-color: rgba(99, 102, 241, 0.5);
+    color: #818cf8;
+    background: rgba(99, 102, 241, 0.06);
   }
 }
 
@@ -452,36 +524,107 @@
 
 .select-container {
   position: relative;
+}
 
-  &::after {
-    content: "▼";
-    font-size: 0.65rem;
-    color: var(--text-muted);
-    position: absolute;
-    right: 14px;
-    top: 50%;
-    transform: translateY(-50%);
-    pointer-events: none;
+.role-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 6px;
+  background: var(--bg-panel);
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
   }
 }
 
-.premium-select {
-  appearance: none;
-  width: 100%;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-color);
-  color: var(--text-main);
-  padding: 10px 36px 10px 14px;
-  border-radius: 8px;
-  font-family: var(--font-family);
-  font-size: 0.875rem;
-  cursor: pointer;
+.checklist-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
 
-  &:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 2px var(--primary-glow);
+.role-check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  border: 1px solid transparent;
+  user-select: none;
+
+  &:hover {
+    background: rgba(20, 184, 166, 0.06);
+    border-color: rgba(20, 184, 166, 0.15);
   }
+
+  &.selected {
+    background: rgba(20, 184, 166, 0.1);
+    border-color: rgba(20, 184, 166, 0.3);
+  }
+}
+
+.role-checkbox {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
+.check-custom {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid var(--border-color);
+  background: var(--bg-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+  color: var(--primary);
+
+  .role-check-row.selected & {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--text-inverse);
+
+    svg {
+      stroke: var(--text-inverse);
+    }
+  }
+
+  svg {
+    width: 10px;
+    height: 10px;
+  }
+}
+
+.role-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.selection-count {
+  font-size: 0.75rem;
+  color: var(--primary);
+  margin: 6px 0 0;
+  font-weight: 600;
+  opacity: 0.85;
 }
 
 .modal-footer {

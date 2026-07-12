@@ -29,6 +29,7 @@ export const routes: Routes = [
       { path: 'request-detail/:instanceId', loadComponent: () => import('./components/request-detail/request-detail.component').then(m => m.RequestDetailComponent) },
       { path: 'request-management', loadComponent: () => import('./components/request-management/request-management.component').then(m => m.RequestManagementComponent), canActivate: [adminGuard] },
       { path: 'workflows', loadComponent: () => import('./components/workflow-templates/workflow-templates.component').then(m => m.WorkflowTemplatesComponent), canActivate: [adminGuard] },
+      { path: 'workflows/:id', loadComponent: () => import('./components/workflow-details/workflow-details.component').then(m => m.WorkflowDetailsComponent), canActivate: [adminGuard] },
       { path: 'workflow-builder/new', loadComponent: () => import('./components/workflow-builder/workflow-builder.component').then(m => m.WorkflowBuilderComponent), canActivate: [adminGuard] },
       { path: 'workflow-builder/:roleId', loadComponent: () => import('./components/workflow-builder/workflow-builder.component').then(m => m.WorkflowBuilderComponent), canActivate: [adminGuard] },
       { path: 'profile-settings', loadComponent: () => import('./components/profile-settings/profile-settings.component').then(m => m.ProfileSettingsComponent) },

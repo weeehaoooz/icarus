@@ -68,11 +68,11 @@
           <span class="meta-label">Nodes</span>
           <span class="meta-value">{{ nodeCountLabel(tmpl) }}</span>
         </div>
-        <div class="meta-item">
+        <div class="meta-item span-2">
           <span class="meta-label">Key</span>
           <span class="meta-value mono">{{ tmpl.definition_key }}</span>
         </div>
-        <div class="meta-item">
+        <div class="meta-item span-2">
           <span class="meta-label">Created by</span>
           <span class="meta-value">{{ tmpl.created_by }}</span>
         </div>
@@ -86,7 +86,13 @@
             <path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
             <circle cx="12" cy="12" r="2" />
           </svg>
-          Mapped → <strong>{{ roleId }}</strong>
+          <span class="pill-label">Mapped → <strong>{{ roleId }}</strong></span>
+          <button class="pill-unmap-btn" (click)="unmapRole(tmpl.id, roleId)"
+            [attr.aria-label]="'Unmap role ' + roleId + ' from this workflow'" title="Remove mapping">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
         </div>
         }
         } @else {
@@ -100,6 +106,7 @@
         }
       </div>
 
+
       <div class="card-actions">
         <button class="btn-map" (click)="openMapModal(tmpl)" [attr.aria-label]="'Map ' + tmpl.name + ' to a role'">
           <svg viewBox="0 0 24 24" class="lucide-icon">
@@ -108,13 +115,22 @@
           </svg>
           Map to Role
         </button>
-        <a [routerLink]="['/dashboard/workflow-builder/new']" class="btn-edit" [attr.aria-label]="'Edit ' + tmpl.name">
-          <svg viewBox="0 0 24 24" class="lucide-icon">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-          </svg>
-          New Version
-        </a>
+        <div class="action-row">
+          <a [routerLink]="['/dashboard/workflows', tmpl.id]" class="btn-view" [attr.aria-label]="'View details for ' + tmpl.name" [attr.id]="'view-btn-' + tmpl.id">
+            <svg viewBox="0 0 24 24" class="lucide-icon">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            View Details
+          </a>
+          <a [routerLink]="['/dashboard/workflow-builder/new']" class="btn-edit" [attr.aria-label]="'Edit ' + tmpl.name">
+            <svg viewBox="0 0 24 24" class="lucide-icon">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+            New Version
+          </a>
+        </div>
       </div>
     </article>
     }
@@ -128,33 +144,51 @@
   [attr.aria-label]="'Map workflow to role'">
   <div class="modal-card" (click)="$event.stopPropagation()">
     <header class="modal-header">
-      <h2>Map Workflow to Role</h2>
+      <h2>Map Workflow to Roles</h2>
       <button class="modal-close" (click)="closeMapModal()" aria-label="Close modal">✕</button>
     </header>
 
     <div class="modal-body">
       <p class="modal-desc">
-        Select which role should use the <strong>{{ mappingTemplateNme() }}</strong> workflow for its approval process.
+        Select one or more roles that should use the <strong>{{ mappingTemplateNme() }}</strong> workflow for their approval process.
       </p>
       @if (error()) {
       <div class="alert alert-error" role="alert">✕ {{ error() }}</div>
       }
       <div class="form-group">
-        <label for="map-role-select">Target Role</label>
-        <div class="select-container">
-          <select id="map-role-select" [(ngModel)]="selectedRoleId" class="premium-select">
-            <option value="">-- Select a role --</option>
-            @for (role of roles(); track role.id || role.name) {
-            <option [value]="role.id || role.name">{{ role.name }}</option>
-            }
-          </select>
+        <label>Target Roles</label>
+        <div class="role-checklist" role="group" aria-label="Select target roles">
+          @if (roles().length === 0) {
+          <div class="checklist-empty">No roles available.</div>
+          }
+          @for (role of roles(); track role.id || role.name) {
+          <label class="role-check-row" [class.selected]="isRoleSelected(role.id || role.name)"
+            [attr.for]="'role-check-' + (role.id || role.name)">
+            <input
+              type="checkbox"
+              [id]="'role-check-' + (role.id || role.name)"
+              [checked]="isRoleSelected(role.id || role.name)"
+              (change)="toggleRole(role.id || role.name)"
+              class="role-checkbox"
+            />
+            <span class="check-custom" aria-hidden="true">
+              @if (isRoleSelected(role.id || role.name)) {
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 6l3 3 5-5"/></svg>
+              }
+            </span>
+            <span class="role-name">{{ role.name }}</span>
+          </label>
+          }
         </div>
+        @if (selectedRoleIds().size > 0) {
+        <p class="selection-count">{{ selectedRoleIds().size }} role{{ selectedRoleIds().size === 1 ? '' : 's' }} selected</p>
+        }
       </div>
     </div>
 
     <footer class="modal-footer">
       <button class="btn-cancel" (click)="closeMapModal()">Cancel</button>
-      <button class="btn-confirm" (click)="confirmMap()" [disabled]="isMapping() || !selectedRoleId()">
+      <button class="btn-confirm" (click)="confirmMap()" [disabled]="isMapping() || selectedRoleIds().size === 0">
         @if (isMapping()) { Mapping… } @else { Confirm Mapping }
       </button>
     </footer>

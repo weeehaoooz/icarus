@@ -1,7 +1,8 @@
-import { Component, signal, inject, OnInit, computed } from '@angular/core';
+import { Component, signal, inject, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { WorkflowService, WorkflowWithRoleMapping, Workflow } from '../../services/workflow.service';
+import { forkJoin } from 'rxjs';
+import { WorkflowService, WorkflowWithRoleMapping } from '../../services/workflow.service';
 import { AdminService } from '../../services/admin.service';
 
 
@@ -27,7 +28,9 @@ export class WorkflowTemplatesComponent implements OnInit {
   readonly showMapModal = signal(false);
   readonly mappingTemplateId = signal('');
   readonly mappingTemplateNme = signal('');
-  readonly selectedRoleId = signal('');
+  readonly selectedRoleIds = signal<Set<string>>(new Set());
+  /** Snapshot of roles mapped when the modal was opened — used to diff additions vs removals. */
+  private originalRoleIds = new Set<string>();
   readonly isMapping = signal(false);
 
   ngOnInit(): void {
@@ -58,7 +61,9 @@ export class WorkflowTemplatesComponent implements OnInit {
   openMapModal(template: WorkflowWithRoleMapping): void {
     this.mappingTemplateId.set(template.id);
     this.mappingTemplateNme.set(template.name);
-    this.selectedRoleId.set(template.mapped_role_ids?.[0] ?? '');
+    const existing = new Set(template.mapped_role_ids ?? []);
+    this.originalRoleIds = new Set(existing); // snapshot for diffing
+    this.selectedRoleIds.set(new Set(existing));
     this.showMapModal.set(true);
     this.error.set(null);
     this.success.set(null);
@@ -66,30 +71,70 @@ export class WorkflowTemplatesComponent implements OnInit {
 
   closeMapModal(): void {
     this.showMapModal.set(false);
-    this.selectedRoleId.set('');
+    this.selectedRoleIds.set(new Set());
+    this.originalRoleIds = new Set();
+  }
+
+  toggleRole(roleId: string): void {
+    const current = new Set(this.selectedRoleIds());
+    if (current.has(roleId)) {
+      current.delete(roleId);
+    } else {
+      current.add(roleId);
+    }
+    this.selectedRoleIds.set(current);
+  }
+
+  isRoleSelected(roleId: string): boolean {
+    return this.selectedRoleIds().has(roleId);
   }
 
   confirmMap(): void {
-    const roleId = this.selectedRoleId();
+    const selected = this.selectedRoleIds();
     const workflowId = this.mappingTemplateId();
-    if (!roleId) {
-      this.error.set('Please select a role to map to.');
+
+    // Diff: roles to add (newly checked) and roles to remove (previously mapped but now unchecked)
+    const toMap = [...selected].filter(id => !this.originalRoleIds.has(id));
+    const toUnmap = [...this.originalRoleIds].filter(id => !selected.has(id));
+
+    if (toMap.length === 0 && toUnmap.length === 0) {
+      this.closeMapModal();
       return;
     }
 
     this.isMapping.set(true);
-    this.workflowService.mapWorkflowToRole(roleId, workflowId).subscribe({
+    const ops = [
+      ...toMap.map(id => this.workflowService.mapRoleToWorkflow(workflowId, id)),
+      ...toUnmap.map(id => this.workflowService.unmapRoleFromWorkflow(workflowId, id)),
+    ];
+
+    forkJoin(ops).subscribe({
       next: () => {
         this.isMapping.set(false);
         this.closeMapModal();
-        this.success.set(`Workflow template mapped to role "${roleId}" successfully.`);
+        const parts: string[] = [];
+        if (toMap.length) parts.push(`mapped ${toMap.length} role${toMap.length > 1 ? 's' : ''}`);
+        if (toUnmap.length) parts.push(`unmapped ${toUnmap.length} role${toUnmap.length > 1 ? 's' : ''}`);
+        this.success.set(`Workflow template: ${parts.join(' and ')} successfully.`);
         this.loadTemplates();
         setTimeout(() => this.success.set(null), 4000);
       },
       error: (err) => {
-        this.error.set(err.error?.error ?? 'Failed to map workflow to role.');
+        this.error.set(err.error?.error ?? 'Failed to update role mappings.');
         this.isMapping.set(false);
       }
+    });
+  }
+
+  /** Directly unmaps a single role from a workflow card pill (no modal needed). */
+  unmapRole(workflowId: string, roleId: string): void {
+    this.workflowService.unmapRoleFromWorkflow(workflowId, roleId).subscribe({
+      next: () => {
+        this.success.set(`Role "${roleId}" unmapped successfully.`);
+        this.loadTemplates();
+        setTimeout(() => this.success.set(null), 4000);
+      },
+      error: (err) => this.error.set(err.error?.error ?? 'Failed to unmap role.')
     });
   }
 

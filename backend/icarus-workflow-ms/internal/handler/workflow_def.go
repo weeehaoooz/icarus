@@ -202,3 +202,101 @@ func (s *HandlerServer) GetWorkflowByIDHandler(w http.ResponseWriter, r *http.Re
 	s.respondWithJSON(w, http.StatusOK, def)
 }
 
+// UnmapWorkflowFromRoleHandler DELETE /api/v1/workflow/definitions/roles/{role_id}/map
+// Deactivates the active role→workflow mapping without deleting it.
+func (s *HandlerServer) UnmapWorkflowFromRoleHandler(w http.ResponseWriter, r *http.Request) {
+	claims := s.claimsFrom(r)
+	roleID := r.PathValue("role_id")
+	if roleID == "" {
+		s.respondWithError(w, http.StatusBadRequest, "role_id is required")
+		return
+	}
+
+	if err := s.Repo.UnmapWorkflowFromRole(roleID); err != nil {
+		s.respondWithError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	_ = s.Repo.WriteAuditLog(&models.AuditLog{
+		ID: uuid.New().String(), EntityType: "ROLE_WORKFLOW_MAPPING", EntityID: roleID,
+		ActorUserID: claims.Subject, Action: "UNMAPPED",
+		AfterState: `{"is_active":false}`,
+	})
+
+	s.respondWithJSON(w, http.StatusOK, map[string]string{
+		"role_id": roleID,
+		"status":  "unmapped",
+	})
+}
+
+// MapRoleToWorkflowHandler PUT /api/v1/workflow/definitions/{id}/roles
+// Maps a role to a specific workflow template by workflow ID.
+func (s *HandlerServer) MapRoleToWorkflowHandler(w http.ResponseWriter, r *http.Request) {
+	claims := s.claimsFrom(r)
+	workflowID := r.PathValue("id")
+
+	var req models.MapWorkflowToRoleRequest
+	if err := s.decodeJSON(r, &req); err != nil {
+		s.respondWithError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.RoleID == "" {
+		s.respondWithError(w, http.StatusBadRequest, "role_id is required")
+		return
+	}
+
+	// Verify workflow exists
+	wf, err := s.Repo.GetWorkflowByID(workflowID)
+	if err != nil || wf == nil {
+		s.respondWithError(w, http.StatusNotFound, "workflow template not found")
+		return
+	}
+
+	if err := s.Repo.MapWorkflowToRole(req.RoleID, workflowID, claims.Subject); err != nil {
+		s.respondWithError(w, http.StatusInternalServerError, "failed to map role to workflow: "+err.Error())
+		return
+	}
+
+	_ = s.Repo.WriteAuditLog(&models.AuditLog{
+		ID: uuid.New().String(), EntityType: "ROLE_WORKFLOW_MAPPING", EntityID: workflowID,
+		ActorUserID: claims.Subject, Action: "MAPPED",
+		AfterState: `{"role_id":"` + req.RoleID + `"}`,
+	})
+
+	s.respondWithJSON(w, http.StatusOK, map[string]string{
+		"workflow_id": workflowID,
+		"role_id":     req.RoleID,
+		"status":      "mapped",
+	})
+}
+
+// UnmapRoleFromWorkflowHandler DELETE /api/v1/workflow/definitions/{id}/roles/{role_id}
+// Deactivates a specific role mapping from a workflow template.
+func (s *HandlerServer) UnmapRoleFromWorkflowHandler(w http.ResponseWriter, r *http.Request) {
+	claims := s.claimsFrom(r)
+	workflowID := r.PathValue("id")
+	roleID := r.PathValue("role_id")
+
+	if workflowID == "" || roleID == "" {
+		s.respondWithError(w, http.StatusBadRequest, "workflow id and role_id are required")
+		return
+	}
+
+	if err := s.Repo.UnmapRoleFromWorkflow(workflowID, roleID); err != nil {
+		s.respondWithError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	_ = s.Repo.WriteAuditLog(&models.AuditLog{
+		ID: uuid.New().String(), EntityType: "ROLE_WORKFLOW_MAPPING", EntityID: workflowID,
+		ActorUserID: claims.Subject, Action: "UNMAPPED",
+		AfterState: `{"role_id":"` + roleID + `","is_active":false}`,
+	})
+
+	s.respondWithJSON(w, http.StatusOK, map[string]string{
+		"workflow_id": workflowID,
+		"role_id":     roleID,
+		"status":      "unmapped",
+	})
+}
+

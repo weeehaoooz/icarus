@@ -246,11 +246,33 @@ export class WorkflowService {
     return this.http.get<WorkflowWithRoleMapping[]>(`${this.baseUrl}/workflow/definitions/templates`);
   }
 
-  /** Maps an existing workflow template to a role. */
+  /** Maps an existing workflow template to a role (role-level endpoint, kept for compatibility). */
   mapWorkflowToRole(roleId: string, workflowId: string): Observable<{ role_id: string; workflow_id: string; status: string }> {
     return this.http.put<{ role_id: string; workflow_id: string; status: string }>(
       `${this.baseUrl}/workflow/definitions/roles/${roleId}/map`,
       { workflow_id: workflowId }
+    );
+  }
+
+  /** Maps a role to a workflow template using the workflow-level endpoint. */
+  mapRoleToWorkflow(workflowId: string, roleId: string): Observable<{ workflow_id: string; role_id: string; status: string }> {
+    return this.http.put<{ workflow_id: string; role_id: string; status: string }>(
+      `${this.baseUrl}/workflow/definitions/${workflowId}/roles`,
+      { role_id: roleId }
+    );
+  }
+
+  /** Deactivates the active role→workflow mapping using the workflow-level endpoint. */
+  unmapRoleFromWorkflow(workflowId: string, roleId: string): Observable<{ workflow_id: string; role_id: string; status: string }> {
+    return this.http.delete<{ workflow_id: string; role_id: string; status: string }>(
+      `${this.baseUrl}/workflow/definitions/${workflowId}/roles/${encodeURIComponent(roleId)}`
+    );
+  }
+
+  /** Deactivates the active role→workflow mapping without deleting it (role-level, kept for compatibility). */
+  unmapWorkflowFromRole(roleId: string): Observable<{ role_id: string; status: string }> {
+    return this.http.delete<{ role_id: string; status: string }>(
+      `${this.baseUrl}/workflow/definitions/roles/${roleId}/map`
     );
   }
 

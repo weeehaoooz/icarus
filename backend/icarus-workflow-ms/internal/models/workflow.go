@@ -66,7 +66,8 @@ type UpsertWorkflowRequest struct {
 
 // MapWorkflowToRoleRequest binds an existing workflow template to a role.
 type MapWorkflowToRoleRequest struct {
-	WorkflowID string `json:"workflow_id"`
+	WorkflowID string `json:"workflow_id"` // used by the role-level endpoint
+	RoleID     string `json:"role_id"`     // used by the workflow-level endpoint
 }
 
 type UpsertNodeRequest struct {
