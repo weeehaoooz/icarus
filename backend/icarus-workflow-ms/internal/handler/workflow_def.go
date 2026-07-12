@@ -300,3 +300,47 @@ func (s *HandlerServer) UnmapRoleFromWorkflowHandler(w http.ResponseWriter, r *h
 	})
 }
 
+// PutDefinitionsDispatcher handles PUT routes for:
+// - /api/v1/workflow/definitions/roles/{role_id} (first == "roles")
+// - /api/v1/workflow/definitions/{id}/roles (second == "roles")
+func (s *HandlerServer) PutDefinitionsDispatcher(w http.ResponseWriter, r *http.Request) {
+	first := r.PathValue("first")
+	second := r.PathValue("second")
+
+	if first == "roles" {
+		r.SetPathValue("role_id", second)
+		s.UpsertRoleWorkflowHandler(w, r)
+		return
+	}
+	if second == "roles" {
+		r.SetPathValue("id", first)
+		s.MapRoleToWorkflowHandler(w, r)
+		return
+	}
+
+	s.respondWithError(w, http.StatusNotFound, "route not found")
+}
+
+// DeleteDefinitionsDispatcher handles DELETE routes for:
+// - /api/v1/workflow/definitions/roles/{role_id}/map (first == "roles", third == "map")
+// - /api/v1/workflow/definitions/{id}/roles/{role_id} (second == "roles")
+func (s *HandlerServer) DeleteDefinitionsDispatcher(w http.ResponseWriter, r *http.Request) {
+	first := r.PathValue("first")
+	second := r.PathValue("second")
+	third := r.PathValue("third")
+
+	if first == "roles" && third == "map" {
+		r.SetPathValue("role_id", second)
+		s.UnmapWorkflowFromRoleHandler(w, r)
+		return
+	}
+	if second == "roles" {
+		r.SetPathValue("id", first)
+		r.SetPathValue("role_id", third)
+		s.UnmapRoleFromWorkflowHandler(w, r)
+		return
+	}
+
+	s.respondWithError(w, http.StatusNotFound, "route not found")
+}
+

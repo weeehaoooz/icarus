@@ -63,12 +63,10 @@ func (s *HandlerServer) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/workflow/definitions/{id}", s.AuthRequired(s.GetWorkflowByIDHandler))
 	mux.HandleFunc("GET /api/v1/workflow/definitions/history/{definition_key}", s.AdminRequired(s.GetDefinitionHistoryHandler))
 	mux.HandleFunc("GET /api/v1/workflow/definitions/roles/{role_id}", s.AuthRequired(s.GetRoleWorkflowHandler))
-	mux.HandleFunc("PUT /api/v1/workflow/definitions/roles/{role_id}", s.AdminRequired(s.UpsertRoleWorkflowHandler))
+	// Dispatchers for conflicting definitions endpoints
 	mux.HandleFunc("PUT /api/v1/workflow/definitions/roles/{role_id}/map", s.AdminRequired(s.MapWorkflowToRoleHandler))
-	mux.HandleFunc("DELETE /api/v1/workflow/definitions/roles/{role_id}/map", s.AdminRequired(s.UnmapWorkflowFromRoleHandler))
-	// Workflow-level mapping endpoints (preferred)
-	mux.HandleFunc("PUT /api/v1/workflow/definitions/{id}/roles", s.AdminRequired(s.MapRoleToWorkflowHandler))
-	mux.HandleFunc("DELETE /api/v1/workflow/definitions/{id}/roles/{role_id}", s.AdminRequired(s.UnmapRoleFromWorkflowHandler))
+	mux.HandleFunc("PUT /api/v1/workflow/definitions/{first}/{second}", s.AdminRequired(s.PutDefinitionsDispatcher))
+	mux.HandleFunc("DELETE /api/v1/workflow/definitions/{first}/{second}/{third}", s.AdminRequired(s.DeleteDefinitionsDispatcher))
 
 
 	// Admin request management
