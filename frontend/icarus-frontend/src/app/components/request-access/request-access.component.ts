@@ -1,7 +1,5 @@
 import { Component, signal, computed, inject, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
-import { DatePipe } from '@angular/common';
 import { Subscription, Subject, fromEvent, forkJoin, of } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { AuthService } from '../../services/auth.service';
@@ -29,12 +27,9 @@ interface TableRow {
 
 @Component({
   selector: 'app-request-access',
-  imports: [FormsModule, RouterLink, DatePipe],
+  imports: [FormsModule],
   templateUrl: './request-access.component.html',
-  styleUrl: './request-access.component.scss',
-  host: {
-    '(document:keydown.escape)': 'onEscapeKey()'
-  }
+  styleUrl: './request-access.component.scss'
 })
 export class RequestAccessComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
@@ -60,14 +55,6 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
   readonly submitMessage = signal<string | null>(null);
   readonly submitError = signal<string | null>(null);
 
-  // ── Actions state (withdraw / bump / delete) ────────────────────────────────
-  readonly actionsLoading = signal<Record<string, 'withdraw' | 'bump' | 'delete' | null>>({});
-  readonly actionError = signal<string | null>(null);
-  readonly actionSuccess = signal<string | null>(null);
-
-  // ── Selected request for details view ──────────────────────────────────────
-  readonly selectedRequest = signal<AccessCart | null>(null);
-
   // ── Role catalogue ──────────────────────────────────────────────────────────
   readonly rawAvailableRoles = signal<Role[]>([]);
   readonly userRoles = signal<Role[]>([]);
@@ -83,10 +70,10 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
   readonly applications = signal<any[]>([]);
   readonly selectedModuleFilter = signal<string>('all');
   readonly selectedAppFilter = signal<string>('all');
-  
+
   readonly isGroupingEnabled = signal(false);
   readonly groupByMode = signal<'module' | 'app'>('module');
-  
+
   readonly groupBy = computed<'none' | 'module' | 'app'>(() => {
     return this.isGroupingEnabled() ? this.groupByMode() : 'none';
   });
@@ -102,28 +89,28 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
   // Filtered Roles (Search + Filters)
   readonly filteredRoles = computed(() => {
     let list = this.availableRoles();
-    
+
     // Filter by search
     const search = this.roleSearch().toLowerCase().trim();
     if (search) {
-      list = list.filter(r => 
-        r.name.toLowerCase().includes(search) || 
+      list = list.filter(r =>
+        r.name.toLowerCase().includes(search) ||
         (r.description && r.description.toLowerCase().includes(search))
       );
     }
-    
+
     // Filter by module
     const modFilter = this.selectedModuleFilter();
     if (modFilter !== 'all') {
       list = list.filter(r => r.module_id === modFilter);
     }
-    
+
     // Filter by application
     const appFilter = this.selectedAppFilter();
     if (appFilter !== 'all') {
       list = list.filter(r => r.app_code === appFilter);
     }
-    
+
     return list;
   });
 
@@ -131,49 +118,49 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
   readonly groupedRoles = computed(() => {
     const list = this.filteredRoles();
     const mode = this.groupBy();
-    
+
     if (mode === 'none') {
       return [{ name: 'All Roles', key: 'all', roles: list }];
     }
-    
+
     if (mode === 'module') {
       const groups: { name: string; key: string; roles: Role[] }[] = [];
       const modulesMap = new Map(this.modules().map(m => [m.code, m.name]));
-      
+
       const tempMap = new Map<string, Role[]>();
       for (const r of list) {
         const key = r.module_id || 'unknown';
         if (!tempMap.has(key)) tempMap.set(key, []);
         tempMap.get(key)!.push(r);
       }
-      
+
       for (const [key, roles] of tempMap.entries()) {
         const name = modulesMap.get(key) || key;
         groups.push({ name, key, roles });
       }
-      
+
       return groups.sort((a, b) => a.name.localeCompare(b.name));
     }
-    
+
     if (mode === 'app') {
       const groups: { name: string; key: string; roles: Role[] }[] = [];
       const appsMap = new Map(this.applications().map(a => [a.code, a.name]));
-      
+
       const tempMap = new Map<string, Role[]>();
       for (const r of list) {
         const key = r.app_code || 'global';
         if (!tempMap.has(key)) tempMap.set(key, []);
         tempMap.get(key)!.push(r);
       }
-      
+
       for (const [key, roles] of tempMap.entries()) {
         const name = key === 'global' ? 'Global / No Application' : (appsMap.get(key) || key);
         groups.push({ name, key, roles });
       }
-      
+
       return groups.sort((a, b) => a.name.localeCompare(b.name));
     }
-    
+
     return [];
   });
 
@@ -399,14 +386,9 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
   private offset = 0;
   private readonly limit = 1000;
 
-  // ── History ─────────────────────────────────────────────────────────────────
-  readonly cartHistory = signal<AccessCart[]>([]);
-  readonly isLoadingHistory = signal(false);
-
   // ── Justification ───────────────────────────────────────────────────────────
   justification = '';
 
-  private pollInterval: ReturnType<typeof setInterval> | null = null;
   private subs: Subscription[] = [];
 
   // ── Computed helpers ─────────────────────────────────────────────────────────
@@ -433,7 +415,12 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
     this.loadUserRoles();
     this.loadModulesAndApps();
     this.resetAndLoadRoles();
-    this.loadHistory();
+
+    // Check if we are resuming a draft from history state
+    const state = history.state;
+    if (state && state.resumeCartId) {
+      this.loadDraftToResume(state.resumeCartId);
+    }
 
     // Setup search input debounce
     const searchSub = this.searchSubject.pipe(
@@ -446,7 +433,6 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.stopPolling();
     this.subs.forEach(s => s.unsubscribe());
   }
 
@@ -458,11 +444,11 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
   loadModulesAndApps(): void {
     const modSub = this.platformService.listModules().subscribe({
       next: (data) => this.modules.set(data ?? []),
-      error: () => {}
+      error: () => { }
     });
     const appSub = this.platformService.listApplications().subscribe({
       next: (data) => this.applications.set(data ?? []),
-      error: () => {}
+      error: () => { }
     });
     this.subs.push(modSub, appSub);
   }
@@ -532,15 +518,15 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
     }
   }
 
-  loadHistory(): void {
-    this.isLoadingHistory.set(true);
-    const sub = this.workflowService.listCarts().subscribe({
-      next: (carts) => {
-        // Include DRAFT carts so the user can manage their own saved drafts
-        this.cartHistory.set(carts);
-        this.isLoadingHistory.set(false);
+  loadDraftToResume(cartId: string): void {
+    const sub = this.workflowService.getCart(cartId).subscribe({
+      next: (fullCart) => {
+        this.cartId.set(fullCart.id);
+        this.currentCart.set(fullCart);
+        this.pendingRoles.set([]);
+        this.justification = fullCart.justification ?? '';
       },
-      error: () => this.isLoadingHistory.set(false),
+      error: () => { }
     });
     this.subs.push(sub);
   }
@@ -622,7 +608,6 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
         this.pendingRoles.set([]);
         this.isSavingDraft.set(false);
         this.draftMessage.set('Draft saved successfully.');
-        this.loadHistory();
         setTimeout(() => this.draftMessage.set(null), 4000);
       },
       error: (err) => {
@@ -689,65 +674,11 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
         this.currentCart.set(null);
         this.pendingRoles.set([]);
         this.justification = '';
-        this.startPolling(cartId);
-        this.loadHistory();
       },
       error: (err) => {
         this.submitError.set(err.error?.error ?? 'Submission failed. Please try again.');
         this.isSubmitting.set(false);
       },
-    });
-    this.subs.push(sub);
-  }
-
-  // ── Delete Draft ────────────────────────────────────────────────────────────
-
-  deleteDraft(cartId: string): void {
-    this.actionsLoading.update(l => ({ ...l, [cartId]: 'delete' }));
-    this.actionError.set(null);
-    this.actionSuccess.set(null);
-
-    const sub = this.workflowService.deleteCarts(0, 'ALL', true, [cartId]).subscribe({
-      next: () => {
-        this.actionSuccess.set('Draft deleted.');
-        this.actionsLoading.update(l => ({ ...l, [cartId]: null }));
-        // If this was the currently loaded draft, reset the cart UI
-        if (this.cartId() === cartId) {
-          this.cartId.set(null);
-          this.currentCart.set(null);
-          this.pendingRoles.set([]);
-        }
-        this.loadHistory();
-        setTimeout(() => this.actionSuccess.set(null), 4000);
-      },
-      error: (err) => {
-        this.actionError.set(err.error?.error || 'Failed to delete draft.');
-        this.actionsLoading.update(l => ({ ...l, [cartId]: null }));
-        setTimeout(() => this.actionError.set(null), 5000);
-      }
-    });
-    this.subs.push(sub);
-  }
-
-  // ── Resume Draft ─────────────────────────────────────────────────────────────
-
-  resumeDraft(cart: AccessCart): void {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    // Fetch the full cart so items are populated and roles show as "In Cart"
-    const sub = this.workflowService.getCart(cart.id).subscribe({
-      next: (fullCart) => {
-        this.cartId.set(fullCart.id);
-        this.currentCart.set(fullCart);
-        this.pendingRoles.set([]);
-        this.justification = fullCart.justification ?? '';
-      },
-      error: () => {
-        // Fallback to the list-provided cart data
-        this.cartId.set(cart.id);
-        this.currentCart.set(cart);
-        this.pendingRoles.set([]);
-        this.justification = cart.justification ?? '';
-      }
     });
     this.subs.push(sub);
   }
@@ -761,31 +692,6 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
     this.subs.push(sub);
   }
 
-  private startPolling(cartId: string): void {
-    this.stopPolling();
-    this.pollInterval = setInterval(() => {
-      this.workflowService.getCart(cartId).subscribe({
-        next: (cart) => {
-          const submitted = this.cartHistory().find(c => c.id === cartId);
-          if (submitted) {
-            this.cartHistory.update(h => h.map(c => c.id === cartId ? cart : c));
-          }
-          const allDone = cart.items.every(i =>
-            i.status === 'APPROVED' || i.status === 'REJECTED' || i.status === 'CANCELLED'
-          );
-          if (allDone) this.stopPolling();
-        },
-      });
-    }, 10000);
-  }
-
-  private stopPolling(): void {
-    if (this.pollInterval !== null) {
-      clearInterval(this.pollInterval);
-      this.pollInterval = null;
-    }
-  }
-
   statusClass(status: string): string {
     switch (status) {
       case 'APPROVED': return 'status-approved';
@@ -795,86 +701,6 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
       case 'CANCELLED': return 'status-cancelled';
       case 'DRAFT': return 'status-draft';
       default: return 'status-pending';
-    }
-  }
-
-  withdrawRequest(cartId: string): void {
-    this.actionsLoading.update(loading => ({ ...loading, [cartId]: 'withdraw' }));
-    this.actionError.set(null);
-    this.actionSuccess.set(null);
-
-    const sub = this.workflowService.withdrawCart(cartId).subscribe({
-      next: (res) => {
-        this.actionSuccess.set(res.message || 'Request withdrawn successfully.');
-        this.actionsLoading.update(loading => ({ ...loading, [cartId]: null }));
-        this.loadHistory();
-
-        // Refresh selectedRequest if it is currently open
-        const currentSelected = this.selectedRequest();
-        if (currentSelected && currentSelected.id === cartId) {
-          this.workflowService.getCart(cartId).subscribe({
-            next: (updatedCart) => this.selectedRequest.set(updatedCart)
-          });
-        }
-
-        setTimeout(() => this.actionSuccess.set(null), 5000);
-      },
-      error: (err) => {
-        this.actionError.set(err.error?.error || 'Failed to withdraw request.');
-        this.actionsLoading.update(loading => ({ ...loading, [cartId]: null }));
-        setTimeout(() => this.actionError.set(null), 5000);
-      }
-    });
-    this.subs.push(sub);
-  }
-
-  bumpRequest(cartId: string): void {
-    this.actionsLoading.update(loading => ({ ...loading, [cartId]: 'bump' }));
-    this.actionError.set(null);
-    this.actionSuccess.set(null);
-
-    const sub = this.workflowService.bumpCart(cartId).subscribe({
-      next: (res) => {
-        this.actionSuccess.set(res.message || 'Request bumped successfully. Approvers notified.');
-        this.actionsLoading.update(loading => ({ ...loading, [cartId]: null }));
-
-        // Refresh selectedRequest if it is currently open
-        const currentSelected = this.selectedRequest();
-        if (currentSelected && currentSelected.id === cartId) {
-          this.workflowService.getCart(cartId).subscribe({
-            next: (updatedCart) => this.selectedRequest.set(updatedCart)
-          });
-        }
-
-        setTimeout(() => this.actionSuccess.set(null), 5000);
-      },
-      error: (err) => {
-        this.actionError.set(err.error?.error || 'Failed to bump request.');
-        this.actionsLoading.update(loading => ({ ...loading, [cartId]: null }));
-        setTimeout(() => this.actionError.set(null), 5000);
-      }
-    });
-    this.subs.push(sub);
-  }
-
-  selectRequest(cart: AccessCart): void {
-    this.workflowService.getCart(cart.id).subscribe({
-      next: (fullCart) => {
-        this.selectedRequest.set(fullCart);
-      },
-      error: () => {
-        this.selectedRequest.set(cart);
-      }
-    });
-  }
-
-  closeDetails(): void {
-    this.selectedRequest.set(null);
-  }
-
-  onEscapeKey(): void {
-    if (this.selectedRequest()) {
-      this.closeDetails();
     }
   }
 

@@ -1,0 +1,386 @@
+<section class="my-requests">
+  <div class="page-header">
+    <div class="header-content">
+      <h1>My Requests</h1>
+      <p class="subtitle">Track and manage all your access requests — drafts, pending approvals, and completed submissions.</p>
+    </div>
+    <div class="header-stats">
+      @if (activeCounts().drafts > 0) {
+        <span class="stat-chip stat-chip--draft">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          {{ activeCounts().drafts }} draft{{ activeCounts().drafts === 1 ? '' : 's' }}
+        </span>
+      }
+      @if (activeCounts().active > 0) {
+        <span class="stat-chip stat-chip--active">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          {{ activeCounts().active }} pending approval
+        </span>
+      }
+    </div>
+  </div>
+
+  <!-- Status Alerts -->
+  @if (actionSuccess()) {
+    <div class="alert alert-success animate-fade-in" role="status">
+      <span class="alert-icon">✓</span> {{ actionSuccess() }}
+    </div>
+  }
+  @if (actionError()) {
+    <div class="alert alert-error animate-fade-in" role="alert">
+      <span class="alert-icon">✕</span> {{ actionError() }}
+    </div>
+  }
+
+  <!-- Filter Bar -->
+  <div class="filter-bar">
+    <div class="search-box">
+      <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+      </svg>
+      <input
+        type="text"
+        placeholder="Search by request ID or justification…"
+        [(ngModel)]="searchQuery"
+        aria-label="Search requests"
+        id="my-requests-search"
+      />
+    </div>
+
+    <div class="status-tabs" role="group" aria-label="Filter by status">
+      <button class="tab-btn" [class.active]="statusFilter() === 'ALL'" (click)="statusFilter.set('ALL')">All</button>
+      <button class="tab-btn" [class.active]="statusFilter() === 'DRAFT'" (click)="statusFilter.set('DRAFT')">Drafts</button>
+      <button class="tab-btn" [class.active]="statusFilter() === 'SUBMITTED'" (click)="statusFilter.set('SUBMITTED')">Submitted</button>
+      <button class="tab-btn" [class.active]="statusFilter() === 'IN_PROGRESS'" (click)="statusFilter.set('IN_PROGRESS')">In Progress</button>
+      <button class="tab-btn" [class.active]="statusFilter() === 'COMPLETED'" (click)="statusFilter.set('COMPLETED')">Completed</button>
+      <button class="tab-btn" [class.active]="statusFilter() === 'CANCELLED'" (click)="statusFilter.set('CANCELLED')">Cancelled</button>
+    </div>
+  </div>
+
+  <!-- Loading / Error / Empty States -->
+  @if (isLoading()) {
+    <div class="loading-state" aria-busy="true" aria-live="polite">
+      <div class="loading-spinner"></div>
+      <p>Loading your requests…</p>
+    </div>
+  } @else if (error()) {
+    <div class="error-state" role="alert">
+      <span class="state-icon" aria-hidden="true">⚠</span>
+      <p>{{ error() }}</p>
+      <button class="btn btn-secondary btn-sm" (click)="loadMyRequests()">Retry</button>
+    </div>
+  } @else if (filteredRequests().length === 0) {
+    <div class="empty-state">
+      <span class="state-icon" aria-hidden="true">📋</span>
+      @if (statusFilter() === 'ALL' && !searchQuery()) {
+        <p>You haven't submitted any access requests yet.</p>
+        <a routerLink="/dashboard/request-access" class="btn btn-primary btn-sm">Browse & Request Access</a>
+      } @else {
+        <p>No requests match your current filters.</p>
+        <button class="btn btn-secondary btn-sm" (click)="statusFilter.set('ALL'); searchQuery.set('')">Clear Filters</button>
+      }
+    </div>
+  } @else {
+    <!-- Results count -->
+    <div class="results-bar">
+      <span class="results-count">Showing {{ filteredRequests().length }} of {{ allRequests().length }} requests</span>
+    </div>
+
+    <!-- Request Cards -->
+    <div class="requests-list" role="list">
+      @for (cart of filteredRequests(); track cart.id) {
+        <article class="request-card" [class.expanded]="isCartExpanded(cart.id)" [class.is-draft]="cart.status === 'DRAFT'" role="listitem">
+
+          <!-- Card Summary (click to expand) -->
+          <header
+            class="card-summary"
+            (click)="toggleExpandCart(cart.id)"
+            tabindex="0"
+            (keydown.enter)="toggleExpandCart(cart.id)"
+            [attr.aria-expanded]="isCartExpanded(cart.id)"
+            [attr.aria-label]="'Request ' + cart.id + ' — ' + cart.status"
+          >
+            <div class="summary-left">
+              <span class="status-pill {{ statusClass(cart.status) }}" aria-label="Status: {{ cart.status }}">{{ cart.status }}</span>
+              <div class="request-id-block">
+                <span class="request-id-label">Request ID</span>
+                <code class="request-id">{{ cart.id.slice(0, 8) }}…</code>
+              </div>
+              @if (cart.items && cart.items.length > 0) {
+                <span class="item-count-badge" aria-label="{{ cart.items.length }} roles">
+                  {{ cart.items.length }} role{{ cart.items.length === 1 ? '' : 's' }}
+                </span>
+              }
+            </div>
+            <div class="summary-right">
+              <span class="date-label">
+                @if (cart.status === 'DRAFT') {
+                  Created {{ cart.created_at | date:'dd MMM yyyy' }}
+                } @else {
+                  Submitted {{ cart.submitted_at | date:'dd MMM yyyy, HH:mm' }}
+                }
+              </span>
+              <svg class="chevron-icon" viewBox="0 0 24 24" aria-hidden="true" [class.rotated]="isCartExpanded(cart.id)">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </div>
+          </header>
+
+          <!-- Card Details (expanded) -->
+          @if (isCartExpanded(cart.id)) {
+            <div class="card-details animate-slide-down">
+              <!-- Justification -->
+              <div class="detail-section">
+                <h3 class="section-title">Justification</h3>
+                <p class="justification-text">{{ cart.justification || 'No justification provided.' }}</p>
+              </div>
+
+              <!-- Requested Roles -->
+              <div class="detail-section">
+                <h3 class="section-title">Requested Roles</h3>
+                @if (!cart.items || cart.items.length === 0) {
+                  <p class="no-items-text">No roles in this request.</p>
+                } @else {
+                  <div class="roles-grid">
+                    @for (item of cart.items; track item.id) {
+                      <div class="role-item-card">
+                        <div class="role-item-header">
+                          <span class="role-name">{{ item.role_name }}</span>
+                          <span class="status-pill {{ statusClass(item.status) }}" aria-label="Item status: {{ item.status }}">{{ item.status }}</span>
+                        </div>
+                        @if (item.execution_id) {
+                          <a
+                            [routerLink]="['/dashboard/request-detail', item.execution_id]"
+                            class="audit-trail-link"
+                            aria-label="View audit trail for {{ item.role_name }}"
+                          >
+                            View Audit Trail →
+                          </a>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+
+              <!-- Actions -->
+              <div class="card-actions">
+                @if (cart.status === 'DRAFT') {
+                  <button
+                    class="btn btn-primary btn-sm"
+                    (click)="resumeDraft(cart); $event.stopPropagation()"
+                    [disabled]="actioningCartId() === cart.id"
+                    aria-label="Resume draft request"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+                    Resume Draft
+                  </button>
+                  <button
+                    class="btn btn-danger-outline btn-sm"
+                    (click)="deleteRequest(cart.id); $event.stopPropagation()"
+                    [disabled]="actioningCartId() === cart.id"
+                    aria-label="Delete draft request"
+                  >
+                    @if (actioningCartId() === cart.id) {
+                      <span class="spinner" aria-hidden="true"></span> Deleting…
+                    } @else {
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                      Delete Draft
+                    }
+                  </button>
+                }
+
+                @if (cart.status === 'SUBMITTED' || cart.status === 'IN_PROGRESS') {
+                  <button
+                    class="btn btn-bump btn-sm"
+                    (click)="bumpRequest(cart.id); $event.stopPropagation()"
+                    [disabled]="actioningCartId() === cart.id"
+                    aria-label="Bump approvers for this request"
+                  >
+                    @if (actioningCartId() === cart.id) {
+                      <span class="spinner" aria-hidden="true"></span> Bumping…
+                    } @else {
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                      Bump Approvers
+                    }
+                  </button>
+                  <button
+                    class="btn btn-withdraw btn-sm"
+                    (click)="withdrawRequest(cart.id); $event.stopPropagation()"
+                    [disabled]="actioningCartId() === cart.id"
+                    aria-label="Withdraw this request"
+                  >
+                    @if (actioningCartId() === cart.id) {
+                      <span class="spinner" aria-hidden="true"></span> Withdrawing…
+                    } @else {
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                      Withdraw
+                    }
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    (click)="selectRequest(cart); $event.stopPropagation()"
+                    aria-label="View full details for this request"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    View Details
+                  </button>
+                }
+
+                @if (cart.status !== 'DRAFT' && cart.status !== 'SUBMITTED' && cart.status !== 'IN_PROGRESS') {
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    (click)="selectRequest(cart); $event.stopPropagation()"
+                    aria-label="View full details for this request"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    View Details
+                  </button>
+                  <button
+                    class="btn btn-danger-outline btn-sm"
+                    (click)="deleteRequest(cart.id); $event.stopPropagation()"
+                    [disabled]="actioningCartId() === cart.id"
+                    aria-label="Delete request"
+                  >
+                    @if (actioningCartId() === cart.id) {
+                      <span class="spinner" aria-hidden="true"></span> Deleting…
+                    } @else {
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                      Delete Request
+                    }
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </article>
+      }
+    </div>
+  }
+
+  <!-- Slide-over Drawer: Full Request Details -->
+  @if (selectedRequest(); as selected) {
+    <div class="drawer-backdrop" (click)="closeDetails()" aria-hidden="true"></div>
+    <div class="details-drawer" role="dialog" aria-modal="true" [attr.aria-labelledby]="'drawer-title-' + selected.id">
+      <div class="drawer-header">
+        <div>
+          <span class="drawer-eyebrow">Access Request Details</span>
+          <h2 [id]="'drawer-title-' + selected.id" class="drawer-title">
+            Request <code>{{ selected.id.slice(0, 8) }}…</code>
+          </h2>
+        </div>
+        <button class="btn-close-drawer" (click)="closeDetails()" aria-label="Close request details">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="drawer-body">
+        <!-- Meta -->
+        <div class="drawer-meta-grid">
+          <div class="meta-item">
+            <span class="meta-label">Status</span>
+            <span class="status-pill {{ statusClass(selected.status) }}">{{ selected.status }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Submitted</span>
+            <span class="meta-value">{{ selected.submitted_at | date:'dd MMM yyyy, HH:mm' }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Created</span>
+            <span class="meta-value">{{ selected.created_at | date:'dd MMM yyyy, HH:mm' }}</span>
+          </div>
+        </div>
+
+        <!-- Justification -->
+        <div class="drawer-section">
+          <h3>Justification</h3>
+          <p class="drawer-justification">{{ selected.justification || 'No justification provided.' }}</p>
+        </div>
+
+        <!-- Requested Roles -->
+        <div class="drawer-section">
+          <h3>Requested Roles</h3>
+          <ul class="drawer-items-list" role="list">
+            @for (item of selected.items; track item.id) {
+              <li class="drawer-item-row">
+                <div class="item-name-info">
+                  <span class="item-role-name">{{ item.role_name }}</span>
+                  <span class="item-role-id">Role ID: {{ item.role_id }}</span>
+                </div>
+                <div class="item-status-actions">
+                  <span class="status-pill {{ statusClass(item.status) }}">{{ item.status }}</span>
+                  @if (item.execution_id) {
+                    <a
+                      [routerLink]="['/dashboard/request-detail', item.execution_id]"
+                      (click)="closeDetails()"
+                      class="history-trail-link"
+                      [attr.aria-label]="'View audit trail for ' + item.role_name"
+                    >View Trail</a>
+                  }
+                </div>
+              </li>
+            }
+          </ul>
+        </div>
+
+        <!-- Active Approval Steps -->
+        @if (selected.status === 'SUBMITTED' || selected.status === 'IN_PROGRESS') {
+          <div class="drawer-section">
+            <h3>Active Approval Steps</h3>
+            @if (selected.pending_steps && selected.pending_steps.length > 0) {
+              <ul class="pending-steps-list" role="list">
+                @for (step of selected.pending_steps; track step.step_id) {
+                  <li class="pending-step-item">
+                    <span class="pending-step-label">{{ step.role_name }} — <code>{{ step.step_id.slice(0, 8) }}…</code></span>
+                    <div class="assignee-badges">
+                      @if (step.assigned_to_user_id) {
+                        <span class="assignee-badge">👤 {{ step.assigned_to_user_id }}</span>
+                      }
+                      @if (step.assigned_to_role) {
+                        <span class="assignee-badge">👥 {{ step.assigned_to_role }}</span>
+                      }
+                    </div>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="text-muted small">No pending approval steps found.</p>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Drawer Footer Actions -->
+      @if (selected.status === 'SUBMITTED' || selected.status === 'IN_PROGRESS') {
+        <div class="drawer-footer">
+          <button
+            class="btn btn-bump btn-sm"
+            [disabled]="actioningCartId() === selected.id"
+            (click)="bumpRequest(selected.id)"
+            aria-label="Bump approvers"
+          >
+            @if (actioningCartId() === selected.id) {
+              <span class="spinner" aria-hidden="true"></span> Bumping…
+            } @else {
+              <svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              Bump Approvers
+            }
+          </button>
+          <button
+            class="btn btn-withdraw btn-sm"
+            [disabled]="actioningCartId() === selected.id"
+            (click)="withdrawRequest(selected.id)"
+            aria-label="Withdraw request"
+          >
+            @if (actioningCartId() === selected.id) {
+              <span class="spinner" aria-hidden="true"></span> Withdrawing…
+            } @else {
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              Withdraw Request
+            }
+          </button>
+        </div>
+      }
+    </div>
+  }
+</section>

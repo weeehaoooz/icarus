@@ -177,6 +177,10 @@ export class WorkflowService {
     );
   }
 
+  deleteUserCart(cartId: string): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(`${this.baseUrl}/access/carts/${cartId}`);
+  }
+
 
   // ── Inbox ──────────────────────────────────────────────────────────────────
 

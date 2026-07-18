@@ -24,16 +24,7 @@
     <span class="alert-icon">✕</span> {{ draftError() }}
   </div>
   }
-  @if (actionSuccess()) {
-  <div class="alert alert-success" role="alert">
-    <span class="alert-icon">✓</span> {{ actionSuccess() }}
-  </div>
-  }
-  @if (actionError()) {
-  <div class="alert alert-error" role="alert">
-    <span class="alert-icon">✕</span> {{ actionError() }}
-  </div>
-  }
+
 
   <div class="layout">
     <!-- Role Catalogue -->
@@ -53,35 +44,39 @@
             <span class="control-label">Grouping</span>
             <button class="btn-group-toggle" [class.active]="isGroupingEnabled()" (click)="toggleGrouping()">
               @if (isGroupingEnabled()) {
-                <span>✓ Grouped</span>
+              <span>✓ Grouped</span>
               } @else {
-                <span>Group Roles</span>
+              <span>Group Roles</span>
               }
             </button>
           </div>
           @if (isGroupingEnabled()) {
-            <div class="group-sub-options">
-              <div class="btn-group option-group">
-                <button class="btn-toggle" [class.active]="groupByMode() === 'module'" (click)="groupByMode.set('module')">By Module</button>
-                <button class="btn-toggle" [class.active]="groupByMode() === 'app'" (click)="groupByMode.set('app')">By Application</button>
-              </div>
-              
-              <div class="btn-group tree-actions">
-                <button class="btn-toggle text-btn" (click)="expandAll()">Expand All</button>
-                <button class="btn-toggle text-btn" (click)="collapseAll()">Collapse All</button>
-              </div>
+          <div class="group-sub-options">
+            <div class="btn-group option-group">
+              <button class="btn-toggle" [class.active]="groupByMode() === 'module'"
+                (click)="groupByMode.set('module')">By Module</button>
+              <button class="btn-toggle" [class.active]="groupByMode() === 'app'" (click)="groupByMode.set('app')">By
+                Application</button>
             </div>
+
+            <div class="btn-group tree-actions">
+              <button class="btn-toggle text-btn" (click)="expandAll()">Expand All</button>
+              <button class="btn-toggle text-btn" (click)="collapseAll()">Collapse All</button>
+            </div>
+          </div>
           }
         </div>
 
         <div class="control-group">
           <span class="control-label">Module</span>
           <div class="filter-chips">
-            <button class="chip" [class.active]="selectedModuleFilter() === 'all'" (click)="selectedModuleFilter.set('all')">All</button>
+            <button class="chip" [class.active]="selectedModuleFilter() === 'all'"
+              (click)="selectedModuleFilter.set('all')">All</button>
             @for (mod of modules(); track mod.code) {
-              <button class="chip" [class.active]="selectedModuleFilter() === mod.code" (click)="selectedModuleFilter.set(mod.code)">
-                {{ mod.name }}
-              </button>
+            <button class="chip" [class.active]="selectedModuleFilter() === mod.code"
+              (click)="selectedModuleFilter.set(mod.code)">
+              {{ mod.name }}
+            </button>
             }
           </div>
         </div>
@@ -89,11 +84,13 @@
         <div class="control-group">
           <span class="control-label">Application</span>
           <div class="filter-chips">
-            <button class="chip" [class.active]="selectedAppFilter() === 'all'" (click)="selectedAppFilter.set('all')">All</button>
+            <button class="chip" [class.active]="selectedAppFilter() === 'all'"
+              (click)="selectedAppFilter.set('all')">All</button>
             @for (app of applications(); track app.code) {
-              <button class="chip" [class.active]="selectedAppFilter() === app.code" (click)="selectedAppFilter.set(app.code)">
-                {{ app.name }}
-              </button>
+            <button class="chip" [class.active]="selectedAppFilter() === app.code"
+              (click)="selectedAppFilter.set(app.code)">
+              {{ app.name }}
+            </button>
             }
           </div>
         </div>
@@ -101,80 +98,80 @@
 
       <!-- Roles Grid Table -->
       @if (isLoadingRoles() && filteredRoles().length === 0) {
-        <div class="skeleton-table">
-          <div class="skeleton-header"></div>
-          <div class="skeleton-row"></div>
-          <div class="skeleton-row"></div>
-          <div class="skeleton-row"></div>
-        </div>
+      <div class="skeleton-table">
+        <div class="skeleton-header"></div>
+        <div class="skeleton-row"></div>
+        <div class="skeleton-row"></div>
+        <div class="skeleton-row"></div>
+      </div>
       } @else if (filteredRoles().length === 0) {
-        <div class="empty-state">No roles match your search or filter criteria.</div>
+      <div class="empty-state">No roles match your search or filter criteria.</div>
       } @else {
-        <div class="roles-grid-container">
-          <table class="roles-table tree-grid">
-            <thead>
-              <tr>
-                @if (groupBy() !== 'none') {
-                  <th class="col-group">Group</th>
-                }
-                <th class="col-name">Role Name</th>
-                <th class="col-module">Module</th>
-                <th class="col-app">Application</th>
-                <th class="col-desc">Description</th>
-                <th class="col-action">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (row of visibleRows(); track row.key) {
-                @if (row.type === 'group') {
-                  <tr class="grid-group-row level-{{ row.level }}" (click)="toggleGroup(row.key)">
-                    <td [attr.colspan]="groupBy() !== 'none' ? 6 : 5">
-                      <div class="group-cell-content" [style.padding-left.px]="row.level * 20">
-                        <span class="chevron-icon" [class.collapsed]="isGroupCollapsed(row.key)">
-                          <svg viewBox="0 0 24 24" width="16" height="16">
-                            <path d="M7 10l5 5 5-5H7z" fill="currentColor"/>
-                          </svg>
-                        </span>
-                        <span class="group-name">{{ row.name }}</span>
-                        <span class="group-count">({{ row.count }})</span>
-                      </div>
-                    </td>
-                  </tr>
-                } @else {
-                  <tr [class.in-cart]="cartRoleIds().has(row.role?.id ?? '')" class="grid-leaf-row">
-                    @if (groupBy() !== 'none') {
-                      <td class="col-group empty-cell"></td>
-                    }
-                    <td class="col-name font-semibold">{{ row.role?.name }}</td>
-                    <td class="col-module">
-                      <span class="badge badge-module">{{ row.role?.module_id }}</span>
-                    </td>
-                    <td class="col-app">
-                      @if (row.role?.app_code) {
-                        <span class="badge badge-app">{{ row.role?.app_code }}</span>
-                      } @else {
-                        <span class="text-muted small">-</span>
-                      }
-                    </td>
-                    <td class="col-desc">{{ row.role?.description || 'No description available.' }}</td>
-                    <td class="col-action">
-                      @if (row.role) {
-                        <button class="btn-add-grid" [disabled]="cartRoleIds().has(row.role.id ?? '')" (click)="addToCart(row.role)"
-                          [attr.aria-label]="'Add ' + row.role.name + ' to cart'">
-                          @if (cartRoleIds().has(row.role.id ?? '')) {
-                            <span>In Cart</span>
-                          } @else {
-                            <span>+ Add</span>
-                          }
-                        </button>
-                      }
-                    </td>
-                  </tr>
-                }
+      <div class="roles-grid-container">
+        <table class="roles-table tree-grid">
+          <thead>
+            <tr>
+              @if (groupBy() !== 'none') {
+              <th class="col-group">Group</th>
               }
-            </tbody>
-          </table>
-        </div>
+              <th class="col-name">Role Name</th>
+              <th class="col-module">Module</th>
+              <th class="col-app">Application</th>
+              <th class="col-desc">Description</th>
+              <th class="col-action">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of visibleRows(); track row.key) {
+            @if (row.type === 'group') {
+            <tr class="grid-group-row level-{{ row.level }}" (click)="toggleGroup(row.key)">
+              <td [attr.colspan]="groupBy() !== 'none' ? 6 : 5">
+                <div class="group-cell-content" [style.padding-left.px]="row.level * 20">
+                  <span class="chevron-icon" [class.collapsed]="isGroupCollapsed(row.key)">
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                      <path d="M7 10l5 5 5-5H7z" fill="currentColor" />
+                    </svg>
+                  </span>
+                  <span class="group-name">{{ row.name }}</span>
+                  <span class="group-count">({{ row.count }})</span>
+                </div>
+              </td>
+            </tr>
+            } @else {
+            <tr [class.in-cart]="cartRoleIds().has(row.role?.id ?? '')" class="grid-leaf-row">
+              @if (groupBy() !== 'none') {
+              <td class="col-group empty-cell"></td>
+              }
+              <td class="col-name font-semibold">{{ row.role?.name }}</td>
+              <td class="col-module">
+                <span class="badge badge-module">{{ row.role?.module_id }}</span>
+              </td>
+              <td class="col-app">
+                @if (row.role?.app_code) {
+                <span class="badge badge-app">{{ row.role?.app_code }}</span>
+                } @else {
+                <span class="text-muted small">-</span>
+                }
+              </td>
+              <td class="col-desc">{{ row.role?.description || 'No description available.' }}</td>
+              <td class="col-action">
+                @if (row.role) {
+                <button class="btn-add-grid" [disabled]="cartRoleIds().has(row.role.id ?? '')"
+                  (click)="addToCart(row.role)" [attr.aria-label]="'Add ' + row.role.name + ' to cart'">
+                  @if (cartRoleIds().has(row.role.id ?? '')) {
+                  <span>In Cart</span>
+                  } @else {
+                  <span>+ Add</span>
+                  }
+                </button>
+                }
+              </td>
+            </tr>
+            }
+            }
+          </tbody>
+        </table>
+      </div>
       }
     </div>
 
@@ -255,217 +252,4 @@
       </div>
     </aside>
   </div>
-
-  <!-- Request History -->
-  @if (cartHistory().length > 0) {
-  <section class="history" aria-label="Request history">
-    <h2>My Requests</h2>
-    <p class="history-help">Click on any request card to view full details and active reviewers. Draft requests can be
-      resumed or deleted.</p>
-    <div class="history-list">
-      @for (cart of cartHistory(); track cart.id) {
-      @if (cart.status === 'DRAFT') {
-      <!-- Draft card: not clickable for details, has resume/delete actions -->
-      <div class="history-card history-card--draft">
-        <div class="history-meta">
-          <span class="history-id">{{ cart.id.slice(0, 8) }}…</span>
-          <span class="history-date">{{ cart.created_at | date:'dd MMM yyyy, HH:mm' }}</span>
-          <span class="history-overall status-draft">DRAFT</span>
-        </div>
-        @if (cart.items.length) {
-        <ul class="history-items" role="list">
-          @for (item of cart.items; track item.id) {
-          <li class="history-item">
-            <span class="history-role">{{ item.role_name }}</span>
-          </li>
-          }
-        </ul>
-        } @else {
-        <p class="history-empty">No roles in this draft.</p>
-        }
-        <div class="history-actions">
-          <button class="btn-action-resume" [disabled]="actionsLoading()[cart.id] === 'delete'"
-            (click)="resumeDraft(cart)" [attr.aria-label]="'Resume draft ' + cart.id">
-            <span>↩ Resume Draft</span>
-          </button>
-          <button class="btn-action-withdraw" [disabled]="actionsLoading()[cart.id] === 'delete'"
-            (click)="deleteDraft(cart.id); $event.stopPropagation()" [attr.aria-label]="'Delete draft ' + cart.id">
-            @if (actionsLoading()[cart.id] === 'delete') {
-            <span class="spinner"></span> Deleting…
-            } @else {
-            <span>🗑 Delete Draft</span>
-            }
-          </button>
-        </div>
-      </div>
-      } @else {
-      <!-- Submitted / in-progress / completed card -->
-      <div class="history-card clickable" tabindex="0" role="button"
-        [attr.aria-label]="'View details of request ' + cart.id" (click)="selectRequest(cart)"
-        (keydown.enter)="selectRequest(cart)">
-        <div class="history-meta">
-          <span class="history-id">{{ cart.id.slice(0, 8) }}…</span>
-          <span class="history-date">{{ cart.submitted_at | date:'dd MMM yyyy, HH:mm' }}</span>
-          <span class="history-overall" [class]="statusClass(cart.status)">{{ cart.status }}</span>
-        </div>
-        <ul class="history-items" role="list">
-          @for (item of cart.items; track item.id) {
-          <li class="history-item">
-            <span class="history-role">{{ item.role_name }}</span>
-            <span class="history-item-status" [class]="statusClass(item.status)">
-              {{ item.status }}
-            </span>
-            @if (item.execution_id) {
-            <a [routerLink]="['/dashboard/request-detail', item.execution_id]" (click)="$event.stopPropagation()"
-              class="history-trail-link" aria-label="View audit trail for {{ item.role_name }}">View Trail</a>
-            }
-          </li>
-          }
-        </ul>
-        @if (cart.status === 'SUBMITTED' || cart.status === 'IN_PROGRESS') {
-        <div class="history-actions">
-          <button class="btn-action-bump"
-            [disabled]="actionsLoading()[cart.id] === 'bump' || actionsLoading()[cart.id] === 'withdraw'"
-            (click)="bumpRequest(cart.id); $event.stopPropagation()" [attr.aria-label]="'Bump request ' + cart.id">
-            @if (actionsLoading()[cart.id] === 'bump') {
-            <span class="spinner"></span> Bumping…
-            } @else {
-            <span>⚡ Bump Approvers</span>
-            }
-          </button>
-          <button class="btn-action-withdraw"
-            [disabled]="actionsLoading()[cart.id] === 'withdraw' || actionsLoading()[cart.id] === 'bump'"
-            (click)="withdrawRequest(cart.id); $event.stopPropagation()"
-            [attr.aria-label]="'Withdraw request ' + cart.id">
-            @if (actionsLoading()[cart.id] === 'withdraw') {
-            <span class="spinner"></span> Withdrawing…
-            } @else {
-            <span>✕ Withdraw Request</span>
-            }
-          </button>
-        </div>
-        }
-      </div>
-      }
-      }
-    </div>
-  </section>
-  }
-
-  <!-- Request Details Slide-Over Drawer -->
-  @if (selectedRequest(); as selected) {
-  <div class="drawer-backdrop" (click)="closeDetails()" aria-hidden="true"></div>
-  <div class="details-drawer" role="dialog" aria-modal="true" [attr.aria-labelledby]="'drawer-title-' + selected.id">
-    <div class="drawer-header">
-      <div>
-        <span class="drawer-subtitle">Access Request Details</span>
-        <h2 [id]="'drawer-title-' + selected.id" class="drawer-title">
-          Request {{ selected.id.slice(0, 8) }}…
-        </h2>
-      </div>
-      <button class="btn-close-drawer" (click)="closeDetails()" aria-label="Close request details">
-        ✕
-      </button>
-    </div>
-
-    <div class="drawer-content">
-      <!-- Metadata Details -->
-      <div class="drawer-meta-section">
-        <div class="meta-item">
-          <span class="meta-label">Status</span>
-          <span class="history-overall" [class]="statusClass(selected.status)">
-            {{ selected.status }}
-          </span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label">Submitted At</span>
-          <span class="meta-value">
-            {{ selected.submitted_at | date:'dd MMM yyyy, HH:mm' }}
-          </span>
-        </div>
-      </div>
-
-      <!-- Justification -->
-      <div class="drawer-section">
-        <h3>Justification</h3>
-        <p class="drawer-justification">{{ selected.justification || 'No justification provided.' }}</p>
-      </div>
-
-      <!-- Requested Roles & Items -->
-      <div class="drawer-section">
-        <h3>Requested Roles</h3>
-        <ul class="drawer-items-list" role="list">
-          @for (item of selected.items; track item.id) {
-          <li class="drawer-item-row">
-            <div class="item-name-info">
-              <span class="item-role-name">{{ item.role_name }}</span>
-              <span class="item-role-id">Role ID: {{ item.role_id }}</span>
-            </div>
-            <div class="item-status-actions">
-              <span class="history-item-status" [class]="statusClass(item.status)">
-                {{ item.status }}
-              </span>
-              @if (item.execution_id) {
-              <a [routerLink]="['/dashboard/request-detail', item.execution_id]" (click)="closeDetails()"
-                class="history-trail-link" aria-label="View audit trail for {{ item.role_name }}">View Trail</a>
-              }
-            </div>
-          </li>
-          }
-        </ul>
-      </div>
-
-      <!-- Active Pending Step / Blockers -->
-      @if (selected.status === 'SUBMITTED' || selected.status === 'IN_PROGRESS') {
-      <div class="drawer-section border-top">
-        <h3>Active Approval Steps</h3>
-        @if (selected.pending_steps && selected.pending_steps.length > 0) {
-        <ul class="pending-steps-list" role="list">
-          @for (step of selected.pending_steps; track step.step_id) {
-          <li class="pending-step-item">
-            <span class="pending-step-node">{{ step.role_name }} — {{ step.step_id.slice(0, 8) }}…</span>
-            <div class="pending-step-assignees">
-              @if (step.assigned_to_user_id) {
-              <span class="assignee-badge user">👤 User: {{ step.assigned_to_user_id }}</span>
-              }
-              @if (step.assigned_to_role) {
-              <span class="assignee-badge role">👥 Role: {{ step.assigned_to_role }}</span>
-              }
-            </div>
-          </li>
-          }
-        </ul>
-        } @else {
-        <p class="text-muted small">No pending approval steps found (system processing or check for errors).</p>
-        }
-      </div>
-      }
-    </div>
-
-    <!-- Footer Drawer Actions -->
-    @if (selected.status === 'SUBMITTED' || selected.status === 'IN_PROGRESS') {
-    <div class="drawer-footer">
-      <button class="btn-action-bump"
-        [disabled]="actionsLoading()[selected.id] === 'bump' || actionsLoading()[selected.id] === 'withdraw'"
-        (click)="bumpRequest(selected.id); $event.stopPropagation()" [attr.aria-label]="'Bump request ' + selected.id">
-        @if (actionsLoading()[selected.id] === 'bump') {
-        <span class="spinner"></span> Bumping…
-        } @else {
-        <span>⚡ Bump Approvers</span>
-        }
-      </button>
-      <button class="btn-action-withdraw"
-        [disabled]="actionsLoading()[selected.id] === 'withdraw' || actionsLoading()[selected.id] === 'bump'"
-        (click)="withdrawRequest(selected.id); $event.stopPropagation()"
-        [attr.aria-label]="'Withdraw request ' + selected.id">
-        @if (actionsLoading()[selected.id] === 'withdraw') {
-        <span class="spinner"></span> Withdrawing…
-        } @else {
-        <span>✕ Withdraw Request</span>
-        }
-      </button>
-    </div>
-    }
-  </div>
-  }
 </section>

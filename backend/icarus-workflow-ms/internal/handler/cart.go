@@ -484,9 +484,53 @@ func (s *HandlerServer) AdminHousekeepingDeleteHandler(w http.ResponseWriter, r 
 
 	s.respondWithJSON(w, http.StatusOK, map[string]interface{}{
 		"deleted_count": rows,
-		"message":        fmt.Sprintf("Housekeeping complete. Deleted %d requests.", rows),
+		"message":       fmt.Sprintf("Housekeeping complete. Deleted %d requests.", rows),
 	})
 }
 
+// DeleteCartHandler DELETE /api/v1/access/carts/{cart_id}
+func (s *HandlerServer) DeleteCartHandler(w http.ResponseWriter, r *http.Request) {
+	claims := s.claimsFrom(r)
+	cartID := r.PathValue("cart_id")
 
+	cart, err := s.Repo.GetCart(cartID)
+	if err != nil {
+		s.respondWithError(w, http.StatusNotFound, "cart not found")
+		return
+	}
+	if cart.RequesterID != claims.Subject {
+		s.respondWithError(w, http.StatusForbidden, "not your cart")
+		return
+	}
 
+	// Get pending steps before deletion to notify approvers to refresh their inbox
+	pendingSteps, _ := s.Repo.GetPendingStepsForCart(cartID)
+
+	_, err = s.Repo.DeleteSelectedCarts("ALL", 0, true, []string{cartID})
+	if err != nil {
+		s.respondWithError(w, http.StatusInternalServerError, "failed to delete cart: "+err.Error())
+		return
+	}
+
+	// Notify approvers so their inbox count updates
+	notifiedUsers := make(map[string]bool)
+	for _, step := range pendingSteps {
+		var targets []string
+		if step.AssignedToUserID != nil {
+			targets = []string{*step.AssignedToUserID}
+		} else if step.AssignedToRole != nil {
+			targets = s.fetchRoleMembers(*step.AssignedToRole)
+		}
+		for _, uid := range targets {
+			if notifiedUsers[uid] {
+				continue
+			}
+			notifiedUsers[uid] = true
+			s.SSEBroker.Publish(uid, "inbox.new", `{"action":"deleted"}`)
+		}
+	}
+
+	s.respondWithJSON(w, http.StatusOK, map[string]string{
+		"message": "Request deleted successfully.",
+	})
+}

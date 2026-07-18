@@ -38,6 +38,7 @@ func (s *HandlerServer) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/access/carts", s.AuthRequired(s.CreateCartHandler))
 	mux.HandleFunc("GET /api/v1/access/carts", s.AuthRequired(s.ListCartsHandler))
 	mux.HandleFunc("GET /api/v1/access/carts/{cart_id}", s.AuthRequired(s.GetCartHandler))
+	mux.HandleFunc("DELETE /api/v1/access/carts/{cart_id}", s.AuthRequired(s.DeleteCartHandler))
 	mux.HandleFunc("POST /api/v1/access/carts/{cart_id}/items", s.AuthRequired(s.AddCartItemHandler))
 	mux.HandleFunc("DELETE /api/v1/access/carts/{cart_id}/items/{item_id}", s.AuthRequired(s.RemoveCartItemHandler))
 	mux.HandleFunc("POST /api/v1/access/carts/{cart_id}/submit", s.AuthRequired(s.SubmitCartHandler))
@@ -67,7 +68,6 @@ func (s *HandlerServer) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/v1/workflow/definitions/roles/{role_id}/map", s.AdminRequired(s.MapWorkflowToRoleHandler))
 	mux.HandleFunc("PUT /api/v1/workflow/definitions/{first}/{second}", s.AdminRequired(s.PutDefinitionsDispatcher))
 	mux.HandleFunc("DELETE /api/v1/workflow/definitions/{first}/{second}/{third}", s.AdminRequired(s.DeleteDefinitionsDispatcher))
-
 
 	// Admin request management
 	mux.HandleFunc("GET /api/v1/admin/carts", s.AdminRequired(s.AdminListCartsHandler))
