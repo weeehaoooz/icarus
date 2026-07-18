@@ -144,7 +144,7 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
       next: (roles) => {
         this.userRoles.set(roles ?? []);
       },
-      error: () => {},
+      error: () => { },
     });
     this.subs.push(sub);
   }
