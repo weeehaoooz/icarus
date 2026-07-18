@@ -50,6 +50,11 @@ func (s *HandlerServer) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /me", s.UserRequired(s.MeUpdateHandler))
 	mux.HandleFunc("PUT /me/password", s.UserRequired(s.MeChangePasswordHandler))
 
+	// User directory endpoints — accessible by all authenticated users, exposes only safe fields
+	mux.HandleFunc("GET /users", s.UserRequired(s.UserDirectoryHandler))
+	mux.HandleFunc("GET /users/{id}/roles", s.UserRequired(s.UserRolesPublicHandler))
+
+
 	// Admin APIs for RBAC CRM
 	mux.HandleFunc("GET /admin/users", s.AdminRequired(s.AdminListUsersHandler))
 	mux.HandleFunc("POST /admin/users", s.AdminRequired(s.AdminCreateUserHandler))

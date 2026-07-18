@@ -25,6 +25,7 @@ export const routes: Routes = [
       { path: 'applications', loadComponent: () => import('./components/applications/applications.component').then(m => m.ApplicationsComponent), canActivate: [adminGuard] },
       { path: 'my-policies', loadComponent: () => import('./components/my-policies/my-policies.component').then(m => m.MyPoliciesComponent) },
       { path: 'request-access', loadComponent: () => import('./components/request-access/request-access.component').then(m => m.RequestAccessComponent) },
+      { path: 'compare-access', loadComponent: () => import('./components/compare-access/compare-access.component').then(m => m.CompareAccessComponent) },
       { path: 'approval-inbox', loadComponent: () => import('./components/approval-inbox/approval-inbox.component').then(m => m.ApprovalInboxComponent) },
       { path: 'request-detail/:instanceId', loadComponent: () => import('./components/request-detail/request-detail.component').then(m => m.RequestDetailComponent) },
       { path: 'request-management', loadComponent: () => import('./components/request-management/request-management.component').then(m => m.RequestManagementComponent), canActivate: [adminGuard] },

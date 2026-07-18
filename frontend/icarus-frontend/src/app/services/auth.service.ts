@@ -12,6 +12,14 @@ export interface DecodedToken {
 	exp: number;
 }
 
+export interface UserSummary {
+	id: number;
+	username: string;
+	first_name: string;
+	last_name: string;
+}
+
+
 @Injectable({
 	providedIn: 'root'
 })
@@ -116,4 +124,15 @@ export class AuthService {
 	changePassword(payload: any): Observable<any> {
 		return this.http.put<any>(`${this.apiUrl}/me/password`, payload);
 	}
+
+	/** Returns the user directory — safe fields only (id, username, first_name, last_name). */
+	listUsers(): Observable<UserSummary[]> {
+		return this.http.get<UserSummary[]>(`${this.apiUrl}/users`);
+	}
+
+	/** Returns the detailed role list for any user by their numeric ID. */
+	getUserRoles(userId: number): Observable<any[]> {
+		return this.http.get<any[]>(`${this.apiUrl}/users/${userId}/roles`);
+	}
 }
+

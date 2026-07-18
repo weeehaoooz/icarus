@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -195,3 +196,63 @@ func (s *HandlerServer) MePermissionsHandler(w http.ResponseWriter, r *http.Requ
 
 	s.respondWithJSON(w, http.StatusOK, permissions)
 }
+
+// UserSummary is a stripped-down user representation safe to expose to all authenticated users.
+type UserSummary struct {
+	ID        int64  `json:"id"`
+	Username  string `json:"username"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+}
+
+// UserDirectoryHandler returns a list of all users with only safe, non-sensitive fields.
+// Accessible by any authenticated user (UserRequired).
+func (s *HandlerServer) UserDirectoryHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		s.respondWithError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	users, err := s.Repo.ListUsers()
+	if err != nil {
+		s.respondWithError(w, http.StatusInternalServerError, "failed to list users: "+err.Error())
+		return
+	}
+
+	summaries := make([]UserSummary, 0, len(users))
+	for _, u := range users {
+		summaries = append(summaries, UserSummary{
+			ID:        u.ID,
+			Username:  u.Username,
+			FirstName: u.FirstName,
+			LastName:  u.LastName,
+		})
+	}
+
+	s.respondWithJSON(w, http.StatusOK, summaries)
+}
+
+// UserRolesPublicHandler returns the detailed role list for a specific user by ID.
+// Only role metadata is returned — no personal user data. Accessible by any authenticated user.
+func (s *HandlerServer) UserRolesPublicHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		s.respondWithError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		s.respondWithError(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+
+	roles, err := s.Repo.GetUserRolesDetailed(id)
+	if err != nil {
+		s.respondWithError(w, http.StatusInternalServerError, "failed to get user roles: "+err.Error())
+		return
+	}
+
+	s.respondWithJSON(w, http.StatusOK, roles)
+}
+
