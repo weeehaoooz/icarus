@@ -1,6 +1,7 @@
 import { Component, inject, computed, signal, OnInit, OnDestroy } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { Subscription } from 'rxjs';
+import { filter } from 'rxjs/operators';
 import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
 import { WorkflowService } from '../../services/workflow.service';
@@ -9,7 +10,10 @@ import { WorkflowService } from '../../services/workflow.service';
   selector: 'app-dashboard',
   imports: [RouterOutlet, RouterLink, RouterLinkActive],
   templateUrl: './dashboard.component.html',
-  styleUrl: './dashboard.component.scss'
+  styleUrl: './dashboard.component.scss',
+  host: {
+    '(document:click)': 'onDocumentClick($event)'
+  }
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
@@ -24,8 +28,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly inboxCount = signal(0);
   readonly toastMessage = signal<string | null>(null);
 
+  readonly currentSpace = signal<'user' | 'admin'>('user');
+  readonly isProfileDropdownOpen = signal(false);
+
   private sseSub?: Subscription;
   private inboxSub?: Subscription;
+  private routerSub?: Subscription;
 
   constructor() {
     if (this.router.url.includes('/dashboard/settings')) {
@@ -36,11 +44,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.refreshInboxCount();
     this.setupSSESubscription();
+    this.syncSpaceWithUrl(this.router.url);
+    this.routerSub = this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd)
+    ).subscribe((event) => {
+      this.syncSpaceWithUrl(event.urlAfterRedirects || event.url);
+    });
   }
 
   ngOnDestroy(): void {
     this.sseSub?.unsubscribe();
     this.inboxSub?.unsubscribe();
+    this.routerSub?.unsubscribe();
   }
 
   refreshInboxCount(): void {
@@ -106,6 +121,60 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.toggleAnimState.set('entering');
       setTimeout(() => this.toggleAnimState.set('idle'), 380);
     }, 220);
+  }
+
+  isAdminRoute(url: string): boolean {
+    const adminPaths = [
+      '/dashboard/overview',
+      '/dashboard/users',
+      '/dashboard/clients',
+      '/dashboard/roles',
+      '/dashboard/workflows',
+      '/dashboard/workflow-builder',
+      '/dashboard/request-management',
+      '/dashboard/applications',
+      '/dashboard/tenants',
+      '/dashboard/settings'
+    ];
+    return adminPaths.some(path => url.includes(path));
+  }
+
+  syncSpaceWithUrl(url: string): void {
+    if (url.includes('/dashboard/modules')) {
+      return;
+    }
+    if (this.isAdmin() && this.isAdminRoute(url)) {
+      this.currentSpace.set('admin');
+    } else {
+      this.currentSpace.set('user');
+    }
+  }
+
+  setSpace(space: 'user' | 'admin'): void {
+    this.currentSpace.set(space);
+    if (this.router.url.includes('/dashboard/modules')) {
+      return;
+    }
+    if (space === 'user') {
+      if (this.isAdminRoute(this.router.url)) {
+        this.router.navigate(['/dashboard/my-policies']);
+      }
+    } else {
+      if (!this.isAdminRoute(this.router.url)) {
+        this.router.navigate(['/dashboard/overview']);
+      }
+    }
+  }
+
+  toggleProfileDropdown(event: Event): void {
+    event.stopPropagation();
+    this.isProfileDropdownOpen.update(val => !val);
+  }
+
+  onDocumentClick(event: Event): void {
+    if (this.isProfileDropdownOpen()) {
+      this.isProfileDropdownOpen.set(false);
+    }
   }
 
   logout(): void {
