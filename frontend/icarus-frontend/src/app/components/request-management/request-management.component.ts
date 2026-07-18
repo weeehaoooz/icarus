@@ -10,7 +10,7 @@ import { AuthService } from '../../services/auth.service';
   selector: 'app-request-management',
   imports: [FormsModule, DatePipe, RouterLink],
   templateUrl: './request-management.component.html',
-  styleUrl: './request-management.component.css'
+  styleUrl: './request-management.component.scss'
 })
 export class RequestManagementComponent implements OnInit, OnDestroy {
   private readonly workflowService = inject(WorkflowService);
@@ -36,6 +36,7 @@ export class RequestManagementComponent implements OnInit, OnDestroy {
   readonly bulkStatus = signal('ALL');
   readonly bulkIncludeDrafts = signal(false);
   readonly isBatchActionLoading = signal(false);
+  readonly isHousekeepingExpanded = signal(false);
 
   readonly selectedCount = computed(() => this.selectedRequestIds().size);
 
@@ -97,6 +98,10 @@ export class RequestManagementComponent implements OnInit, OnDestroy {
 
   get isAdmin(): boolean {
     return this.authService.isAdmin();
+  }
+
+  toggleHousekeepingPanel(): void {
+    this.isHousekeepingExpanded.update(v => !v);
   }
 
   loadAllRequests(): void {

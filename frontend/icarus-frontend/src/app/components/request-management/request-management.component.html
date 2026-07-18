@@ -8,72 +8,100 @@
         <p class="subtitle">View and track the status of all your access requests.</p>
       }
     </div>
-    
-    <!-- Housekeeping Dashboard Panel -->
-    @if (isAdmin) {
-      <div class="housekeeping-card">
-        <div class="housekeeping-title">
-          <svg class="lucide-icon text-warning" viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; margin-right: 8px; fill: none; stroke: currentColor; stroke-width: 2;">
-            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-          </svg>
-          <span>Housekeeping & Bulk Actions</span>
-        </div>
-        <div class="housekeeping-grid">
-          <div class="housekeeping-field">
-            <label for="bulkStatus">Filter Status:</label>
-            <select id="bulkStatus" [(ngModel)]="bulkStatus" aria-label="Bulk selection status filter">
-              <option value="ALL">All Closed Carts</option>
-              <option value="DRAFT">Drafts</option>
-              <option value="COMPLETED">Completed</option>
-              <option value="CANCELLED">Cancelled</option>
-              <option value="ARCHIVED">Archived</option>
-            </select>
-          </div>
-          
-          <div class="housekeeping-field">
-            <label for="bulkDays">Older Than:</label>
-            <div class="days-input-group">
-              <input
-                id="bulkDays"
-                type="number"
-                min="0"
-                [(ngModel)]="bulkDays"
-                aria-label="Bulk selection age cutoff in days"
-              />
-              <span class="days-suffix">days</span>
-            </div>
-          </div>
-        </div>
 
-        <div class="housekeeping-options" style="margin-top: 12px; display: flex; align-items: center; gap: 8px;">
-          @if (bulkStatus() === 'ALL') {
-            <input 
-              type="checkbox" 
-              id="bulkIncludeDrafts" 
-              [(ngModel)]="bulkIncludeDrafts"
-            />
-            <label for="bulkIncludeDrafts" style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer; user-select: none;">Include drafts in selection</label>
-          }
-        </div>
-        
-        <div class="housekeeping-actions" style="margin-top: 16px; display: flex; gap: 10px;">
-          <button
-            class="btn btn-warning btn-sm"
-            (click)="selectByDaysAndStatus()"
-          >
-            Apply Selection
-          </button>
-          <button
-            class="btn btn-secondary btn-sm"
-            (click)="clearSelection()"
-            [disabled]="selectedCount() === 0"
-          >
-            Clear Checked
-          </button>
-        </div>
-      </div>
+    @if (isAdmin) {
+      <button
+        class="btn btn-secondary housekeeping-toggle-btn"
+        (click)="toggleHousekeepingPanel()"
+        [class.active]="isHousekeepingExpanded()"
+        style="display: flex; align-items: center; gap: 6px;"
+      >
+        <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true" style="width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2;">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+        <span>Housekeeping Tools</span>
+        <svg class="lucide-icon chevron-icon" viewBox="0 0 24 24" aria-hidden="true" [class.rotated]="isHousekeepingExpanded()" style="width: 12px; height: 12px; transition: transform 0.2s; fill: none; stroke: currentColor; stroke-width: 2;">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
     }
   </div>
+
+  <!-- Housekeeping Panel -->
+  @if (isAdmin) {
+    <div class="housekeeping-panel" [class.expanded]="isHousekeepingExpanded()">
+      <div class="housekeeping-panel-content">
+        <div class="housekeeping-header">
+          <div class="housekeeping-title">
+            <svg class="lucide-icon text-warning" viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2;">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
+            <span>Housekeeping & Bulk Actions</span>
+          </div>
+          <p class="housekeeping-description">Identify and batch-manage old closed requests. Once selected, use the actions drawer at the bottom to archive or delete.</p>
+        </div>
+
+        <div class="housekeeping-form">
+          <div class="housekeeping-inputs">
+            <div class="housekeeping-field">
+              <label for="bulkStatus">Filter Status</label>
+              <select id="bulkStatus" [(ngModel)]="bulkStatus" aria-label="Bulk selection status filter">
+                <option value="ALL">All Closed Carts</option>
+                <option value="DRAFT">Drafts</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="CANCELLED">Cancelled</option>
+                <option value="ARCHIVED">Archived</option>
+              </select>
+            </div>
+            
+            <div class="housekeeping-field">
+              <label for="bulkDays">Older Than</label>
+              <div class="days-input-group">
+                <input
+                  id="bulkDays"
+                  type="number"
+                  min="0"
+                  [(ngModel)]="bulkDays"
+                  aria-label="Bulk selection age cutoff in days"
+                />
+                <span class="days-suffix">days</span>
+              </div>
+            </div>
+
+            @if (bulkStatus() === 'ALL') {
+              <div class="housekeeping-field checkbox-field">
+                <div class="checkbox-wrapper">
+                  <input 
+                    type="checkbox" 
+                    id="bulkIncludeDrafts" 
+                    [(ngModel)]="bulkIncludeDrafts"
+                  />
+                  <label for="bulkIncludeDrafts">Include drafts in selection</label>
+                </div>
+              </div>
+            }
+          </div>
+          
+          <div class="housekeeping-actions">
+            <button
+              class="btn btn-warning btn-sm"
+              (click)="selectByDaysAndStatus()"
+            >
+              Apply Selection
+            </button>
+            <button
+              class="btn btn-secondary btn-sm"
+              (click)="clearSelection()"
+              [disabled]="selectedCount() === 0"
+            >
+              Clear Checked
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
 
   <!-- Main Action Status Alerts -->
   @if (actionSuccess()) {
