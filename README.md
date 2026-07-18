@@ -6,13 +6,17 @@ As business needs evolve, Icarus continues to expand, offering full coverage and
 
 ---
 
-## 🚀 Key Value Proposition
+## 🚀 Key Value Proposition & Features
 
 * **Out-of-the-Box Authentication & Authorization:** Instant setup for user login, registration, and token validation (JWKS).
-* **Developer Independence:** Downstream microservices consume standard JWTs and verify signatures via public keys, freeing developers from auth boilerplates.
+* **Developer Independence:** Downstream microservices consume standard JWTs and verify signatures via public keys, freeing developers from authentication boilerplates.
 * **Granular RBAC Engine:** Map permissions dynamically to roles, manage role hierarchies, and define tenant-scoped access.
 * **Onboarding & Microservice Governance:** Seamlessly register new application modules, tenants, and clients to scale the system.
 * **Self-Service Access Requests:** User-friendly cart-based request workflow with custom multi-stage approval paths, inbox delegations, and real-time SSE notifications.
+* **Tree-Like Role Grouping:** Roles grid features tree-like grouping by applications and modules, optimized to scale efficiently for 1,000+ roles.
+* **User Access Comparison:** Side-by-side role and permission comparison tool to identify access discrepancies between users.
+* **Active Directory / LDAP Sync:** Native configuration, testing, and synchronization of user directories with LDAP databases.
+* **Interactive Workflow Builder:** Visual administration of multi-stage approval templates mapped to specific system roles.
 
 ---
 
