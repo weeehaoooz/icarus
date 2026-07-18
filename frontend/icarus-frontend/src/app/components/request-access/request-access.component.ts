@@ -7,12 +7,24 @@ import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { AuthService } from '../../services/auth.service';
 import { AdminService } from '../../services/admin.service';
 import { WorkflowService, AccessCart, CartItem } from '../../services/workflow.service';
+import { PlatformService } from '../../services/platform.service';
 
 interface Role {
   id?: string;
   module_id: string;
+  app_code?: string;
   name: string;
   description: string;
+}
+
+interface TableRow {
+  type: 'group' | 'leaf';
+  key: string;
+  name: string;
+  count?: number;
+  level: number;
+  role?: Role;
+  parentCollapsed: boolean;
 }
 
 @Component({
@@ -28,6 +40,7 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly adminService = inject(AdminService);
   private readonly workflowService = inject(WorkflowService);
+  private readonly platformService = inject(PlatformService);
 
   // ── Local (unsaved) cart state ──────────────────────────────────────────────
   /** Roles the user has added locally, before a draft is saved to the backend */
@@ -65,15 +78,326 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
     return this.rawAvailableRoles().filter(r => !userRoleIds.has(r.id) && !userRoleNames.has(r.name));
   });
 
+  // Grouping & Filtering Signals
+  readonly modules = signal<any[]>([]);
+  readonly applications = signal<any[]>([]);
+  readonly selectedModuleFilter = signal<string>('all');
+  readonly selectedAppFilter = signal<string>('all');
+  
+  readonly isGroupingEnabled = signal(false);
+  readonly groupByMode = signal<'module' | 'app'>('module');
+  
+  readonly groupBy = computed<'none' | 'module' | 'app'>(() => {
+    return this.isGroupingEnabled() ? this.groupByMode() : 'none';
+  });
+
+  readonly collapsedGroups = signal<Set<string>>(new Set());
+
   readonly roleSearch = signal('');
   readonly isLoadingRoles = signal(false);
   readonly isLoadingMore = signal(false);
   readonly hasMore = signal(true);
   readonly searchSubject = new Subject<string>();
 
-  // Pagination state
+  // Filtered Roles (Search + Filters)
+  readonly filteredRoles = computed(() => {
+    let list = this.availableRoles();
+    
+    // Filter by search
+    const search = this.roleSearch().toLowerCase().trim();
+    if (search) {
+      list = list.filter(r => 
+        r.name.toLowerCase().includes(search) || 
+        (r.description && r.description.toLowerCase().includes(search))
+      );
+    }
+    
+    // Filter by module
+    const modFilter = this.selectedModuleFilter();
+    if (modFilter !== 'all') {
+      list = list.filter(r => r.module_id === modFilter);
+    }
+    
+    // Filter by application
+    const appFilter = this.selectedAppFilter();
+    if (appFilter !== 'all') {
+      list = list.filter(r => r.app_code === appFilter);
+    }
+    
+    return list;
+  });
+
+  // Grouped Roles for UI Rendering
+  readonly groupedRoles = computed(() => {
+    const list = this.filteredRoles();
+    const mode = this.groupBy();
+    
+    if (mode === 'none') {
+      return [{ name: 'All Roles', key: 'all', roles: list }];
+    }
+    
+    if (mode === 'module') {
+      const groups: { name: string; key: string; roles: Role[] }[] = [];
+      const modulesMap = new Map(this.modules().map(m => [m.code, m.name]));
+      
+      const tempMap = new Map<string, Role[]>();
+      for (const r of list) {
+        const key = r.module_id || 'unknown';
+        if (!tempMap.has(key)) tempMap.set(key, []);
+        tempMap.get(key)!.push(r);
+      }
+      
+      for (const [key, roles] of tempMap.entries()) {
+        const name = modulesMap.get(key) || key;
+        groups.push({ name, key, roles });
+      }
+      
+      return groups.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    
+    if (mode === 'app') {
+      const groups: { name: string; key: string; roles: Role[] }[] = [];
+      const appsMap = new Map(this.applications().map(a => [a.code, a.name]));
+      
+      const tempMap = new Map<string, Role[]>();
+      for (const r of list) {
+        const key = r.app_code || 'global';
+        if (!tempMap.has(key)) tempMap.set(key, []);
+        tempMap.get(key)!.push(r);
+      }
+      
+      for (const [key, roles] of tempMap.entries()) {
+        const name = key === 'global' ? 'Global / No Application' : (appsMap.get(key) || key);
+        groups.push({ name, key, roles });
+      }
+      
+      return groups.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    
+    return [];
+  });
+
+  // Flat list of rows generated from the grouping structure (Application -> Module -> Roles, or Module -> Application -> Roles)
+  readonly tableRows = computed<TableRow[]>(() => {
+    const mode = this.groupBy();
+    const list = this.filteredRoles();
+    const collapsed = this.collapsedGroups();
+    const modulesMap = new Map(this.modules().map(m => [m.code, m.name]));
+    const appsMap = new Map(this.applications().map(a => [a.code, a.name]));
+
+    if (mode === 'none') {
+      return list.map(r => ({
+        type: 'leaf',
+        key: r.id ?? '',
+        name: r.name,
+        level: 0,
+        role: r,
+        parentCollapsed: false
+      }));
+    }
+
+    const rows: TableRow[] = [];
+
+    if (mode === 'module') {
+      // 1. Group roles by module_id
+      const moduleGroups = new Map<string, Role[]>();
+      for (const r of list) {
+        const mId = r.module_id || 'unknown';
+        if (!moduleGroups.has(mId)) moduleGroups.set(mId, []);
+        moduleGroups.get(mId)!.push(r);
+      }
+
+      // Sort modules by name
+      const sortedModuleKeys = Array.from(moduleGroups.keys()).sort((a, b) => {
+        const nameA = modulesMap.get(a) || a;
+        const nameB = modulesMap.get(b) || b;
+        return nameA.localeCompare(nameB);
+      });
+
+      for (const mId of sortedModuleKeys) {
+        const mRoles = moduleGroups.get(mId)!;
+        const mName = modulesMap.get(mId) || mId;
+        const mKey = `module:${mId}`;
+        const mCollapsed = collapsed.has(mKey);
+
+        // Add Module Group Row (Level 0)
+        rows.push({
+          type: 'group',
+          key: mKey,
+          name: mName,
+          count: mRoles.length,
+          level: 0,
+          parentCollapsed: false
+        });
+
+        // 2. Group roles by app_code inside this module
+        const appGroups = new Map<string, Role[]>();
+        for (const r of mRoles) {
+          const aCode = r.app_code || 'global';
+          if (!appGroups.has(aCode)) appGroups.set(aCode, []);
+          appGroups.get(aCode)!.push(r);
+        }
+
+        // Sort apps by name
+        const sortedAppKeys = Array.from(appGroups.keys()).sort((a, b) => {
+          const nameA = a === 'global' ? 'Global / No Application' : (appsMap.get(a) || a);
+          const nameB = b === 'global' ? 'Global / No Application' : (appsMap.get(b) || b);
+          return nameA.localeCompare(nameB);
+        });
+
+        for (const aCode of sortedAppKeys) {
+          const aRoles = appGroups.get(aCode)!;
+          const aName = aCode === 'global' ? 'Global / No Application' : (appsMap.get(aCode) || aCode);
+          const aKey = `${mKey}/app:${aCode}`;
+          const aCollapsed = collapsed.has(aKey);
+
+          // Add App Group Row (Level 1)
+          rows.push({
+            type: 'group',
+            key: aKey,
+            name: aName,
+            count: aRoles.length,
+            level: 1,
+            parentCollapsed: mCollapsed
+          });
+
+          // 3. Add Leaf Roles (Level 2)
+          for (const r of aRoles) {
+            rows.push({
+              type: 'leaf',
+              key: r.id ?? '',
+              name: r.name,
+              level: 2,
+              role: r,
+              parentCollapsed: mCollapsed || aCollapsed
+            });
+          }
+        }
+      }
+    } else if (mode === 'app') {
+      // 1. Group roles by app_code
+      const appGroups = new Map<string, Role[]>();
+      for (const r of list) {
+        const aCode = r.app_code || 'global';
+        if (!appGroups.has(aCode)) appGroups.set(aCode, []);
+        appGroups.get(aCode)!.push(r);
+      }
+
+      // Sort apps by name
+      const sortedAppKeys = Array.from(appGroups.keys()).sort((a, b) => {
+        const nameA = a === 'global' ? 'Global / No Application' : (appsMap.get(a) || a);
+        const nameB = b === 'global' ? 'Global / No Application' : (appsMap.get(b) || b);
+        return nameA.localeCompare(nameB);
+      });
+
+      for (const aCode of sortedAppKeys) {
+        const aRoles = appGroups.get(aCode)!;
+        const aName = aCode === 'global' ? 'Global / No Application' : (appsMap.get(aCode) || aCode);
+        const aKey = `app:${aCode}`;
+        const aCollapsed = collapsed.has(aKey);
+
+        // Add App Group Row (Level 0)
+        rows.push({
+          type: 'group',
+          key: aKey,
+          name: aName,
+          count: aRoles.length,
+          level: 0,
+          parentCollapsed: false
+        });
+
+        // 2. Group roles by module_id inside this app
+        const moduleGroups = new Map<string, Role[]>();
+        for (const r of aRoles) {
+          const mId = r.module_id || 'unknown';
+          if (!moduleGroups.has(mId)) moduleGroups.set(mId, []);
+          moduleGroups.get(mId)!.push(r);
+        }
+
+        // Sort modules by name
+        const sortedModuleKeys = Array.from(moduleGroups.keys()).sort((a, b) => {
+          const nameA = modulesMap.get(a) || a;
+          const nameB = modulesMap.get(b) || b;
+          return nameA.localeCompare(nameB);
+        });
+
+        for (const mId of sortedModuleKeys) {
+          const mRoles = moduleGroups.get(mId)!;
+          const mName = modulesMap.get(mId) || mId;
+          const mKey = `${aKey}/module:${mId}`;
+          const mCollapsed = collapsed.has(mKey);
+
+          // Add Module Group Row (Level 1)
+          rows.push({
+            type: 'group',
+            key: mKey,
+            name: mName,
+            count: mRoles.length,
+            level: 1,
+            parentCollapsed: aCollapsed
+          });
+
+          // 3. Add Leaf Roles (Level 2)
+          for (const r of mRoles) {
+            rows.push({
+              type: 'leaf',
+              key: r.id ?? '',
+              name: r.name,
+              level: 2,
+              role: r,
+              parentCollapsed: aCollapsed || mCollapsed
+            });
+          }
+        }
+      }
+    }
+
+    return rows;
+  });
+
+  // Only rows that are not collapsed are visible in the grid
+  readonly visibleRows = computed<TableRow[]>(() => {
+    return this.tableRows().filter(r => !r.parentCollapsed);
+  });
+
+  toggleGrouping(): void {
+    this.isGroupingEnabled.update(enabled => !enabled);
+    this.collapsedGroups.set(new Set());
+  }
+
+  toggleGroup(key: string): void {
+    this.collapsedGroups.update(set => {
+      const newSet = new Set(set);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      return newSet;
+    });
+  }
+
+  expandAll(): void {
+    this.collapsedGroups.set(new Set());
+  }
+
+  collapseAll(): void {
+    const keys: string[] = [];
+    for (const row of this.tableRows()) {
+      if (row.type === 'group') {
+        keys.push(row.key);
+      }
+    }
+    this.collapsedGroups.set(new Set(keys));
+  }
+
+  isGroupCollapsed(key: string): boolean {
+    return this.collapsedGroups().has(key);
+  }
+
+  // Pagination state (increased limit to fetch all for client-side grouping)
   private offset = 0;
-  private readonly limit = 12;
+  private readonly limit = 1000;
 
   // ── History ─────────────────────────────────────────────────────────────────
   readonly cartHistory = signal<AccessCart[]>([]);
@@ -107,26 +431,18 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadUserRoles();
+    this.loadModulesAndApps();
     this.resetAndLoadRoles();
     this.loadHistory();
-    // NOTE: No automatic cart creation here — drafts are only created when the
-    // user explicitly clicks "Save Draft" or submits the request.
 
     // Setup search input debounce
     const searchSub = this.searchSubject.pipe(
-      debounceTime(350),
+      debounceTime(250),
       distinctUntilChanged()
     ).subscribe(q => {
       this.roleSearch.set(q);
-      this.resetAndLoadRoles();
     });
     this.subs.push(searchSub);
-
-    // Setup infinite scroll listener
-    const scrollSub = fromEvent(window, 'scroll').subscribe(() => {
-      this.onWindowScroll();
-    });
-    this.subs.push(scrollSub);
   }
 
   ngOnDestroy(): void {
@@ -137,6 +453,18 @@ export class RequestAccessComponent implements OnInit, OnDestroy {
   onSearchChange(event: Event): void {
     const val = (event.target as HTMLInputElement).value;
     this.searchSubject.next(val);
+  }
+
+  loadModulesAndApps(): void {
+    const modSub = this.platformService.listModules().subscribe({
+      next: (data) => this.modules.set(data ?? []),
+      error: () => {}
+    });
+    const appSub = this.platformService.listApplications().subscribe({
+      next: (data) => this.applications.set(data ?? []),
+      error: () => {}
+    });
+    this.subs.push(modSub, appSub);
   }
 
   loadUserRoles(): void {

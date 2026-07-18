@@ -46,52 +46,135 @@
         </div>
       </div>
 
-      @if (isLoadingRoles() && availableRoles().length === 0) {
-      <ul class="role-list" role="list">
-        @for (i of [1, 2, 3, 4, 5, 6]; track i) {
-        <li class="role-card skeleton">
-          <div class="role-info">
-            <div class="skeleton-line skeleton-name"></div>
-            <div class="skeleton-line skeleton-desc"></div>
-            <div class="skeleton-line skeleton-desc second"></div>
+      <!-- Quick Grouping & Filters Panel -->
+      <div class="catalogue-controls">
+        <div class="control-group flex-wrap">
+          <div class="group-master-row">
+            <span class="control-label">Grouping</span>
+            <button class="btn-group-toggle" [class.active]="isGroupingEnabled()" (click)="toggleGrouping()">
+              @if (isGroupingEnabled()) {
+                <span>✓ Grouped</span>
+              } @else {
+                <span>Group Roles</span>
+              }
+            </button>
           </div>
-          <div class="skeleton-btn"></div>
-        </li>
-        }
-      </ul>
-      } @else if (availableRoles().length === 0) {
-      <div class="empty-state">No roles match your search.</div>
-      } @else {
-      <ul class="role-list" role="list">
-        @for (role of availableRoles(); track role.id) {
-        <li class="role-card" [class.in-cart]="cartRoleIds().has(role.id ?? '')">
-          <div class="role-info">
-            <span class="role-name">{{ role.name }}</span>
-            <span class="role-desc">{{ role.description || 'No description available.' }}</span>
-          </div>
-          <button class="btn-add" [disabled]="cartRoleIds().has(role.id ?? '')" (click)="addToCart(role)"
-            [attr.aria-label]="'Add ' + role.name + ' to cart'">
-            @if (cartRoleIds().has(role.id ?? '')) {
-            <span>In Cart</span>
-            } @else {
-            <span>+ Add</span>
+          @if (isGroupingEnabled()) {
+            <div class="group-sub-options">
+              <div class="btn-group option-group">
+                <button class="btn-toggle" [class.active]="groupByMode() === 'module'" (click)="groupByMode.set('module')">By Module</button>
+                <button class="btn-toggle" [class.active]="groupByMode() === 'app'" (click)="groupByMode.set('app')">By Application</button>
+              </div>
+              
+              <div class="btn-group tree-actions">
+                <button class="btn-toggle text-btn" (click)="expandAll()">Expand All</button>
+                <button class="btn-toggle text-btn" (click)="collapseAll()">Collapse All</button>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="control-group">
+          <span class="control-label">Module</span>
+          <div class="filter-chips">
+            <button class="chip" [class.active]="selectedModuleFilter() === 'all'" (click)="selectedModuleFilter.set('all')">All</button>
+            @for (mod of modules(); track mod.code) {
+              <button class="chip" [class.active]="selectedModuleFilter() === mod.code" (click)="selectedModuleFilter.set(mod.code)">
+                {{ mod.name }}
+              </button>
             }
-          </button>
-        </li>
-        }
-        @if (isLoadingMore()) {
-        @for (i of [1, 2, 3]; track i) {
-        <li class="role-card skeleton">
-          <div class="role-info">
-            <div class="skeleton-line skeleton-name"></div>
-            <div class="skeleton-line skeleton-desc"></div>
-            <div class="skeleton-line skeleton-desc second"></div>
           </div>
-          <div class="skeleton-btn"></div>
-        </li>
-        }
-        }
-      </ul>
+        </div>
+
+        <div class="control-group">
+          <span class="control-label">Application</span>
+          <div class="filter-chips">
+            <button class="chip" [class.active]="selectedAppFilter() === 'all'" (click)="selectedAppFilter.set('all')">All</button>
+            @for (app of applications(); track app.code) {
+              <button class="chip" [class.active]="selectedAppFilter() === app.code" (click)="selectedAppFilter.set(app.code)">
+                {{ app.name }}
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Roles Grid Table -->
+      @if (isLoadingRoles() && filteredRoles().length === 0) {
+        <div class="skeleton-table">
+          <div class="skeleton-header"></div>
+          <div class="skeleton-row"></div>
+          <div class="skeleton-row"></div>
+          <div class="skeleton-row"></div>
+        </div>
+      } @else if (filteredRoles().length === 0) {
+        <div class="empty-state">No roles match your search or filter criteria.</div>
+      } @else {
+        <div class="roles-grid-container">
+          <table class="roles-table tree-grid">
+            <thead>
+              <tr>
+                @if (groupBy() !== 'none') {
+                  <th class="col-group">Group</th>
+                }
+                <th class="col-name">Role Name</th>
+                <th class="col-module">Module</th>
+                <th class="col-app">Application</th>
+                <th class="col-desc">Description</th>
+                <th class="col-action">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of visibleRows(); track row.key) {
+                @if (row.type === 'group') {
+                  <tr class="grid-group-row level-{{ row.level }}" (click)="toggleGroup(row.key)">
+                    <td [attr.colspan]="groupBy() !== 'none' ? 6 : 5">
+                      <div class="group-cell-content" [style.padding-left.px]="row.level * 20">
+                        <span class="chevron-icon" [class.collapsed]="isGroupCollapsed(row.key)">
+                          <svg viewBox="0 0 24 24" width="16" height="16">
+                            <path d="M7 10l5 5 5-5H7z" fill="currentColor"/>
+                          </svg>
+                        </span>
+                        <span class="group-name">{{ row.name }}</span>
+                        <span class="group-count">({{ row.count }})</span>
+                      </div>
+                    </td>
+                  </tr>
+                } @else {
+                  <tr [class.in-cart]="cartRoleIds().has(row.role?.id ?? '')" class="grid-leaf-row">
+                    @if (groupBy() !== 'none') {
+                      <td class="col-group empty-cell"></td>
+                    }
+                    <td class="col-name font-semibold">{{ row.role?.name }}</td>
+                    <td class="col-module">
+                      <span class="badge badge-module">{{ row.role?.module_id }}</span>
+                    </td>
+                    <td class="col-app">
+                      @if (row.role?.app_code) {
+                        <span class="badge badge-app">{{ row.role?.app_code }}</span>
+                      } @else {
+                        <span class="text-muted small">-</span>
+                      }
+                    </td>
+                    <td class="col-desc">{{ row.role?.description || 'No description available.' }}</td>
+                    <td class="col-action">
+                      @if (row.role) {
+                        <button class="btn-add-grid" [disabled]="cartRoleIds().has(row.role.id ?? '')" (click)="addToCart(row.role)"
+                          [attr.aria-label]="'Add ' + row.role.name + ' to cart'">
+                          @if (cartRoleIds().has(row.role.id ?? '')) {
+                            <span>In Cart</span>
+                          } @else {
+                            <span>+ Add</span>
+                          }
+                        </button>
+                      }
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
       }
     </div>
 
