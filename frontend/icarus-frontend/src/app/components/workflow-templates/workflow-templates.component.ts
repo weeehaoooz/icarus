@@ -143,12 +143,7 @@ export class WorkflowTemplatesComponent implements OnInit {
   }
 
   navigateToEdit(template: WorkflowWithRoleMapping): void {
-    // Edit by loading via its role mapping if exists, else go to a template-specific route.
-    if (template.mapped_role_ids && template.mapped_role_ids.length > 0) {
-      this.router.navigate(['/dashboard/workflow-builder', template.mapped_role_ids[0]]);
-    } else {
-      this.router.navigate(['/dashboard/workflow-builder/new']);
-    }
+    this.router.navigate(['/dashboard/workflow-builder/new'], { queryParams: { from: template.id } });
   }
 
   nodeCountLabel(template: WorkflowWithRoleMapping): string {

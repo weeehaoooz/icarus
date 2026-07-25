@@ -366,6 +366,9 @@ func (r *SQLRepository) CreateStandaloneWorkflow(createdBy string, req models.Up
 		if _, err := tx.Exec(`UPDATE workflows SET is_current = 0, status = 'SUPERSEDED' WHERE id = ?`, oldID.String); err != nil {
 			return nil, err
 		}
+		if _, err := tx.Exec(`UPDATE role_workflow_mappings SET workflow_id = ? WHERE workflow_id = ?`, newID, oldID.String); err != nil {
+			return nil, err
+		}
 	}
 
 	if _, err := tx.Exec(`

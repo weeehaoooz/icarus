@@ -51,16 +51,27 @@ export class WorkflowBuilderComponent implements OnInit {
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('roleId') ?? '';
+    const fromId = this.route.snapshot.queryParamMap.get('from') || this.route.snapshot.queryParamMap.get('templateId') || '';
 
-    if (id === 'new') {
+    if (id === 'new' || !id) {
       this.builderMode.set('template');
-      this.workflowName.set('');
-      this.nodes.set([this.createDefaultNode('node_1')]);
-      this.isLoading.set(false);
+      if (fromId) {
+        this.workflowSource.set('existing');
+        this.loadSelectedWorkflowStructure(fromId);
+      } else {
+        this.workflowName.set('');
+        this.nodes.set([this.createDefaultNode('node_1')]);
+        this.isLoading.set(false);
+      }
     } else {
       this.builderMode.set('role');
       this.roleId.set(id);
-      this.loadWorkflow();
+      if (fromId) {
+        this.workflowSource.set('existing');
+        this.loadSelectedWorkflowStructure(fromId);
+      } else {
+        this.loadWorkflow();
+      }
     }
 
     this.loadRoles();
@@ -187,6 +198,10 @@ export class WorkflowBuilderComponent implements OnInit {
   }
 
   loadWorkflow(): void {
+    if (!this.roleId()) {
+      this.isLoading.set(false);
+      return;
+    }
     this.isLoading.set(true);
     this.workflowService.getWorkflowDefinition(this.roleId())
       .pipe(takeUntilDestroyed(this.destroyRef))

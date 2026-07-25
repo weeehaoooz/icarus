@@ -218,6 +218,9 @@ export class WorkflowService {
   }
 
   getWorkflowDefinition(roleId: string): Observable<Workflow | null> {
+    if (!roleId) {
+      return of(null);
+    }
     return this.http.get<Workflow | null>(
       `${this.baseUrl}/workflow/definitions/roles/${roleId}`
     );

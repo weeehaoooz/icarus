@@ -63,6 +63,13 @@
           <span class="meta-label">Created by</span>
           <span class="meta-value">{{ workflow()!.created_by }}</span>
         </div>
+        <a [routerLink]="['/dashboard/workflow-builder/new']" [queryParams]="{ from: workflow()!.id }" class="btn-add-role" style="text-decoration: none;" aria-label="Create new version of this workflow">
+          <svg viewBox="0 0 24 24" class="lucide-icon" aria-hidden="true" style="width: 16px; height: 16px; margin-right: 6px;">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
+          New Version
+        </a>
       </div>
     </header>
 

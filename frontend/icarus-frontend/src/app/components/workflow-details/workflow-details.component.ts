@@ -1,5 +1,5 @@
 import { Component, signal, inject, OnInit, computed } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { WorkflowService, Workflow } from '../../services/workflow.service';
 import { AdminService } from '../../services/admin.service';
@@ -7,7 +7,7 @@ import { DagPreviewComponent, FormNode } from '../workflow-builder/dag-preview/d
 
 @Component({
   selector: 'app-workflow-details',
-  imports: [FormsModule, DagPreviewComponent],
+  imports: [FormsModule, DagPreviewComponent, RouterLink],
   templateUrl: './workflow-details.component.html',
   styleUrl: './workflow-details.component.scss',
 })
