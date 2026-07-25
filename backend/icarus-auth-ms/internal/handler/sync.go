@@ -154,7 +154,7 @@ func (s *HandlerServer) TokenScopeHandler(w http.ResponseWriter, r *http.Request
 		ownedModules = []string{}
 	}
 
-	scopedToken, err := s.TokenMgr.GenerateScopedUserToken(user.Username, req.TenantID, req.ModuleCode, resolvedRoles, resolvedPermissions, user.Groups, ownedModules)
+	scopedToken, err := s.TokenMgr.GenerateScopedUserToken(user.Username, req.TenantID, req.ModuleCode, resolvedRoles, resolvedPermissions, ownedModules)
 	if err != nil {
 		s.respondWithError(w, http.StatusInternalServerError, "failed to generate scoped token: "+err.Error())
 		return

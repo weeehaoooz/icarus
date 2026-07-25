@@ -27,19 +27,13 @@ func NewTokenVerifier(certsURL string) *TokenVerifier {
 	}
 }
 
-type UserGroup struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
-}
-
 type CustomClaims struct {
-	Type         string      `json:"type"` // "user" or "client"
-	TenantID     string      `json:"tenant_id,omitempty"`
-	ModuleCode   string      `json:"module_code,omitempty"`
-	Roles        []string    `json:"roles,omitempty"`
-	Permissions  []string    `json:"permissions,omitempty"`
-	Groups       []UserGroup `json:"groups,omitempty"`
-	OwnedModules []string    `json:"owned_modules,omitempty"`
+	Type         string   `json:"type"` // "user" or "client"
+	TenantID     string   `json:"tenant_id,omitempty"`
+	ModuleCode   string   `json:"module_code,omitempty"`
+	Roles        []string `json:"roles,omitempty"`
+	Permissions  []string `json:"permissions,omitempty"`
+	OwnedModules []string `json:"owned_modules,omitempty"`
 	jwt.RegisteredClaims
 }
 

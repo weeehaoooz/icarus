@@ -47,11 +47,6 @@ func (r *SQLRepository) GetUserByUsername(username string) (*models.User, error)
 		u.FirstName = firstNameVal.String
 		u.LastName = lastNameVal.String
 
-		groups, err := r.GetUserGroups(u.ID)
-		if err == nil {
-			u.Groups = groups
-		}
-
 		return &u, nil
 	}
 
@@ -75,11 +70,6 @@ func (r *SQLRepository) GetUserByUsername(username string) (*models.User, error)
 		u.CreatedAt = time.Now()
 	}
 
-	groups, err := r.GetUserGroups(u.ID)
-	if err == nil {
-		u.Groups = groups
-	}
-
 	return &u, nil
 }
 
@@ -100,11 +90,6 @@ func (r *SQLRepository) GetUserByID(id int64) (*models.User, error) {
 		u.Email = emailVal.String
 		u.FirstName = firstNameVal.String
 		u.LastName = lastNameVal.String
-
-		groups, err := r.GetUserGroups(u.ID)
-		if err == nil {
-			u.Groups = groups
-		}
 
 		return &u, nil
 	}
@@ -127,11 +112,6 @@ func (r *SQLRepository) GetUserByID(id int64) (*models.User, error) {
 	u.CreatedAt, err = parseTime(createdAtStr)
 	if err != nil {
 		u.CreatedAt = time.Now()
-	}
-
-	groups, err := r.GetUserGroups(u.ID)
-	if err == nil {
-		u.Groups = groups
 	}
 
 	return &u, nil

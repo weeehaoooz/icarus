@@ -134,13 +134,6 @@ func (r *SQLRepository) ListUsers() ([]models.User, error) {
 		}
 		u.Roles = roles
 
-		// Get user groups
-		groups, err := r.GetUserGroups(u.ID)
-		if err != nil {
-			return nil, err
-		}
-		u.Groups = groups
-
 		users = append(users, u)
 	}
 
@@ -990,33 +983,6 @@ func (r *SQLRepository) ListPermissions() ([]models.Permission, error) {
 	return permissions, nil
 }
 
-// GetUserGroups gets a user's LDAP or custom group assignments.
-func (r *SQLRepository) GetUserGroups(userID int64) ([]models.UserGroup, error) {
-	var rows *sql.Rows
-	var err error
-	if r.driver == "postgres" {
-		rows, err = r.db.Query("SELECT group_name, group_type FROM user_groups WHERE user_id = $1", userID)
-	} else {
-		rows, err = r.db.Query("SELECT group_name, group_type FROM user_groups WHERE user_id = ?", userID)
-	}
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var groups []models.UserGroup
-	for rows.Next() {
-		var g models.UserGroup
-		if err := rows.Scan(&g.Name, &g.Type); err != nil {
-			return nil, err
-		}
-		groups = append(groups, g)
-	}
-	if groups == nil {
-		groups = []models.UserGroup{}
-	}
-	return groups, nil
-}
 
 // SyncLDAPGroups synchronizes a user's LDAP group memberships.
 func (r *SQLRepository) SyncLDAPGroups(userID int64, groupNames []string) error {

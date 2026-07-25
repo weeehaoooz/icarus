@@ -5,11 +5,6 @@ import { forkJoin, of } from 'rxjs';
 import { Dialog } from '@angular/cdk/dialog';
 import { RoleAssignmentDialogComponent } from './role-assignment-dialog/role-assignment-dialog.component';
 
-interface UserGroup {
-  name: string;
-  type: 'LDAP' | 'Custom';
-}
-
 interface User {
   id: number;
   username: string;
@@ -17,7 +12,6 @@ interface User {
   last_name: string;
   email: string;
   roles?: string[];
-  groups?: UserGroup[];
 }
 
 interface Role {
@@ -310,15 +304,6 @@ export class UsersComponent implements OnInit {
     }
   }
 
-  hasLDAPGroups(): boolean {
-    const u = this.selectedUser();
-    return !!(u && u.groups && u.groups.some(g => g.type === 'LDAP'));
-  }
 
-  getLDAPGroups(): UserGroup[] {
-    const u = this.selectedUser();
-    if (!u || !u.groups) return [];
-    return u.groups.filter(g => g.type === 'LDAP');
-  }
 }
 

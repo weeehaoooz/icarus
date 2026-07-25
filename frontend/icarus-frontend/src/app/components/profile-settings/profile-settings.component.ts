@@ -2,11 +2,6 @@ import { Component, signal, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 
-interface UserGroup {
-  name: string;
-  type: string;
-}
-
 interface UserProfile {
   id: number;
   username: string;
@@ -14,7 +9,6 @@ interface UserProfile {
   first_name: string;
   last_name: string;
   roles?: string[];
-  groups?: UserGroup[];
 }
 
 @Component({

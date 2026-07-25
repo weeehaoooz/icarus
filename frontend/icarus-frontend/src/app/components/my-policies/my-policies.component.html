@@ -18,16 +18,6 @@
         <div class="skeleton skeleton-email"></div>
       </div>
     </div>
-
-    <div class="glass-panel groups-card">
-      <div class="skeleton skeleton-label"></div>
-      <div class="skeleton skeleton-group-title"></div>
-      <div class="groups-badges-list">
-        <div class="skeleton skeleton-badge" style="width: 90px;"></div>
-        <div class="skeleton skeleton-badge" style="width: 75px;"></div>
-        <div class="skeleton skeleton-badge" style="width: 110px;"></div>
-      </div>
-    </div>
   </div>
 
   <div class="glass-panel access-section mt-6">
@@ -148,23 +138,6 @@
           </svg>
           <span>{{ userProfile()?.email || 'No email provided' }}</span>
         </div>
-      </div>
-    </div>
-
-    <div class="glass-panel groups-card">
-      <span class="panel-section-label">Identity Groups</span>
-      <h3 class="panel-section-title">Assigned User Groups</h3>
-      <div class="groups-badges-list">
-        @if (userProfile()?.groups && userProfile()?.groups!.length > 0) {
-        @for (g of userProfile()?.groups; track g.name) {
-        <span class="group-badge" [class.badge-ldap]="g.type === 'LDAP'" [class.badge-custom]="g.type !== 'LDAP'">
-          <span class="type-indicator">{{ g.type }}</span>
-          {{ g.name }}
-        </span>
-        }
-        } @else {
-        <p class="text-muted text-small">This account is not mapped to any security groups.</p>
-        }
       </div>
     </div>
   </div>

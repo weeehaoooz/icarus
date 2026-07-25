@@ -176,7 +176,7 @@ func (s *HandlerServer) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		ownedModules = []string{}
 	}
-	accessToken, err := s.TokenMgr.GenerateUserTokenWithRoles(user.Username, resolvedRoles, resolvedPermissions, user.Groups, ownedModules)
+	accessToken, err := s.TokenMgr.GenerateUserTokenWithRoles(user.Username, resolvedRoles, resolvedPermissions, ownedModules)
 	if err != nil {
 		s.respondWithError(w, http.StatusInternalServerError, "failed to generate access token")
 		return
@@ -253,7 +253,7 @@ func (s *HandlerServer) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		ownedModules = []string{}
 	}
-	newAccessToken, err := s.TokenMgr.GenerateUserTokenWithRoles(user.Username, resolvedRoles, resolvedPermissions, user.Groups, ownedModules)
+	newAccessToken, err := s.TokenMgr.GenerateUserTokenWithRoles(user.Username, resolvedRoles, resolvedPermissions, ownedModules)
 	if err != nil {
 		s.respondWithError(w, http.StatusInternalServerError, "failed to generate access token")
 		return

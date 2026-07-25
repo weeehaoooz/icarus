@@ -57,7 +57,6 @@
             <th>Full Name</th>
             <th>Email</th>
             <th>Roles</th>
-            <th>Groups</th>
             <th style="width: 100px; text-align: right;">Actions</th>
           </tr>
         </thead>
@@ -87,18 +86,6 @@
                 }
               </div>
             </td>
-            <td>
-              <div class="roles-container">
-                @for (group of user.groups; track group.name) {
-                <span class="badge" [class.badge-secondary]="group.type === 'LDAP'"
-                  [class.badge-primary]="group.type === 'Custom'">
-                  {{ group.name }}
-                </span>
-                } @empty {
-                <span style="color: var(--text-muted); font-size: 0.8rem; font-style: italic;">None</span>
-                }
-              </div>
-            </td>
             <td style="text-align: right;" (click)="$event.stopPropagation()">
               <button (click)="deleteUser(user.id, $event)" class="icon-btn delete" title="Delete Operator Account">
                 <svg class="lucide-icon" viewBox="0 0 24 24">
@@ -113,7 +100,7 @@
           </tr>
           } @empty {
           <tr>
-            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 48px;">
+            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 48px;">
               No system operators match the filter criteria.
             </td>
           </tr>
@@ -186,19 +173,6 @@
         </div>
       </div>
 
-      <!-- LDAP Groups (Read-only) -->
-      @if (selectedUser() && hasLDAPGroups()) {
-      <div class="form-group">
-        <label class="form-label">LDAP Groups (Read-only)</label>
-        <div class="roles-container" style="margin-top: 8px;">
-          @for (group of getLDAPGroups(); track group.name) {
-          <span class="badge badge-secondary">{{ group.name }}</span>
-          }
-        </div>
-        <span class="field-hint" style="margin-top: 4px; display: block;">LDAP groups are synchronized from Active
-          Directory on authentication.</span>
-      </div>
-      }
 
       <div
         style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">

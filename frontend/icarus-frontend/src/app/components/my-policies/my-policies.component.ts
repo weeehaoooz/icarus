@@ -4,11 +4,6 @@ import { catchError } from 'rxjs/operators';
 import { AuthService } from '../../services/auth.service';
 import { AdminService } from '../../services/admin.service';
 
-interface UserGroup {
-  name: string;
-  type: string;
-}
-
 interface UserProfile {
   id: number;
   username: string;
@@ -16,7 +11,6 @@ interface UserProfile {
   first_name: string;
   last_name: string;
   roles?: string[];
-  groups?: UserGroup[];
 }
 
 interface Role {
