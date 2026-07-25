@@ -5,10 +5,16 @@
   </div>
 
   @if (actionSuccess()) {
-    <div class="alert alert-success" role="status">✓ {{ actionSuccess() }}</div>
+    <div class="alert alert-success" role="status">
+      <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+      {{ actionSuccess() }}
+    </div>
   }
   @if (actionError()) {
-    <div class="alert alert-error" role="alert">✕ {{ actionError() }}</div>
+    <div class="alert alert-error" role="alert">
+      <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      {{ actionError() }}
+    </div>
   }
 
   @if (isLoading()) {
@@ -17,7 +23,7 @@
     <div class="error-state" role="alert">{{ error() }}</div>
   } @else if (items().length === 0) {
     <div class="empty-inbox">
-      <span class="empty-icon" aria-hidden="true">✉️</span>
+      <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
       <p>Your inbox is clear — no pending approvals.</p>
     </div>
   } @else {
@@ -61,7 +67,10 @@
                   [disabled]="actioningStepId() === item.step_id"
                   [attr.aria-label]="'Approve ' + item.role_requested + ' request'"
                 >
-                  @if (actioningStepId() === item.step_id) { Processing… } @else { ✓ Approve }
+                  @if (actioningStepId() === item.step_id) { Processing… } @else {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                    Approve
+                  }
                 </button>
                 <button
                   class="btn-reject"
@@ -69,7 +78,8 @@
                   [disabled]="actioningStepId() === item.step_id"
                   [attr.aria-label]="'Reject ' + item.role_requested + ' request'"
                 >
-                  ✕ Reject
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  Reject
                 </button>
               </div>
 

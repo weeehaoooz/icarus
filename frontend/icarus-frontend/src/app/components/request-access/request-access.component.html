@@ -148,7 +148,7 @@
               </td>
               <td class="col-app">
                 @if (row.role?.app_code) {
-                <span class="badge badge-app">{{ row.role?.app_code }}</span>
+                <span class="badge badge-app">{{ row.role!.app_code }}</span>
                 } @else {
                 <span class="text-muted small">-</span>
                 }
