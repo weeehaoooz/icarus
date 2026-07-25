@@ -66,6 +66,7 @@ func main() {
 	tokenMgr := crypto.NewTokenManager(privKey, pubKey, "icarus-auth-ms")
 
 	server := handler.NewHandlerServer(repo, tokenMgr)
+	defer server.SecLogger.Close()
 
 	mux := http.NewServeMux()
 	server.RegisterRoutes(mux)

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"icarus-admin-ms/internal/models"
+	"icarus-admin-ms/internal/securitylog"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -38,6 +39,16 @@ func (s *HandlerServer) GatewayHandler(w http.ResponseWriter, r *http.Request) {
 	// 1. Fetch Module
 	module, err := s.Repo.GetModuleByCode(siteDomain)
 	if err != nil {
+		s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+			EventType:      securitylog.DomainGateway,
+			Action:         "ROUTE_NOT_FOUND",
+			Severity:       securitylog.SeverityWarn,
+			ActorIP:        securitylog.GetClientIP(r),
+			UserAgent:      r.UserAgent(),
+			TargetResource: r.URL.Path,
+			Status:         securitylog.StatusFailure,
+			Details:        map[string]interface{}{"reason": "module not found: " + siteDomain},
+		})
 		s.respondWithError(w, http.StatusNotFound, "module not found: "+siteDomain)
 		return
 	}
@@ -62,6 +73,16 @@ func (s *HandlerServer) GatewayHandler(w http.ResponseWriter, r *http.Request) {
 
 	// If no matching permission/route is onboarded, we don't know where to proxy
 	if matchedPermission == nil {
+		s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+			EventType:      securitylog.DomainGateway,
+			Action:         "ROUTE_NOT_FOUND",
+			Severity:       securitylog.SeverityWarn,
+			ActorIP:        securitylog.GetClientIP(r),
+			UserAgent:      r.UserAgent(),
+			TargetResource: r.URL.Path,
+			Status:         securitylog.StatusFailure,
+			Details:        map[string]interface{}{"reason": "API endpoint not found on module " + siteDomain},
+		})
 		s.respondWithError(w, http.StatusNotFound, "API endpoint not found on this module")
 		return
 	}

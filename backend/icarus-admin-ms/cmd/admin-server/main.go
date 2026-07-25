@@ -46,6 +46,7 @@ func main() {
 	}
 
 	server := handler.NewHandlerServer(repo, verifier, authMsBaseURL)
+	defer server.SecLogger.Close()
 
 	mux := http.NewServeMux()
 	server.RegisterRoutes(mux)

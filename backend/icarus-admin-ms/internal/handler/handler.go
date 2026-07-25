@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"icarus-admin-ms/internal/crypto"
 	"icarus-admin-ms/internal/repository"
+	"icarus-admin-ms/internal/securitylog"
 	"log"
 	"net/http"
 	"time"
@@ -13,6 +14,7 @@ type HandlerServer struct {
 	Repo      *repository.SQLRepository
 	Verifier  *crypto.TokenVerifier
 	AuthMSURL string
+	SecLogger *securitylog.Logger
 }
 
 func NewHandlerServer(repo *repository.SQLRepository, verifier *crypto.TokenVerifier, authMSURL string) *HandlerServer {
@@ -20,6 +22,7 @@ func NewHandlerServer(repo *repository.SQLRepository, verifier *crypto.TokenVeri
 		Repo:      repo,
 		Verifier:  verifier,
 		AuthMSURL: authMSURL,
+		SecLogger: securitylog.NewLogger("icarus-admin-ms"),
 	}
 }
 

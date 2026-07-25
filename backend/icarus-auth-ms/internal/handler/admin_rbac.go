@@ -1,12 +1,14 @@
 package handler
 
 import (
-	"icarus-auth-ms/internal/models"
 	"encoding/json"
-	"golang.org/x/crypto/bcrypt"
+	"icarus-auth-ms/internal/models"
+	"icarus-auth-ms/internal/securitylog"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // AdminRequired middleware ensures the request has a valid admin JWT.
@@ -14,12 +16,32 @@ func (s *HandlerServer) AdminRequired(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
+			s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+				EventType:      securitylog.DomainAccessControl,
+				Action:         "ACCESS_DENIED",
+				Severity:       securitylog.SeverityWarn,
+				ActorIP:        securitylog.GetClientIP(r),
+				UserAgent:      r.UserAgent(),
+				TargetResource: r.URL.Path,
+				Status:         securitylog.StatusFailure,
+				Details:        map[string]interface{}{"reason": "missing authorization header"},
+			})
 			s.respondWithError(w, http.StatusUnauthorized, "missing authorization header")
 			return
 		}
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+			s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+				EventType:      securitylog.DomainAccessControl,
+				Action:         "ACCESS_DENIED",
+				Severity:       securitylog.SeverityWarn,
+				ActorIP:        securitylog.GetClientIP(r),
+				UserAgent:      r.UserAgent(),
+				TargetResource: r.URL.Path,
+				Status:         securitylog.StatusFailure,
+				Details:        map[string]interface{}{"reason": "invalid authorization format"},
+			})
 			s.respondWithError(w, http.StatusUnauthorized, "invalid authorization format")
 			return
 		}
@@ -27,9 +49,21 @@ func (s *HandlerServer) AdminRequired(next http.HandlerFunc) http.HandlerFunc {
 		tokenStr := parts[1]
 		claims, err := s.TokenMgr.VerifyToken(tokenStr)
 		if err != nil {
+			s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+				EventType:      securitylog.DomainAccessControl,
+				Action:         "ACCESS_DENIED",
+				Severity:       securitylog.SeverityWarn,
+				ActorIP:        securitylog.GetClientIP(r),
+				UserAgent:      r.UserAgent(),
+				TargetResource: r.URL.Path,
+				Status:         securitylog.StatusFailure,
+				Details:        map[string]interface{}{"reason": "invalid token: " + err.Error()},
+			})
 			s.respondWithError(w, http.StatusUnauthorized, "invalid token: "+err.Error())
 			return
 		}
+
+		r.Header.Set("X-Username", claims.Subject)
 
 		isAdmin := false
 		for _, role := range claims.Roles {
@@ -40,6 +74,17 @@ func (s *HandlerServer) AdminRequired(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		if !isAdmin {
+			s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+				EventType:      securitylog.DomainAccessControl,
+				Action:         "ACCESS_DENIED",
+				Severity:       securitylog.SeverityWarn,
+				Actor:          claims.Subject,
+				ActorIP:        securitylog.GetClientIP(r),
+				UserAgent:      r.UserAgent(),
+				TargetResource: r.URL.Path,
+				Status:         securitylog.StatusFailure,
+				Details:        map[string]interface{}{"reason": "admin role required"},
+			})
 			s.respondWithError(w, http.StatusForbidden, "forbidden: admin role required")
 			return
 		}

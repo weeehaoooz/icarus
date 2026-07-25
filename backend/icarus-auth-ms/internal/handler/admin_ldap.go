@@ -1,9 +1,10 @@
 package handler
 
 import (
+	"encoding/json"
 	"icarus-auth-ms/internal/ldap"
 	"icarus-auth-ms/internal/models"
-	"encoding/json"
+	"icarus-auth-ms/internal/securitylog"
 	"net/http"
 )
 
@@ -57,6 +58,19 @@ func (s *HandlerServer) AdminUpdateLDAPConfigHandler(w http.ResponseWriter, r *h
 		return
 	}
 
+	actor := r.Header.Get("X-Username")
+	s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+		EventType:      securitylog.DomainSecurityConfig,
+		Action:         "UPDATE_LDAP_CONFIG",
+		Severity:       securitylog.SeverityInfo,
+		Actor:          actor,
+		ActorIP:        securitylog.GetClientIP(r),
+		UserAgent:      r.UserAgent(),
+		TargetResource: "config:ldap",
+		Status:         securitylog.StatusSuccess,
+		Details:        map[string]interface{}{"enabled": req.Enabled, "server": req.ServerURL},
+	})
+
 	s.respondWithJSON(w, http.StatusOK, map[string]string{"message": "LDAP configuration updated successfully"})
 }
 
@@ -83,13 +97,36 @@ func (s *HandlerServer) AdminTestLDAPConfigHandler(w http.ResponseWriter, r *htt
 	}
 
 	err := ldap.TestLDAPConnection(&req)
+	actor := r.Header.Get("X-Username")
 	if err != nil {
+		s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+			EventType:      securitylog.DomainSecurityConfig,
+			Action:         "TEST_LDAP_CONFIG",
+			Severity:       securitylog.SeverityWarn,
+			Actor:          actor,
+			ActorIP:        securitylog.GetClientIP(r),
+			UserAgent:      r.UserAgent(),
+			TargetResource: "config:ldap",
+			Status:         securitylog.StatusFailure,
+			Details:        map[string]interface{}{"error": err.Error()},
+		})
 		s.respondWithJSON(w, http.StatusOK, map[string]interface{}{
 			"success": false,
 			"error":   err.Error(),
 		})
 		return
 	}
+
+	s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+		EventType:      securitylog.DomainSecurityConfig,
+		Action:         "TEST_LDAP_CONFIG",
+		Severity:       securitylog.SeverityInfo,
+		Actor:          actor,
+		ActorIP:        securitylog.GetClientIP(r),
+		UserAgent:      r.UserAgent(),
+		TargetResource: "config:ldap",
+		Status:         securitylog.StatusSuccess,
+	})
 
 	s.respondWithJSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,

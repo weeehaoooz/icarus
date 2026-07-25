@@ -5,6 +5,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
+	"icarus-auth-ms/internal/securitylog"
 	"math/big"
 	"net/http"
 	"strings"
@@ -50,6 +52,17 @@ func (s *HandlerServer) ClientRegisterHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+		EventType:      securitylog.DomainClientMgmt,
+		Action:         "CLIENT_REGISTER",
+		Severity:       securitylog.SeverityInfo,
+		Actor:          req.ClientID,
+		ActorIP:        securitylog.GetClientIP(r),
+		UserAgent:      r.UserAgent(),
+		TargetResource: fmt.Sprintf("client:%s", req.ClientID),
+		Status:         securitylog.StatusSuccess,
+	})
+
 	s.respondWithJSON(w, http.StatusCreated, map[string]string{
 		"message":   "client registered successfully",
 		"client_id": req.ClientID,
@@ -76,6 +89,15 @@ func (s *HandlerServer) ClientTokenHandler(w http.ResponseWriter, r *http.Reques
 
 	clientID, err := s.TokenMgr.VerifyClientAssertion(req.ClientAssertion, s.Repo)
 	if err != nil {
+		s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+			EventType: securitylog.DomainAuth,
+			Action:    "CLIENT_TOKEN_ISSUANCE",
+			Severity:  securitylog.SeverityWarn,
+			ActorIP:   securitylog.GetClientIP(r),
+			UserAgent: r.UserAgent(),
+			Status:    securitylog.StatusFailure,
+			Details:   map[string]interface{}{"reason": "invalid client assertion: " + err.Error()},
+		})
 		s.respondWithError(w, http.StatusUnauthorized, "invalid client assertion: "+err.Error())
 		return
 	}
@@ -93,6 +115,17 @@ func (s *HandlerServer) ClientTokenHandler(w http.ResponseWriter, r *http.Reques
 		s.respondWithError(w, http.StatusInternalServerError, "failed to generate client token")
 		return
 	}
+
+	s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+		EventType:      securitylog.DomainAuth,
+		Action:         "CLIENT_TOKEN_ISSUANCE",
+		Severity:       securitylog.SeverityInfo,
+		Actor:          clientID,
+		ActorIP:        securitylog.GetClientIP(r),
+		UserAgent:      r.UserAgent(),
+		TargetResource: fmt.Sprintf("client:%s", clientID),
+		Status:         securitylog.StatusSuccess,
+	})
 
 	s.respondWithJSON(w, http.StatusOK, map[string]string{
 		"access_token": accessToken,

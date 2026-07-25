@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"icarus-workflow-ms/internal/crypto"
 	"icarus-workflow-ms/internal/repository"
+	"icarus-workflow-ms/internal/securitylog"
 	"log"
 	"net/http"
 	"strings"
@@ -21,6 +22,7 @@ type HandlerServer struct {
 	Verifier   *crypto.TokenVerifier
 	AdminMSURL string
 	SSEBroker  *SSEBroker
+	SecLogger  *securitylog.Logger
 }
 
 func NewHandlerServer(repo *repository.SQLRepository, verifier *crypto.TokenVerifier, adminMSURL string) *HandlerServer {
@@ -29,6 +31,7 @@ func NewHandlerServer(repo *repository.SQLRepository, verifier *crypto.TokenVeri
 		Verifier:   verifier,
 		AdminMSURL: adminMSURL,
 		SSEBroker:  NewSSEBroker(),
+		SecLogger:  securitylog.NewLogger("icarus-workflow-ms"),
 	}
 }
 
@@ -98,12 +101,32 @@ func (s *HandlerServer) AuthRequired(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		if tokenStr == "" {
+			s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+				EventType:      securitylog.DomainAccessControl,
+				Action:         "ACCESS_DENIED",
+				Severity:       securitylog.SeverityWarn,
+				ActorIP:        securitylog.GetClientIP(r),
+				UserAgent:      r.UserAgent(),
+				TargetResource: r.URL.Path,
+				Status:         securitylog.StatusFailure,
+				Details:        map[string]interface{}{"reason": "missing authorization"},
+			})
 			s.respondWithError(w, http.StatusUnauthorized, "missing authorization")
 			return
 		}
 
 		claims, err := s.Verifier.VerifyToken(tokenStr)
 		if err != nil {
+			s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+				EventType:      securitylog.DomainAccessControl,
+				Action:         "ACCESS_DENIED",
+				Severity:       securitylog.SeverityWarn,
+				ActorIP:        securitylog.GetClientIP(r),
+				UserAgent:      r.UserAgent(),
+				TargetResource: r.URL.Path,
+				Status:         securitylog.StatusFailure,
+				Details:        map[string]interface{}{"reason": "invalid token: " + err.Error()},
+			})
 			s.respondWithError(w, http.StatusUnauthorized, "invalid token: "+err.Error())
 			return
 		}
@@ -124,6 +147,17 @@ func (s *HandlerServer) AdminRequired(next http.HandlerFunc) http.HandlerFunc {
 			}
 		}
 		if !isAdmin && len(claims.OwnedModules) == 0 {
+			s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+				EventType:      securitylog.DomainAccessControl,
+				Action:         "ACCESS_DENIED",
+				Severity:       securitylog.SeverityWarn,
+				Actor:          claims.Subject,
+				ActorIP:        securitylog.GetClientIP(r),
+				UserAgent:      r.UserAgent(),
+				TargetResource: r.URL.Path,
+				Status:         securitylog.StatusFailure,
+				Details:        map[string]interface{}{"reason": "admin or module owner role required"},
+			})
 			s.respondWithError(w, http.StatusForbidden, "admin or module owner role required")
 			return
 		}

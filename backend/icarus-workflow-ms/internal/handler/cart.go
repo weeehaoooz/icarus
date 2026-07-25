@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"icarus-workflow-ms/internal/models"
+	"icarus-workflow-ms/internal/securitylog"
 	"net/http"
 	"strings"
 
@@ -168,6 +169,18 @@ func (s *HandlerServer) SubmitCartHandler(w http.ResponseWriter, r *http.Request
 	_ = s.Repo.WriteAuditLog(&models.AuditLog{
 		ID: uuid.New().String(), EntityType: "CART", EntityID: cartID,
 		ActorUserID: claims.Subject, Action: "SUBMITTED", CorrelationID: correlationID,
+	})
+
+	s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+		EventType:      securitylog.DomainWorkflow,
+		Action:         "SUBMIT_CART",
+		Severity:       securitylog.SeverityInfo,
+		Actor:          claims.Subject,
+		ActorIP:        securitylog.GetClientIP(r),
+		UserAgent:      r.UserAgent(),
+		TargetResource: fmt.Sprintf("cart:%s", cartID),
+		Status:         securitylog.StatusSuccess,
+		Details:        map[string]interface{}{"item_count": len(cart.Items)},
 	})
 
 	anyInProgress := false
@@ -456,6 +469,23 @@ func (s *HandlerServer) AdminHousekeepingArchiveHandler(w http.ResponseWriter, r
 		return
 	}
 
+	claims := s.claimsFrom(r)
+	actor := ""
+	if claims != nil {
+		actor = claims.Subject
+	}
+	s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+		EventType:      securitylog.DomainHousekeeping,
+		Action:         "ARCHIVE_CARTS",
+		Severity:       securitylog.SeverityInfo,
+		Actor:          actor,
+		ActorIP:        securitylog.GetClientIP(r),
+		UserAgent:      r.UserAgent(),
+		TargetResource: "resource:carts",
+		Status:         securitylog.StatusSuccess,
+		Details:        map[string]interface{}{"archived_count": rows},
+	})
+
 	s.respondWithJSON(w, http.StatusOK, map[string]interface{}{
 		"archived_count": rows,
 		"message":        fmt.Sprintf("Housekeeping complete. Archived %d requests.", rows),
@@ -481,6 +511,23 @@ func (s *HandlerServer) AdminHousekeepingDeleteHandler(w http.ResponseWriter, r 
 		s.respondWithError(w, http.StatusInternalServerError, "failed to delete carts: "+err.Error())
 		return
 	}
+
+	claims := s.claimsFrom(r)
+	actor := ""
+	if claims != nil {
+		actor = claims.Subject
+	}
+	s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+		EventType:      securitylog.DomainHousekeeping,
+		Action:         "DELETE_CARTS",
+		Severity:       securitylog.SeverityWarn,
+		Actor:          actor,
+		ActorIP:        securitylog.GetClientIP(r),
+		UserAgent:      r.UserAgent(),
+		TargetResource: "resource:carts",
+		Status:         securitylog.StatusSuccess,
+		Details:        map[string]interface{}{"deleted_count": rows},
+	})
 
 	s.respondWithJSON(w, http.StatusOK, map[string]interface{}{
 		"deleted_count": rows,
@@ -511,6 +558,17 @@ func (s *HandlerServer) DeleteCartHandler(w http.ResponseWriter, r *http.Request
 		s.respondWithError(w, http.StatusInternalServerError, "failed to delete cart: "+err.Error())
 		return
 	}
+
+	s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+		EventType:      securitylog.DomainWorkflow,
+		Action:         "DELETE_CART",
+		Severity:       securitylog.SeverityInfo,
+		Actor:          claims.Subject,
+		ActorIP:        securitylog.GetClientIP(r),
+		UserAgent:      r.UserAgent(),
+		TargetResource: fmt.Sprintf("cart:%s", cartID),
+		Status:         securitylog.StatusSuccess,
+	})
 
 	// Notify approvers so their inbox count updates
 	notifiedUsers := make(map[string]bool)

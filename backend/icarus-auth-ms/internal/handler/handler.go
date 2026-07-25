@@ -4,20 +4,23 @@ import (
 	"encoding/json"
 	"icarus-auth-ms/internal/crypto"
 	"icarus-auth-ms/internal/repository"
+	"icarus-auth-ms/internal/securitylog"
 	"log"
 	"net/http"
 	"time"
 )
 
 type HandlerServer struct {
-	Repo     *repository.SQLRepository
-	TokenMgr *crypto.TokenManager
+	Repo      *repository.SQLRepository
+	TokenMgr  *crypto.TokenManager
+	SecLogger *securitylog.Logger
 }
 
 func NewHandlerServer(repo *repository.SQLRepository, tokenMgr *crypto.TokenManager) *HandlerServer {
 	return &HandlerServer{
-		Repo:     repo,
-		TokenMgr: tokenMgr,
+		Repo:      repo,
+		TokenMgr:  tokenMgr,
+		SecLogger: securitylog.NewLogger("icarus-auth-ms"),
 	}
 }
 
@@ -54,7 +57,6 @@ func (s *HandlerServer) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /users", s.UserRequired(s.UserDirectoryHandler))
 	mux.HandleFunc("GET /users/{id}/roles", s.UserRequired(s.UserRolesPublicHandler))
 
-
 	// Admin APIs for RBAC CRM
 	mux.HandleFunc("GET /admin/users", s.AdminRequired(s.AdminListUsersHandler))
 	mux.HandleFunc("POST /admin/users", s.AdminRequired(s.AdminCreateUserHandler))
@@ -87,7 +89,7 @@ func (s *HandlerServer) LoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		next.ServeHTTP(w, r)
-		log.Printf("%s %s %s - %s", r.Method, r.URL.Path, r.Proto, time.Since(start))
+		log.Printf("[Auth MS] %s %s %s - %s", r.Method, r.URL.Path, r.Proto, time.Since(start))
 	})
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"icarus-workflow-ms/internal/crypto"
 	"icarus-workflow-ms/internal/models"
+	"icarus-workflow-ms/internal/securitylog"
 	"net/http"
 	"strings"
 
@@ -54,6 +55,17 @@ func (s *HandlerServer) DelegateStepHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if !s.isAuthorizedApprover(claims, step) {
+		s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+			EventType:      securitylog.DomainAccessControl,
+			Action:         "DELEGATE_STEP",
+			Severity:       securitylog.SeverityWarn,
+			Actor:          claims.Subject,
+			ActorIP:        securitylog.GetClientIP(r),
+			UserAgent:      r.UserAgent(),
+			TargetResource: fmt.Sprintf("step:%s", stepID),
+			Status:         securitylog.StatusFailure,
+			Details:        map[string]interface{}{"reason": "not an assigned approver for this step"},
+		})
 		s.respondWithError(w, http.StatusForbidden, "not an assigned approver for this step")
 		return
 	}
@@ -64,6 +76,18 @@ func (s *HandlerServer) DelegateStepHandler(w http.ResponseWriter, r *http.Reque
 		s.respondWithError(w, http.StatusInternalServerError, "failed to delegate step: "+err.Error())
 		return
 	}
+
+	s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+		EventType:      securitylog.DomainWorkflow,
+		Action:         "DELEGATE_STEP",
+		Severity:       securitylog.SeverityInfo,
+		Actor:          claims.Subject,
+		ActorIP:        securitylog.GetClientIP(r),
+		UserAgent:      r.UserAgent(),
+		TargetResource: fmt.Sprintf("step:%s", stepID),
+		Status:         securitylog.StatusSuccess,
+		Details:        map[string]interface{}{"delegated_to": *body.DelegateToUser},
+	})
 
 	// Notify delegate via SSE
 	payload := fmt.Sprintf(`{"step_id":"%s"}`, newStep.ID)
@@ -97,6 +121,17 @@ func (s *HandlerServer) actionStep(w http.ResponseWriter, r *http.Request, newSt
 		return
 	}
 	if !s.isAuthorizedApprover(claims, step) {
+		s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+			EventType:      securitylog.DomainAccessControl,
+			Action:         newStatus + "_STEP",
+			Severity:       securitylog.SeverityWarn,
+			Actor:          claims.Subject,
+			ActorIP:        securitylog.GetClientIP(r),
+			UserAgent:      r.UserAgent(),
+			TargetResource: fmt.Sprintf("step:%s", stepID),
+			Status:         securitylog.StatusFailure,
+			Details:        map[string]interface{}{"reason": "not an assigned approver for this step"},
+		})
 		s.respondWithError(w, http.StatusForbidden, "not an assigned approver for this step")
 		return
 	}
@@ -106,6 +141,18 @@ func (s *HandlerServer) actionStep(w http.ResponseWriter, r *http.Request, newSt
 		s.respondWithError(w, http.StatusInternalServerError, "failed to action step: "+err.Error())
 		return
 	}
+
+	s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+		EventType:      securitylog.DomainWorkflow,
+		Action:         newStatus + "_STEP",
+		Severity:       securitylog.SeverityInfo,
+		Actor:          claims.Subject,
+		ActorIP:        securitylog.GetClientIP(r),
+		UserAgent:      r.UserAgent(),
+		TargetResource: fmt.Sprintf("step:%s", stepID),
+		Status:         securitylog.StatusSuccess,
+		Details:        map[string]interface{}{"workflow_instance_status": inst.Status},
+	})
 
 	// Check blockers: if any of the new steps are assigned to a role with 0 members, report it!
 	var blockerMsgs []string

@@ -1,11 +1,13 @@
 package handler
 
 import (
-	"icarus-auth-ms/internal/ldap"
-	"icarus-auth-ms/internal/models"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"icarus-auth-ms/internal/ldap"
+	"icarus-auth-ms/internal/models"
+	"icarus-auth-ms/internal/securitylog"
 	"log"
 	"net/http"
 	"strings"
@@ -67,12 +69,33 @@ func (s *HandlerServer) RegisterHandler(w http.ResponseWriter, r *http.Request) 
 	userID, err := s.Repo.CreateUser(req.Username, req.Email, req.FirstName, req.LastName, string(hashedBytes))
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "23505") {
+			s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+				EventType: securitylog.DomainUserMgmt,
+				Action:    "REGISTER_USER",
+				Severity:  securitylog.SeverityWarn,
+				Actor:     req.Username,
+				ActorIP:   securitylog.GetClientIP(r),
+				UserAgent: r.UserAgent(),
+				Status:    securitylog.StatusFailure,
+				Details:   map[string]interface{}{"reason": "username already exists"},
+			})
 			s.respondWithError(w, http.StatusConflict, "username already exists")
 			return
 		}
 		s.respondWithError(w, http.StatusInternalServerError, "failed to register user: "+err.Error())
 		return
 	}
+
+	s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+		EventType:      securitylog.DomainUserMgmt,
+		Action:         "REGISTER_USER",
+		Severity:       securitylog.SeverityInfo,
+		Actor:          req.Username,
+		ActorIP:        securitylog.GetClientIP(r),
+		UserAgent:      r.UserAgent(),
+		TargetResource: fmt.Sprintf("user:%d", userID),
+		Status:         securitylog.StatusSuccess,
+	})
 
 	s.respondWithJSON(w, http.StatusCreated, map[string]interface{}{
 		"message": "user registered successfully",
@@ -96,6 +119,7 @@ func (s *HandlerServer) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var user *models.User
 	var err error
 	ldapAuthenticated := false
+	authMethod := "local"
 
 	// Check if LDAP is enabled
 	ldapCfg, ldapErr := s.Repo.GetLDAPConfig()
@@ -105,6 +129,7 @@ func (s *HandlerServer) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		if authErr == nil {
 			log.Printf("LDAP authentication successful for user: %s. Fetching/provisioning local user...", req.Username)
 			ldapAuthenticated = true
+			authMethod = "ldap"
 
 			// Get or provision local user
 			localUser, getErr := s.Repo.GetUserByUsername(req.Username)
@@ -156,11 +181,31 @@ func (s *HandlerServer) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		// Fallback to local DB check
 		user, err = s.Repo.GetUserByUsername(req.Username)
 		if err != nil {
+			s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+				EventType: securitylog.DomainAuth,
+				Action:    "LOGIN_FAILED",
+				Severity:  securitylog.SeverityWarn,
+				Actor:     req.Username,
+				ActorIP:   securitylog.GetClientIP(r),
+				UserAgent: r.UserAgent(),
+				Status:    securitylog.StatusFailure,
+				Details:   map[string]interface{}{"reason": "user not found"},
+			})
 			s.respondWithError(w, http.StatusUnauthorized, "invalid username or password")
 			return
 		}
 
 		if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+			s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+				EventType: securitylog.DomainAuth,
+				Action:    "LOGIN_FAILED",
+				Severity:  securitylog.SeverityWarn,
+				Actor:     req.Username,
+				ActorIP:   securitylog.GetClientIP(r),
+				UserAgent: r.UserAgent(),
+				Status:    securitylog.StatusFailure,
+				Details:   map[string]interface{}{"reason": "invalid password"},
+			})
 			s.respondWithError(w, http.StatusUnauthorized, "invalid username or password")
 			return
 		}
@@ -195,6 +240,18 @@ func (s *HandlerServer) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+		EventType:      securitylog.DomainAuth,
+		Action:         "LOGIN_SUCCESS",
+		Severity:       securitylog.SeverityInfo,
+		Actor:          user.Username,
+		ActorIP:        securitylog.GetClientIP(r),
+		UserAgent:      r.UserAgent(),
+		TargetResource: fmt.Sprintf("user:%d", user.ID),
+		Status:         securitylog.StatusSuccess,
+		Details:        map[string]interface{}{"auth_method": authMethod},
+	})
+
 	s.respondWithJSON(w, http.StatusOK, map[string]string{
 		"access_token":  accessToken,
 		"refresh_token": rawRefreshToken,
@@ -221,12 +278,30 @@ func (s *HandlerServer) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 
 	storedToken, err := s.Repo.GetRefreshToken(req.RefreshToken)
 	if err != nil {
+		s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+			EventType: securitylog.DomainAuth,
+			Action:    "REFRESH_TOKEN",
+			Severity:  securitylog.SeverityWarn,
+			ActorIP:   securitylog.GetClientIP(r),
+			UserAgent: r.UserAgent(),
+			Status:    securitylog.StatusFailure,
+			Details:   map[string]interface{}{"reason": "invalid token"},
+		})
 		s.respondWithError(w, http.StatusUnauthorized, "invalid or expired refresh token")
 		return
 	}
 
 	if storedToken.ExpiresAt.Before(time.Now()) {
 		_ = s.Repo.DeleteRefreshToken(req.RefreshToken)
+		s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+			EventType: securitylog.DomainAuth,
+			Action:    "REFRESH_TOKEN",
+			Severity:  securitylog.SeverityWarn,
+			ActorIP:   securitylog.GetClientIP(r),
+			UserAgent: r.UserAgent(),
+			Status:    securitylog.StatusFailure,
+			Details:   map[string]interface{}{"reason": "token expired"},
+		})
 		s.respondWithError(w, http.StatusUnauthorized, "refresh token has expired")
 		return
 	}
@@ -271,6 +346,17 @@ func (s *HandlerServer) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 		s.respondWithError(w, http.StatusInternalServerError, "failed to store refresh token")
 		return
 	}
+
+	s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+		EventType:      securitylog.DomainAuth,
+		Action:         "REFRESH_TOKEN",
+		Severity:       securitylog.SeverityInfo,
+		Actor:          user.Username,
+		ActorIP:        securitylog.GetClientIP(r),
+		UserAgent:      r.UserAgent(),
+		TargetResource: fmt.Sprintf("user:%d", user.ID),
+		Status:         securitylog.StatusSuccess,
+	})
 
 	s.respondWithJSON(w, http.StatusOK, map[string]string{
 		"access_token":  newAccessToken,

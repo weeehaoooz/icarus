@@ -46,6 +46,7 @@ func main() {
 	_ = strings.TrimRight(adminMSURL, "/")
 
 	srv := handler.NewHandlerServer(repo, verifier, adminMSURL)
+	defer srv.SecLogger.Close()
 
 	mux := http.NewServeMux()
 	srv.RegisterRoutes(mux)

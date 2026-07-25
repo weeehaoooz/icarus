@@ -2,10 +2,13 @@ package handler
 
 import (
 	"encoding/json"
-	"golang.org/x/crypto/bcrypt"
+	"fmt"
+	"icarus-auth-ms/internal/securitylog"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // UserRequired middleware ensures the request has a valid JWT token.
@@ -13,12 +16,32 @@ func (s *HandlerServer) UserRequired(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
+			s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+				EventType:      securitylog.DomainAccessControl,
+				Action:         "ACCESS_DENIED",
+				Severity:       securitylog.SeverityWarn,
+				ActorIP:        securitylog.GetClientIP(r),
+				UserAgent:      r.UserAgent(),
+				TargetResource: r.URL.Path,
+				Status:         securitylog.StatusFailure,
+				Details:        map[string]interface{}{"reason": "missing authorization header"},
+			})
 			s.respondWithError(w, http.StatusUnauthorized, "missing authorization header")
 			return
 		}
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+			s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+				EventType:      securitylog.DomainAccessControl,
+				Action:         "ACCESS_DENIED",
+				Severity:       securitylog.SeverityWarn,
+				ActorIP:        securitylog.GetClientIP(r),
+				UserAgent:      r.UserAgent(),
+				TargetResource: r.URL.Path,
+				Status:         securitylog.StatusFailure,
+				Details:        map[string]interface{}{"reason": "invalid authorization format"},
+			})
 			s.respondWithError(w, http.StatusUnauthorized, "invalid authorization format")
 			return
 		}
@@ -26,6 +49,16 @@ func (s *HandlerServer) UserRequired(next http.HandlerFunc) http.HandlerFunc {
 		tokenStr := parts[1]
 		claims, err := s.TokenMgr.VerifyToken(tokenStr)
 		if err != nil {
+			s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+				EventType:      securitylog.DomainAccessControl,
+				Action:         "ACCESS_DENIED",
+				Severity:       securitylog.SeverityWarn,
+				ActorIP:        securitylog.GetClientIP(r),
+				UserAgent:      r.UserAgent(),
+				TargetResource: r.URL.Path,
+				Status:         securitylog.StatusFailure,
+				Details:        map[string]interface{}{"reason": "invalid token: " + err.Error()},
+			})
 			s.respondWithError(w, http.StatusUnauthorized, "invalid token: "+err.Error())
 			return
 		}
@@ -131,6 +164,17 @@ func (s *HandlerServer) MeChangePasswordHandler(w http.ResponseWriter, r *http.R
 
 	// Compare old password with hashed password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.OldPassword)); err != nil {
+		s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+			EventType:      securitylog.DomainAuth,
+			Action:         "CHANGE_PASSWORD",
+			Severity:       securitylog.SeverityWarn,
+			Actor:          username,
+			ActorIP:        securitylog.GetClientIP(r),
+			UserAgent:      r.UserAgent(),
+			TargetResource: fmt.Sprintf("user:%d", user.ID),
+			Status:         securitylog.StatusFailure,
+			Details:        map[string]interface{}{"reason": "incorrect old password"},
+		})
 		s.respondWithError(w, http.StatusUnauthorized, "incorrect old password")
 		return
 	}
@@ -147,6 +191,17 @@ func (s *HandlerServer) MeChangePasswordHandler(w http.ResponseWriter, r *http.R
 		s.respondWithError(w, http.StatusInternalServerError, "failed to change password: "+err.Error())
 		return
 	}
+
+	s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+		EventType:      securitylog.DomainAuth,
+		Action:         "CHANGE_PASSWORD",
+		Severity:       securitylog.SeverityInfo,
+		Actor:          username,
+		ActorIP:        securitylog.GetClientIP(r),
+		UserAgent:      r.UserAgent(),
+		TargetResource: fmt.Sprintf("user:%d", user.ID),
+		Status:         securitylog.StatusSuccess,
+	})
 
 	s.respondWithJSON(w, http.StatusOK, map[string]string{"message": "password changed successfully"})
 }
