@@ -184,6 +184,84 @@ func TestAuthFlowModular(t *testing.T) {
 	}
 
 	// ==========================================
+	// TEST CASE 4b: Logout & Token Revocation
+	// ==========================================
+	// 4b-1. Revoke single refresh token via POST /logout
+	logoutReq := handler.LogoutRequest{
+		RefreshToken: newRefreshToken,
+	}
+	logoutBody, _ := json.Marshal(logoutReq)
+
+	resLogout, err := http.Post(ts.URL+"/logout", "application/json", bytes.NewBuffer(logoutBody))
+	if err != nil {
+		t.Fatalf("POST /logout failed: %v", err)
+	}
+	if resLogout.StatusCode != http.StatusOK {
+		t.Errorf("Expected status 200 OK for POST /logout, got %d", resLogout.StatusCode)
+	}
+
+	// Verify the revoked refresh token can no longer be refreshed
+	refReqRevoked := handler.RefreshRequest{
+		RefreshToken: newRefreshToken,
+	}
+	refBodyRevoked, _ := json.Marshal(refReqRevoked)
+	resPostLogoutRefresh, err := http.Post(ts.URL+"/refresh", "application/json", bytes.NewBuffer(refBodyRevoked))
+	if err != nil {
+		t.Fatalf("POST /refresh failed: %v", err)
+	}
+	if resPostLogoutRefresh.StatusCode != http.StatusUnauthorized {
+		t.Errorf("Expected refreshed token to return 401 Unauthorized post-logout, got %d", resPostLogoutRefresh.StatusCode)
+	}
+
+	// 4b-2. Multi-device / All-devices Logout
+	// Login twice to generate two active refresh tokens
+	resDev1, _ := http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(loginBody))
+	var loginDev1 map[string]string
+	_ = json.NewDecoder(resDev1.Body).Decode(&loginDev1)
+	tokenDev1 := loginDev1["refresh_token"]
+	accTokenDev1 := loginDev1["access_token"]
+
+	resDev2, _ := http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(loginBody))
+	var loginDev2 map[string]string
+	_ = json.NewDecoder(resDev2.Body).Decode(&loginDev2)
+	tokenDev2 := loginDev2["refresh_token"]
+
+	if tokenDev1 == "" || tokenDev2 == "" {
+		t.Fatal("Failed to generate multi-device refresh tokens")
+	}
+
+	// Logout from all devices using Bearer auth and all_devices: true
+	allDevReq := handler.LogoutRequest{
+		AllDevices: true,
+	}
+	allDevBody, _ := json.Marshal(allDevReq)
+	reqAllDev, _ := http.NewRequest("POST", ts.URL+"/logout", bytes.NewBuffer(allDevBody))
+	reqAllDev.Header.Set("Authorization", "Bearer "+accTokenDev1)
+	reqAllDev.Header.Set("Content-Type", "application/json")
+
+	resAllDev, err := client.Do(reqAllDev)
+	if err != nil {
+		t.Fatalf("POST /logout (all_devices) failed: %v", err)
+	}
+	if resAllDev.StatusCode != http.StatusOK {
+		t.Errorf("Expected 200 OK for all_devices logout, got %d", resAllDev.StatusCode)
+	}
+
+	// Verify both tokens are now invalid
+	refDev1Body, _ := json.Marshal(handler.RefreshRequest{RefreshToken: tokenDev1})
+	resRefDev1, _ := http.Post(ts.URL+"/refresh", "application/json", bytes.NewBuffer(refDev1Body))
+	if resRefDev1.StatusCode != http.StatusUnauthorized {
+		t.Errorf("Expected tokenDev1 refresh to fail after all_devices logout, got %d", resRefDev1.StatusCode)
+	}
+
+	refDev2Body, _ := json.Marshal(handler.RefreshRequest{RefreshToken: tokenDev2})
+	resRefDev2, _ := http.Post(ts.URL+"/refresh", "application/json", bytes.NewBuffer(refDev2Body))
+	if resRefDev2.StatusCode != http.StatusUnauthorized {
+		t.Errorf("Expected tokenDev2 refresh to fail after all_devices logout, got %d", resRefDev2.StatusCode)
+	}
+
+
+	// ==========================================
 	// TEST CASE 5: Public Keys & JWKS Endpoint
 	// ==========================================
 	res, err = http.Get(ts.URL + "/certs")

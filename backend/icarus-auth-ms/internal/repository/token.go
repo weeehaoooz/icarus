@@ -70,3 +70,14 @@ func (r *SQLRepository) DeleteRefreshToken(token string) error {
 	_, err := r.db.Exec(`DELETE FROM refresh_tokens WHERE token = ?`, token)
 	return err
 }
+
+// DeleteUserRefreshTokens deletes all refresh tokens belonging to a specific user.
+func (r *SQLRepository) DeleteUserRefreshTokens(userID int64) error {
+	if r.driver == "postgres" {
+		_, err := r.db.Exec(`DELETE FROM refresh_tokens WHERE user_id = $1`, userID)
+		return err
+	}
+	_, err := r.db.Exec(`DELETE FROM refresh_tokens WHERE user_id = ?`, userID)
+	return err
+}
+

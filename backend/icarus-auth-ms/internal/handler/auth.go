@@ -33,6 +33,12 @@ type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+type LogoutRequest struct {
+	RefreshToken string `json:"refresh_token,omitempty"`
+	AllDevices   bool   `json:"all_devices,omitempty"`
+}
+
+
 func generateSecureToken(length int) (string, error) {
 	b := make([]byte, length)
 	_, err := rand.Read(b)
@@ -363,3 +369,125 @@ func (s *HandlerServer) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 		"refresh_token": newRawRefreshToken,
 	})
 }
+
+// LogoutHandler revokes refresh token(s) for the session or user.
+func (s *HandlerServer) LogoutHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		s.respondWithError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	var req LogoutRequest
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	}
+
+	// Try extracting user from Bearer authorization header if available
+	var currentUser *models.User
+	authHeader := r.Header.Get("Authorization")
+	if authHeader != "" {
+		parts := strings.Split(authHeader, " ")
+		if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
+			claims, err := s.TokenMgr.VerifyToken(parts[1])
+			if err == nil && claims != nil && claims.Subject != "" {
+				if user, getErr := s.Repo.GetUserByUsername(claims.Subject); getErr == nil {
+					currentUser = user
+				}
+			}
+		}
+	}
+
+	if req.AllDevices {
+		// All-devices logout requires an authenticated user or a valid refresh token from which we can identify the user
+		var userID int64
+		if currentUser != nil {
+			userID = currentUser.ID
+		} else if req.RefreshToken != "" {
+			storedToken, err := s.Repo.GetRefreshToken(req.RefreshToken)
+			if err == nil && storedToken != nil {
+				userID = storedToken.UserID
+			}
+		}
+
+		if userID == 0 {
+			s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+				EventType: securitylog.DomainAuth,
+				Action:    "LOGOUT",
+				Severity:  securitylog.SeverityWarn,
+				ActorIP:   securitylog.GetClientIP(r),
+				UserAgent: r.UserAgent(),
+				Status:    securitylog.StatusFailure,
+				Details:   map[string]interface{}{"reason": "all_devices logout requires valid authorization or refresh token"},
+			})
+			s.respondWithError(w, http.StatusUnauthorized, "authentication or valid refresh token required to logout from all devices")
+			return
+		}
+
+		if err := s.Repo.DeleteUserRefreshTokens(userID); err != nil {
+			s.respondWithError(w, http.StatusInternalServerError, "failed to revoke user sessions")
+			return
+		}
+
+		actor := ""
+		if currentUser != nil {
+			actor = currentUser.Username
+		}
+		s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+			EventType:      securitylog.DomainAuth,
+			Action:         "LOGOUT_ALL_DEVICES",
+			Severity:       securitylog.SeverityInfo,
+			Actor:          actor,
+			ActorIP:        securitylog.GetClientIP(r),
+			UserAgent:      r.UserAgent(),
+			TargetResource: fmt.Sprintf("user:%d", userID),
+			Status:         securitylog.StatusSuccess,
+		})
+
+		s.respondWithJSON(w, http.StatusOK, map[string]string{"message": "logged out from all devices successfully"})
+		return
+	}
+
+	if req.RefreshToken == "" {
+		// If no refresh token provided, but user is logged in with Bearer token, we can return success
+		if currentUser != nil {
+			s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+				EventType:      securitylog.DomainAuth,
+				Action:         "LOGOUT",
+				Severity:       securitylog.SeverityInfo,
+				Actor:          currentUser.Username,
+				ActorIP:        securitylog.GetClientIP(r),
+				UserAgent:      r.UserAgent(),
+				TargetResource: fmt.Sprintf("user:%d", currentUser.ID),
+				Status:         securitylog.StatusSuccess,
+			})
+			s.respondWithJSON(w, http.StatusOK, map[string]string{"message": "logged out successfully"})
+			return
+		}
+
+		s.respondWithError(w, http.StatusBadRequest, "refresh_token is required")
+		return
+	}
+
+	// Delete specific refresh token
+	if err := s.Repo.DeleteRefreshToken(req.RefreshToken); err != nil {
+		s.respondWithError(w, http.StatusInternalServerError, "failed to revoke refresh token")
+		return
+	}
+
+	actor := ""
+	if currentUser != nil {
+		actor = currentUser.Username
+	}
+	s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+		EventType: securitylog.DomainAuth,
+		Action:    "LOGOUT",
+		Severity:  securitylog.SeverityInfo,
+		Actor:     actor,
+		ActorIP:   securitylog.GetClientIP(r),
+		UserAgent: r.UserAgent(),
+		Status:    securitylog.StatusSuccess,
+	})
+
+	s.respondWithJSON(w, http.StatusOK, map[string]string{"message": "logged out successfully"})
+}
+
