@@ -3,7 +3,9 @@ package tests
 import (
 	"icarus-auth-ms/internal/crypto"
 	"icarus-auth-ms/internal/handler"
+	"icarus-auth-ms/internal/ratelimit"
 	"icarus-auth-ms/internal/repository"
+
 	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
@@ -373,3 +375,102 @@ func TestAuthFlowModular(t *testing.T) {
 		t.Errorf("Client token claims mismatch. Expected sub=test-client-99, type=client. Got sub=%s, type=%s", clientClaims.Subject, clientClaims.Type)
 	}
 }
+
+func TestBruteForceProtection(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "auth_test_bruteforce")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	dbFile := filepath.Join(tempDir, "test_auth_bf.db")
+	defer os.Remove(dbFile)
+
+	privKey, pubKey, err := crypto.LoadOrGenerateKeys(tempDir)
+	if err != nil {
+		t.Fatalf("LoadOrGenerateKeys failed: %v", err)
+	}
+
+	dbConn, err := repository.InitDB("sqlite", dbFile)
+	if err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	defer dbConn.Close()
+
+	repo := repository.NewSQLRepository(dbConn, "sqlite")
+	tokenMgr := crypto.NewTokenManager(privKey, pubKey, "icarus-auth-ms")
+	server := handler.NewHandlerServer(repo, tokenMgr)
+
+	mux := http.NewServeMux()
+	server.RegisterRoutes(mux)
+
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	// Register a target user for lockout testing
+	regReq := handler.RegisterRequest{
+		Username: "victim_user",
+		Password: "CorrectPassword123!",
+		Email:    "victim@example.com",
+	}
+	regBody, _ := json.Marshal(regReq)
+	_, _ = http.Post(ts.URL+"/register", "application/json", bytes.NewBuffer(regBody))
+
+	// 1. Test Account Lockout after 5 failed password attempts
+	badLoginReq := handler.LoginRequest{
+		Username: "victim_user",
+		Password: "WrongPassword!",
+	}
+	badLoginBody, _ := json.Marshal(badLoginReq)
+
+	for i := 1; i <= 5; i++ {
+		res, err := http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(badLoginBody))
+		if err != nil {
+			t.Fatalf("Failed request %d: %v", i, err)
+		}
+		if res.StatusCode != http.StatusUnauthorized {
+			t.Errorf("Attempt %d: expected status 401 Unauthorized, got %d", i, res.StatusCode)
+		}
+	}
+
+	// 6th attempt should be blocked by Account Lockout (429 Too Many Requests)
+	resLocked, err := http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(badLoginBody))
+	if err != nil {
+		t.Fatalf("6th attempt request failed: %v", err)
+	}
+	if resLocked.StatusCode != http.StatusTooManyRequests {
+		t.Errorf("Expected 6th attempt to return status 429 Too Many Requests (Account Locked), got %d", resLocked.StatusCode)
+	}
+
+	// Even with correct password, account is locked
+	goodLoginReq := handler.LoginRequest{
+		Username: "victim_user",
+		Password: "CorrectPassword123!",
+	}
+	goodLoginBody, _ := json.Marshal(goodLoginReq)
+	resGoodLocked, _ := http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(goodLoginBody))
+	if resGoodLocked.StatusCode != http.StatusTooManyRequests {
+		t.Errorf("Expected status 429 for locked user even with correct password, got %d", resGoodLocked.StatusCode)
+	}
+
+	// Reset attempt tracker and IP limiter for IP rate limit test
+	server.AttemptTracker.RecordSuccess("victim_user")
+	server.IPLimiter = ratelimit.NewIPLimiter(10, 1*time.Minute)
+
+	// 2. Test IP Rate Limiting
+
+	// Default IP limiter allows 10 requests per minute
+	for i := 1; i <= 10; i++ {
+		res, _ := http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(goodLoginBody))
+		if i <= 10 && res.StatusCode != http.StatusOK {
+			t.Errorf("Attempt %d: expected 200 OK before hitting IP rate limit, got %d", i, res.StatusCode)
+		}
+	}
+
+	// 11th request from same IP should be blocked by IP Rate Limiting (429)
+	resIpExceeded, _ := http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(goodLoginBody))
+	if resIpExceeded.StatusCode != http.StatusTooManyRequests {
+		t.Errorf("Expected 11th request from same IP to return 429 Too Many Requests, got %d", resIpExceeded.StatusCode)
+	}
+}
+

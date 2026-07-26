@@ -122,6 +122,38 @@ func (s *HandlerServer) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	clientIP := securitylog.GetClientIP(r)
+	if s.IPLimiter != nil && !s.IPLimiter.Allow(clientIP) {
+		s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+			EventType: securitylog.DomainAuth,
+			Action:    "RATE_LIMIT_EXCEEDED",
+			Severity:  securitylog.SeverityWarn,
+			ActorIP:   clientIP,
+			UserAgent: r.UserAgent(),
+			Status:    securitylog.StatusFailure,
+			Details:   map[string]interface{}{"reason": "ip rate limit exceeded"},
+		})
+		s.respondWithError(w, http.StatusTooManyRequests, "too many requests from this IP, please try again later")
+		return
+	}
+
+	if s.AttemptTracker != nil {
+		if isLocked, remaining := s.AttemptTracker.IsLocked(req.Username); isLocked {
+			s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+				EventType: securitylog.DomainAuth,
+				Action:    "ACCOUNT_LOCKED",
+				Severity:  securitylog.SeverityWarn,
+				Actor:     req.Username,
+				ActorIP:   clientIP,
+				UserAgent: r.UserAgent(),
+				Status:    securitylog.StatusFailure,
+				Details:   map[string]interface{}{"reason": "account locked due to multiple failed attempts", "retry_after_sec": int(remaining.Seconds())},
+			})
+			s.respondWithError(w, http.StatusTooManyRequests, "account is temporarily locked due to multiple failed login attempts")
+			return
+		}
+	}
+
 	var user *models.User
 	var err error
 	ldapAuthenticated := false
@@ -187,6 +219,20 @@ func (s *HandlerServer) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		// Fallback to local DB check
 		user, err = s.Repo.GetUserByUsername(req.Username)
 		if err != nil {
+			if s.AttemptTracker != nil && req.Username != "" {
+				if isNowLocked, _ := s.AttemptTracker.RecordFailure(req.Username); isNowLocked {
+					s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+						EventType: securitylog.DomainAuth,
+						Action:    "ACCOUNT_LOCKED",
+						Severity:  securitylog.SeverityWarn,
+						Actor:     req.Username,
+						ActorIP:   clientIP,
+						UserAgent: r.UserAgent(),
+						Status:    securitylog.StatusFailure,
+						Details:   map[string]interface{}{"reason": "max failed attempts reached"},
+					})
+				}
+			}
 			s.SecLogger.LogEvent(r.Context(), securitylog.Event{
 				EventType: securitylog.DomainAuth,
 				Action:    "LOGIN_FAILED",
@@ -202,6 +248,20 @@ func (s *HandlerServer) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+			if s.AttemptTracker != nil {
+				if isNowLocked, _ := s.AttemptTracker.RecordFailure(user.Username); isNowLocked {
+					s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+						EventType: securitylog.DomainAuth,
+						Action:    "ACCOUNT_LOCKED",
+						Severity:  securitylog.SeverityWarn,
+						Actor:     user.Username,
+						ActorIP:   clientIP,
+						UserAgent: r.UserAgent(),
+						Status:    securitylog.StatusFailure,
+						Details:   map[string]interface{}{"reason": "max failed attempts reached"},
+					})
+				}
+			}
 			s.SecLogger.LogEvent(r.Context(), securitylog.Event{
 				EventType: securitylog.DomainAuth,
 				Action:    "LOGIN_FAILED",
@@ -216,6 +276,11 @@ func (s *HandlerServer) LoginHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	if s.AttemptTracker != nil {
+		s.AttemptTracker.RecordSuccess(user.Username)
+	}
+
 
 	if !user.IsActive {
 		s.SecLogger.LogEvent(r.Context(), securitylog.Event{

@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"icarus-auth-ms/internal/crypto"
+	"icarus-auth-ms/internal/ratelimit"
 	"icarus-auth-ms/internal/repository"
 	"icarus-auth-ms/internal/securitylog"
 	"log"
@@ -11,18 +12,23 @@ import (
 )
 
 type HandlerServer struct {
-	Repo      *repository.SQLRepository
-	TokenMgr  *crypto.TokenManager
-	SecLogger *securitylog.Logger
+	Repo           *repository.SQLRepository
+	TokenMgr       *crypto.TokenManager
+	SecLogger      *securitylog.Logger
+	IPLimiter      *ratelimit.IPLimiter
+	AttemptTracker *ratelimit.AttemptTracker
 }
 
 func NewHandlerServer(repo *repository.SQLRepository, tokenMgr *crypto.TokenManager) *HandlerServer {
 	return &HandlerServer{
-		Repo:      repo,
-		TokenMgr:  tokenMgr,
-		SecLogger: securitylog.NewLogger("icarus-auth-ms"),
+		Repo:           repo,
+		TokenMgr:       tokenMgr,
+		SecLogger:      securitylog.NewLogger("icarus-auth-ms"),
+		IPLimiter:      ratelimit.NewIPLimiter(10, 1*time.Minute),      // 10 requests per minute per IP
+		AttemptTracker: ratelimit.NewAttemptTracker(5, 15*time.Minute), // 5 failures -> 15 min lock
 	}
 }
+
 
 // RegisterRoutes maps all Auth Server routes to the multiplexer.
 func (s *HandlerServer) RegisterRoutes(mux *http.ServeMux) {
