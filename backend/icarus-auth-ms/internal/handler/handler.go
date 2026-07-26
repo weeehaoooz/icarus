@@ -72,6 +72,10 @@ func (s *HandlerServer) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /admin/users/{id}", s.AdminRequired(s.AdminUpdateUserHandler))
 	mux.HandleFunc("PUT /admin/users/{id}/status", s.AdminRequired(s.AdminUpdateUserStatusHandler))
 	mux.HandleFunc("DELETE /admin/users/{id}", s.AdminRequired(s.AdminDeleteUserHandler))
+	mux.HandleFunc("POST /admin/users/{id}/roles", s.AdminRequired(s.AdminAssignUserRoleHandler))
+	mux.HandleFunc("DELETE /admin/users/{id}/roles/{roleId}", s.AdminRequired(s.AdminRevokeUserRoleHandler))
+	mux.HandleFunc("DELETE /admin/users/{id}/roles", s.AdminRequired(s.AdminRevokeUserRoleHandler))
+
 
 	mux.HandleFunc("GET /admin/clients", s.AdminRequired(s.AdminListClientsHandler))
 	mux.HandleFunc("POST /admin/clients", s.AdminRequired(s.AdminCreateClientHandler))

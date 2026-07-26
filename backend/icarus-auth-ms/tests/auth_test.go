@@ -16,7 +16,9 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
+
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -473,4 +475,122 @@ func TestBruteForceProtection(t *testing.T) {
 		t.Errorf("Expected 11th request from same IP to return 429 Too Many Requests, got %d", resIpExceeded.StatusCode)
 	}
 }
+
+func TestAdminContextualUserRoleAssignment(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "auth_test_admin_roles")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	dbFile := filepath.Join(tempDir, "test_admin_roles.db")
+	defer os.Remove(dbFile)
+
+	privKey, pubKey, err := crypto.LoadOrGenerateKeys(tempDir)
+	if err != nil {
+		t.Fatalf("LoadOrGenerateKeys failed: %v", err)
+	}
+
+	dbConn, err := repository.InitDB("sqlite", dbFile)
+	if err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	defer dbConn.Close()
+
+	repo := repository.NewSQLRepository(dbConn, "sqlite")
+	if err := repo.SeedDefaultRBAC(); err != nil {
+		t.Fatalf("SeedDefaultRBAC failed: %v", err)
+	}
+
+	tokenMgr := crypto.NewTokenManager(privKey, pubKey, "icarus-auth-ms")
+	server := handler.NewHandlerServer(repo, tokenMgr)
+
+	mux := http.NewServeMux()
+	server.RegisterRoutes(mux)
+
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	client := &http.Client{}
+
+	// Login as admin
+	adminLoginReq := handler.LoginRequest{Username: "admin", Password: "admin123"}
+	adminLoginBody, _ := json.Marshal(adminLoginReq)
+	resAdminLogin, err := http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(adminLoginBody))
+	if err != nil || resAdminLogin.StatusCode != http.StatusOK {
+		t.Fatalf("Admin login failed: %v, code %d", err, resAdminLogin.StatusCode)
+	}
+	var adminRes map[string]string
+	_ = json.NewDecoder(resAdminLogin.Body).Decode(&adminRes)
+	adminToken := adminRes["access_token"]
+
+	// Seed tenant-1, module-1, and role module-1:editor
+	_ = repo.CreateTenant("tenant-1", "t1", "Tenant 1", "active")
+	_ = repo.SyncModule("module-1", "Module 1", "http://localhost", nil, nil, nil, "")
+	_ = repo.CreateRole("module-1", "", "editor", "Editor role", "Custom")
+
+	// Create test user Dave
+	daveID, err := repo.CreateUser("dave", "dave@example.com", "Dave", "User", "pass123")
+	if err != nil {
+		t.Fatalf("Failed to create user Dave: %v", err)
+	}
+
+	// 1. Assign role to Dave for tenant-1 and module-1 via POST /admin/users/{id}/roles
+	assignReq := handler.AdminAssignUserRoleRequest{
+		TenantID: "tenant-1",
+		ModuleID: "module-1",
+		RoleID:   "module-1:editor",
+	}
+
+	assignBody, _ := json.Marshal(assignReq)
+	reqAssign, _ := http.NewRequest("POST", ts.URL+"/admin/users/"+strconv.FormatInt(daveID, 10)+"/roles", bytes.NewBuffer(assignBody))
+	reqAssign.Header.Set("Authorization", "Bearer "+adminToken)
+	reqAssign.Header.Set("Content-Type", "application/json")
+
+	resAssign, err := client.Do(reqAssign)
+	if err != nil {
+		t.Fatalf("POST /admin/users/{id}/roles failed: %v", err)
+	}
+	if resAssign.StatusCode != http.StatusOK {
+		t.Errorf("Expected status 200 OK for role assignment, got %d", resAssign.StatusCode)
+	}
+
+	// Verify Dave's resolved roles for tenant-1 and module-1
+	roles, perms, err := repo.GetResolvedUserRolesAndPermissions(daveID, "tenant-1", "module-1")
+	if err != nil {
+		t.Fatalf("GetResolvedUserRolesAndPermissions failed: %v", err)
+	}
+	_ = perms
+	hasEditorRole := false
+	for _, r := range roles {
+		if r == "module-1:editor" || r == "editor" {
+			hasEditorRole = true
+			break
+		}
+	}
+	if !hasEditorRole {
+		t.Errorf("Expected Dave to have module-1:editor role, got roles: %v", roles)
+	}
+
+	// 2. Revoke role from Dave via DELETE /admin/users/{id}/roles/{roleId}?tenant_id=tenant-1&module_id=module-1
+	reqRevoke, _ := http.NewRequest("DELETE", ts.URL+"/admin/users/"+strconv.FormatInt(daveID, 10)+"/roles/module-1:editor?tenant_id=tenant-1&module_id=module-1", nil)
+	reqRevoke.Header.Set("Authorization", "Bearer "+adminToken)
+
+	resRevoke, err := client.Do(reqRevoke)
+	if err != nil {
+		t.Fatalf("DELETE /admin/users/{id}/roles/{roleId} failed: %v", err)
+	}
+	if resRevoke.StatusCode != http.StatusOK {
+		t.Errorf("Expected status 200 OK for role revocation, got %d", resRevoke.StatusCode)
+	}
+
+	// Verify Dave's roles after revocation
+	rolesAfter, _, _ := repo.GetResolvedUserRolesAndPermissions(daveID, "tenant-1", "module-1")
+	for _, r := range rolesAfter {
+		if r == "module-1:editor" || r == "editor" {
+			t.Errorf("Expected module-1:editor role to be revoked, but found in roles: %v", rolesAfter)
+		}
+	}
+}
+
 

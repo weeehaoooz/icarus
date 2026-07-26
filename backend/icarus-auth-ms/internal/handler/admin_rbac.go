@@ -365,6 +365,126 @@ func (s *HandlerServer) AdminDeleteUserHandler(w http.ResponseWriter, r *http.Re
 	s.respondWithJSON(w, http.StatusOK, map[string]string{"message": "user deleted successfully"})
 }
 
+type AdminAssignUserRoleRequest struct {
+	TenantID string `json:"tenant_id"`
+	ModuleID string `json:"module_id"`
+	RoleID   string `json:"role_id"`
+}
+
+func (s *HandlerServer) AdminAssignUserRoleHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		s.respondWithError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		s.respondWithError(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+
+	user, err := s.Repo.GetUserByID(id)
+	if err != nil {
+		s.respondWithError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	var req AdminAssignUserRoleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.respondWithError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if req.RoleID == "" {
+		s.respondWithError(w, http.StatusBadRequest, "role_id is required")
+		return
+	}
+
+	tenantID := req.TenantID
+	if tenantID == "" {
+		tenantID = "system-tenant"
+	}
+
+	moduleID := req.ModuleID
+	if moduleID == "" {
+		moduleID = "icarus-auth-ms"
+	}
+
+	err = s.Repo.AssignUserTenantModuleRole(user.ID, tenantID, moduleID, req.RoleID)
+	if err != nil {
+		s.respondWithError(w, http.StatusInternalServerError, "failed to assign role: "+err.Error())
+		return
+	}
+
+	s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+		EventType:      securitylog.DomainRoleMgmt,
+		Action:         "ASSIGN_USER_ROLE",
+		Severity:       securitylog.SeverityInfo,
+		Actor:          r.Header.Get("X-Username"),
+		ActorIP:        securitylog.GetClientIP(r),
+		UserAgent:      r.UserAgent(),
+		TargetResource: strconv.FormatInt(user.ID, 10),
+		Status:         securitylog.StatusSuccess,
+		Details:        map[string]interface{}{"tenant_id": tenantID, "module_id": moduleID, "role_id": req.RoleID},
+	})
+
+	s.respondWithJSON(w, http.StatusOK, map[string]string{"message": "role assigned successfully"})
+}
+
+func (s *HandlerServer) AdminRevokeUserRoleHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		s.respondWithError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		s.respondWithError(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+
+	user, err := s.Repo.GetUserByID(id)
+	if err != nil {
+		s.respondWithError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	roleID := r.PathValue("roleId")
+	if roleID == "" {
+		roleID = r.URL.Query().Get("role_id")
+	}
+	if roleID == "" {
+		s.respondWithError(w, http.StatusBadRequest, "roleId is required")
+		return
+	}
+
+	tenantID := r.URL.Query().Get("tenant_id")
+	moduleID := r.URL.Query().Get("module_id")
+
+	err = s.Repo.RevokeUserRoleSpecific(user.ID, tenantID, moduleID, roleID)
+	if err != nil {
+		s.respondWithError(w, http.StatusInternalServerError, "failed to revoke role: "+err.Error())
+		return
+	}
+
+	s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+		EventType:      securitylog.DomainRoleMgmt,
+		Action:         "REVOKE_USER_ROLE",
+		Severity:       securitylog.SeverityInfo,
+		Actor:          r.Header.Get("X-Username"),
+		ActorIP:        securitylog.GetClientIP(r),
+		UserAgent:      r.UserAgent(),
+		TargetResource: strconv.FormatInt(user.ID, 10),
+		Status:         securitylog.StatusSuccess,
+		Details:        map[string]interface{}{"tenant_id": tenantID, "module_id": moduleID, "role_id": roleID},
+	})
+
+	s.respondWithJSON(w, http.StatusOK, map[string]string{"message": "role revoked successfully"})
+}
+
+
 // === CLIENTS MANAGEMENT ===
 
 type AdminCreateClientRequest struct {

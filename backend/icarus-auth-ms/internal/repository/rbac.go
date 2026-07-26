@@ -372,6 +372,26 @@ func (r *SQLRepository) RevokeUserTenantModuleRole(userID int64, tenantID, modul
 	return err
 }
 
+// RevokeUserRoleSpecific revokes a specific role assignment for a user under a tenant and module context.
+func (r *SQLRepository) RevokeUserRoleSpecific(userID int64, tenantID, moduleID, roleID string) error {
+	var err error
+	if r.driver == "postgres" {
+		if tenantID != "" && moduleID != "" {
+			_, err = r.db.Exec("DELETE FROM user_tenant_module_roles WHERE user_id = $1 AND tenant_id = $2 AND module_id = $3 AND (role_id = $4 OR role_id = $5)", userID, tenantID, moduleID, roleID, moduleID+":"+roleID)
+		} else {
+			_, err = r.db.Exec("DELETE FROM user_tenant_module_roles WHERE user_id = $1 AND (role_id = $2 OR role_id LIKE '%:' || $2)", userID, roleID)
+		}
+	} else {
+		if tenantID != "" && moduleID != "" {
+			_, err = r.db.Exec("DELETE FROM user_tenant_module_roles WHERE user_id = ? AND tenant_id = ? AND module_id = ? AND (role_id = ? OR role_id = ?)", userID, tenantID, moduleID, roleID, moduleID+":"+roleID)
+		} else {
+			_, err = r.db.Exec("DELETE FROM user_tenant_module_roles WHERE user_id = ? AND (role_id = ? OR role_id LIKE '%:' || ?)", userID, roleID, roleID)
+		}
+	}
+	return err
+}
+
+
 // ListClients retrieves all clients.
 func (r *SQLRepository) ListClients() ([]models.Client, error) {
 	rows, err := r.db.Query("SELECT client_id, public_key, created_at FROM clients ORDER BY client_id ASC")
