@@ -26,6 +26,10 @@ export class AdminService {
 		return this.http.put<any>(`${this.apiUrl}/users/${id}`, user);
 	}
 
+	updateUserStatus(id: number, isActive: boolean): Observable<any> {
+		return this.http.put<any>(`${this.apiUrl}/users/${id}/status`, { is_active: isActive });
+	}
+
 	deleteUser(id: number): Observable<any> {
 		return this.http.delete<any>(`${this.apiUrl}/users/${id}`);
 	}

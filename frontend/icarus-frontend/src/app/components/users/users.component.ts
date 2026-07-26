@@ -11,6 +11,7 @@ interface User {
   first_name: string;
   last_name: string;
   email: string;
+  is_active?: boolean;
   roles?: string[];
 }
 
@@ -53,6 +54,7 @@ export class UsersComponent implements OnInit {
     firstName: '',
     lastName: '',
     password: '',
+    isActive: true,
     roles: [] as string[]
   };
 
@@ -154,6 +156,7 @@ export class UsersComponent implements OnInit {
       firstName: '',
       lastName: '',
       password: '',
+      isActive: true,
       roles: []
     };
     this.activePanel.set('create');
@@ -169,6 +172,7 @@ export class UsersComponent implements OnInit {
       firstName: user.first_name,
       lastName: user.last_name,
       password: '',
+      isActive: user.is_active !== false,
       roles: user.roles ? [...user.roles] : []
     };
     this.activePanel.set('edit');
@@ -177,6 +181,23 @@ export class UsersComponent implements OnInit {
   closePanel(): void {
     this.activePanel.set(null);
     this.selectedUser.set(null);
+  }
+
+  toggleUserStatus(user: User, event: Event): void {
+    event.stopPropagation();
+    const newStatus = !user.is_active;
+    const actionText = newStatus ? 'enable' : 'disable';
+    if (confirm(`Are you sure you want to ${actionText} account '${user.username}'?`)) {
+      this.adminService.updateUserStatus(user.id, newStatus).subscribe({
+        next: () => {
+          this.loadData();
+          if (this.selectedUser()?.id === user.id) {
+            this.formData.isActive = newStatus;
+          }
+        },
+        error: (err) => alert(err.error?.error || `Failed to ${actionText} account.`)
+      });
+    }
   }
 
   openRoleModal(): void {
@@ -210,6 +231,7 @@ export class UsersComponent implements OnInit {
       first_name: this.formData.firstName,
       last_name: this.formData.lastName,
       password: this.formData.password,
+      is_active: this.formData.isActive,
       roles: this.formData.roles
     };
 
@@ -275,6 +297,22 @@ export class UsersComponent implements OnInit {
     }
   }
 
+  bulkUpdateStatus(isActive: boolean): void {
+    const ids = Array.from(this.selectedIds());
+    if (ids.length === 0) return;
+    const actionText = isActive ? 'enable' : 'disable';
+    if (confirm(`Are you sure you want to ${actionText} ${ids.length} selected accounts?`)) {
+      const requests = ids.map(id => this.adminService.updateUserStatus(id, isActive));
+      forkJoin(requests).subscribe({
+        next: () => {
+          this.selectedIds.set(new Set());
+          this.loadData();
+        },
+        error: () => alert(`Failed to complete bulk ${actionText} operation.`)
+      });
+    }
+  }
+
   bulkAssignRole(roleName: string): void {
     const ids = Array.from(this.selectedIds());
     if (ids.length === 0 || !roleName) return;
@@ -290,6 +328,7 @@ export class UsersComponent implements OnInit {
           email: u.email,
           first_name: u.first_name,
           last_name: u.last_name,
+          is_active: u.is_active !== false,
           roles: mergedRoles
         });
       });

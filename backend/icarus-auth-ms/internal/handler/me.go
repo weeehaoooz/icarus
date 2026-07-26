@@ -63,6 +63,23 @@ func (s *HandlerServer) UserRequired(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
+		user, err := s.Repo.GetUserByUsername(claims.Subject)
+		if err == nil && !user.IsActive {
+			s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+				EventType:      securitylog.DomainAccessControl,
+				Action:         "ACCESS_DENIED",
+				Severity:       securitylog.SeverityWarn,
+				Actor:          claims.Subject,
+				ActorIP:        securitylog.GetClientIP(r),
+				UserAgent:      r.UserAgent(),
+				TargetResource: r.URL.Path,
+				Status:         securitylog.StatusFailure,
+				Details:        map[string]interface{}{"reason": "account is disabled"},
+			})
+			s.respondWithError(w, http.StatusUnauthorized, "account is disabled")
+			return
+		}
+
 		// Inject username into request headers for downstream handler consumption
 		r.Header.Set("X-Username", claims.Subject)
 		next(w, r)

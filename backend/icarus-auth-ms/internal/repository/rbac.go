@@ -98,7 +98,7 @@ func (r *SQLRepository) SeedDefaultRBAC() error {
 
 // ListUsers retrieves all users and their roles.
 func (r *SQLRepository) ListUsers() ([]models.User, error) {
-	query := `SELECT id, username, email, first_name, last_name, created_at FROM users ORDER BY id ASC`
+	query := `SELECT id, username, email, first_name, last_name, is_active, created_at FROM users ORDER BY id ASC`
 	rows, err := r.db.Query(query)
 	if err != nil {
 		return nil, err
@@ -111,10 +111,10 @@ func (r *SQLRepository) ListUsers() ([]models.User, error) {
 		var emailVal, firstNameVal, lastNameVal sql.NullString
 
 		if r.driver == "postgres" {
-			err = rows.Scan(&u.ID, &u.Username, &emailVal, &firstNameVal, &lastNameVal, &u.CreatedAt)
+			err = rows.Scan(&u.ID, &u.Username, &emailVal, &firstNameVal, &lastNameVal, &u.IsActive, &u.CreatedAt)
 		} else {
 			var createdAtStr string
-			err = rows.Scan(&u.ID, &u.Username, &emailVal, &firstNameVal, &lastNameVal, &createdAtStr)
+			err = rows.Scan(&u.ID, &u.Username, &emailVal, &firstNameVal, &lastNameVal, &u.IsActive, &createdAtStr)
 			if err == nil {
 				u.CreatedAt, _ = parseTime(createdAtStr)
 			}
@@ -142,31 +142,52 @@ func (r *SQLRepository) ListUsers() ([]models.User, error) {
 
 // UpdateUser updates a user's details.
 func (r *SQLRepository) UpdateUser(id int64, username, email, firstName, lastName, passwordHash string) error {
+	user, err := r.GetUserByID(id)
+	isActive := true
+	if err == nil {
+		isActive = user.IsActive
+	}
+	return r.UpdateUserWithStatus(id, username, email, firstName, lastName, passwordHash, isActive)
+}
+
+// UpdateUserWithStatus updates a user's details including active status.
+func (r *SQLRepository) UpdateUserWithStatus(id int64, username, email, firstName, lastName, passwordHash string, isActive bool) error {
 	var err error
 	if passwordHash != "" {
 		if r.driver == "postgres" {
 			_, err = r.db.Exec(`
-				UPDATE users SET username = $1, email = $2, first_name = $3, last_name = $4, password_hash = $5 
-				WHERE id = $6`,
-				username, email, firstName, lastName, passwordHash, id)
+				UPDATE users SET username = $1, email = $2, first_name = $3, last_name = $4, password_hash = $5, is_active = $6 
+				WHERE id = $7`,
+				username, email, firstName, lastName, passwordHash, isActive, id)
 		} else {
 			_, err = r.db.Exec(`
-				UPDATE users SET username = ?, email = ?, first_name = ?, last_name = ?, password_hash = ? 
+				UPDATE users SET username = ?, email = ?, first_name = ?, last_name = ?, password_hash = ?, is_active = ? 
 				WHERE id = ?`,
-				username, email, firstName, lastName, passwordHash, id)
+				username, email, firstName, lastName, passwordHash, isActive, id)
 		}
 	} else {
 		if r.driver == "postgres" {
 			_, err = r.db.Exec(`
-				UPDATE users SET username = $1, email = $2, first_name = $3, last_name = $4 
-				WHERE id = $5`,
-				username, email, firstName, lastName, id)
+				UPDATE users SET username = $1, email = $2, first_name = $3, last_name = $4, is_active = $5 
+				WHERE id = $6`,
+				username, email, firstName, lastName, isActive, id)
 		} else {
 			_, err = r.db.Exec(`
-				UPDATE users SET username = ?, email = ?, first_name = ?, last_name = ? 
+				UPDATE users SET username = ?, email = ?, first_name = ?, last_name = ?, is_active = ? 
 				WHERE id = ?`,
-				username, email, firstName, lastName, id)
+				username, email, firstName, lastName, isActive, id)
 		}
+	}
+	return err
+}
+
+// UpdateUserStatus updates only the active status of a user.
+func (r *SQLRepository) UpdateUserStatus(id int64, isActive bool) error {
+	var err error
+	if r.driver == "postgres" {
+		_, err = r.db.Exec(`UPDATE users SET is_active = $1 WHERE id = $2`, isActive, id)
+	} else {
+		_, err = r.db.Exec(`UPDATE users SET is_active = ? WHERE id = ?`, isActive, id)
 	}
 	return err
 }

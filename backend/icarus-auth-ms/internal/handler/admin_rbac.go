@@ -63,6 +63,23 @@ func (s *HandlerServer) AdminRequired(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
+		user, err := s.Repo.GetUserByUsername(claims.Subject)
+		if err == nil && !user.IsActive {
+			s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+				EventType:      securitylog.DomainAccessControl,
+				Action:         "ACCESS_DENIED",
+				Severity:       securitylog.SeverityWarn,
+				Actor:          claims.Subject,
+				ActorIP:        securitylog.GetClientIP(r),
+				UserAgent:      r.UserAgent(),
+				TargetResource: r.URL.Path,
+				Status:         securitylog.StatusFailure,
+				Details:        map[string]interface{}{"reason": "account is disabled"},
+			})
+			s.respondWithError(w, http.StatusUnauthorized, "account is disabled")
+			return
+		}
+
 		r.Header.Set("X-Username", claims.Subject)
 
 		isAdmin := false
@@ -102,6 +119,7 @@ type AdminCreateUserRequest struct {
 	FirstName string   `json:"first_name"`
 	LastName  string   `json:"last_name"`
 	Roles     []string `json:"roles"`
+	IsActive  *bool    `json:"is_active,omitempty"`
 }
 
 type AdminUpdateUserRequest struct {
@@ -111,6 +129,11 @@ type AdminUpdateUserRequest struct {
 	FirstName string   `json:"first_name"`
 	LastName  string   `json:"last_name"`
 	Roles     []string `json:"roles"`
+	IsActive  *bool    `json:"is_active,omitempty"`
+}
+
+type AdminUpdateUserStatusRequest struct {
+	IsActive bool `json:"is_active"`
 }
 
 func (s *HandlerServer) AdminListUsersHandler(w http.ResponseWriter, r *http.Request) {
@@ -149,7 +172,12 @@ func (s *HandlerServer) AdminCreateUserHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	userID, err := s.Repo.CreateUser(req.Username, req.Email, req.FirstName, req.LastName, string(hashedBytes))
+	isActive := true
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
+
+	userID, err := s.Repo.CreateUserWithStatus(req.Username, req.Email, req.FirstName, req.LastName, string(hashedBytes), isActive)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "23505") {
 			s.respondWithError(w, http.StatusConflict, "username already exists")
@@ -166,10 +194,10 @@ func (s *HandlerServer) AdminCreateUserHandler(w http.ResponseWriter, r *http.Re
 		}
 	}
 
-
 	s.respondWithJSON(w, http.StatusCreated, map[string]interface{}{
-		"message": "user created successfully",
-		"id":      userID,
+		"message":   "user created successfully",
+		"id":        userID,
+		"is_active": isActive,
 	})
 }
 
@@ -214,6 +242,12 @@ func (s *HandlerServer) AdminUpdateUserHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	existingUser, err := s.Repo.GetUserByID(id)
+	if err != nil {
+		s.respondWithError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
 	var req AdminUpdateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		s.respondWithError(w, http.StatusBadRequest, "invalid request body")
@@ -235,7 +269,12 @@ func (s *HandlerServer) AdminUpdateUserHandler(w http.ResponseWriter, r *http.Re
 		passwordHash = string(hashedBytes)
 	}
 
-	err = s.Repo.UpdateUser(id, req.Username, req.Email, req.FirstName, req.LastName, passwordHash)
+	isActive := existingUser.IsActive
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
+
+	err = s.Repo.UpdateUserWithStatus(id, req.Username, req.Email, req.FirstName, req.LastName, passwordHash, isActive)
 	if err != nil {
 		s.respondWithError(w, http.StatusInternalServerError, "failed to update user: "+err.Error())
 		return
@@ -247,8 +286,61 @@ func (s *HandlerServer) AdminUpdateUserHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	if !isActive {
+		_ = s.Repo.DeleteUserRefreshTokens(id)
+	}
 
-	s.respondWithJSON(w, http.StatusOK, map[string]string{"message": "user updated successfully"})
+	s.respondWithJSON(w, http.StatusOK, map[string]interface{}{
+		"message":   "user updated successfully",
+		"is_active": isActive,
+	})
+}
+
+func (s *HandlerServer) AdminUpdateUserStatusHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut && r.Method != http.MethodPatch {
+		s.respondWithError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		s.respondWithError(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+
+	var req AdminUpdateUserStatusRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.respondWithError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if err := s.Repo.UpdateUserStatus(id, req.IsActive); err != nil {
+		s.respondWithError(w, http.StatusInternalServerError, "failed to update user status: "+err.Error())
+		return
+	}
+
+	if !req.IsActive {
+		_ = s.Repo.DeleteUserRefreshTokens(id)
+	}
+
+	s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+		EventType:      securitylog.DomainUserMgmt,
+		Action:         "UPDATE_USER_STATUS",
+		Severity:       securitylog.SeverityInfo,
+		Actor:          r.Header.Get("X-Username"),
+		ActorIP:        securitylog.GetClientIP(r),
+		UserAgent:      r.UserAgent(),
+		TargetResource: strconv.FormatInt(id, 10),
+		Status:         securitylog.StatusSuccess,
+		Details:        map[string]interface{}{"is_active": req.IsActive},
+	})
+
+	s.respondWithJSON(w, http.StatusOK, map[string]interface{}{
+		"message":   "user status updated successfully",
+		"id":        id,
+		"is_active": req.IsActive,
+	})
 }
 
 func (s *HandlerServer) AdminDeleteUserHandler(w http.ResponseWriter, r *http.Request) {

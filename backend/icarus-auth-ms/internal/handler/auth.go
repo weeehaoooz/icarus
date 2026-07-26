@@ -217,6 +217,21 @@ func (s *HandlerServer) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if !user.IsActive {
+		s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+			EventType: securitylog.DomainAuth,
+			Action:    "LOGIN_FAILED",
+			Severity:  securitylog.SeverityWarn,
+			Actor:     req.Username,
+			ActorIP:   securitylog.GetClientIP(r),
+			UserAgent: r.UserAgent(),
+			Status:    securitylog.StatusFailure,
+			Details:   map[string]interface{}{"reason": "account is disabled"},
+		})
+		s.respondWithError(w, http.StatusUnauthorized, "account is disabled")
+		return
+	}
+
 	// Generate access token (5 mins)
 	resolvedRoles, resolvedPermissions, err := s.Repo.GetResolvedUserRolesAndPermissions(user.ID, "system-tenant", "icarus-auth-ms")
 	if err != nil {
@@ -315,6 +330,22 @@ func (s *HandlerServer) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := s.Repo.GetUserByID(storedToken.UserID)
 	if err != nil {
 		s.respondWithError(w, http.StatusUnauthorized, "user no longer exists")
+		return
+	}
+
+	if !user.IsActive {
+		_ = s.Repo.DeleteRefreshToken(req.RefreshToken)
+		s.SecLogger.LogEvent(r.Context(), securitylog.Event{
+			EventType: securitylog.DomainAuth,
+			Action:    "REFRESH_TOKEN",
+			Severity:  securitylog.SeverityWarn,
+			Actor:     user.Username,
+			ActorIP:   securitylog.GetClientIP(r),
+			UserAgent: r.UserAgent(),
+			Status:    securitylog.StatusFailure,
+			Details:   map[string]interface{}{"reason": "account is disabled"},
+		})
+		s.respondWithError(w, http.StatusUnauthorized, "account is disabled")
 		return
 	}
 
