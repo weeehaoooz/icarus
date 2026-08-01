@@ -1,0 +1,45 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "icarus.fullname" . }}-ingress
+  labels:
+    {{- include "icarus.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  rules:
+  {{- range .Values.ingress.hosts }}
+  - host: {{ .host | quote }}
+    http:
+      paths:
+      {{- range .paths }}
+      - path: {{ .path }}
+        pathType: {{ .pathType }}
+        backend:
+          service:
+            {{- if eq .backendService "authMs" }}
+            name: {{ include "icarus.fullname" $ }}-auth-ms
+            port:
+              number: 8080
+            {{- else if eq .backendService "adminMs" }}
+            name: {{ include "icarus.fullname" $ }}-admin-ms
+            port:
+              number: 8081
+            {{- else if eq .backendService "workflowMs" }}
+            name: {{ include "icarus.fullname" $ }}-workflow-ms
+            port:
+              number: 8082
+            {{- else if eq .backendService "frontend" }}
+            name: {{ include "icarus.fullname" $ }}-frontend
+            port:
+              number: 80
+            {{- end }}
+      {{- end }}
+  {{- end }}
+{{- end }}

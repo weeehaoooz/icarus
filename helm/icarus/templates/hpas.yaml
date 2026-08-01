@@ -1,0 +1,122 @@
+{{- if and .Values.authMs.enabled .Values.authMs.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "icarus.fullname" . }}-auth-ms-hpa
+  labels:
+    {{- include "icarus.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "icarus.fullname" . }}-auth-ms
+  minReplicas: {{ .Values.authMs.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.authMs.autoscaling.maxReplicas }}
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.authMs.autoscaling.targetCPUUtilizationPercentage }}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      selectPolicy: Max
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 4
+        periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      selectPolicy: Min
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+---
+{{- end }}
+
+{{- if and .Values.adminMs.enabled .Values.adminMs.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "icarus.fullname" . }}-admin-ms-hpa
+  labels:
+    {{- include "icarus.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "icarus.fullname" . }}-admin-ms
+  minReplicas: {{ .Values.adminMs.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.adminMs.autoscaling.maxReplicas }}
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.adminMs.autoscaling.targetCPUUtilizationPercentage }}
+  {{- if .Values.adminMs.autoscaling.targetMemoryUtilizationPercentage }}
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.adminMs.autoscaling.targetMemoryUtilizationPercentage }}
+  {{- end }}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 30
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 20
+        periodSeconds: 60
+---
+{{- end }}
+
+{{- if and .Values.workflowMs.enabled .Values.workflowMs.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "icarus.fullname" . }}-workflow-ms-hpa
+  labels:
+    {{- include "icarus.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "icarus.fullname" . }}-workflow-ms
+  minReplicas: {{ .Values.workflowMs.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.workflowMs.autoscaling.maxReplicas }}
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.workflowMs.autoscaling.targetCPUUtilizationPercentage }}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 15
+        periodSeconds: 60
+{{- end }}

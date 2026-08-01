@@ -1,0 +1,74 @@
+{{- if .Values.authMs.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "icarus.fullname" . }}-auth-ms
+  labels:
+    {{- include "icarus.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.authMs.service.type }}
+  ports:
+  - port: {{ .Values.authMs.service.port }}
+    targetPort: {{ .Values.authMs.service.port }}
+    protocol: TCP
+    name: http
+  selector:
+    app: icarus-auth-ms
+---
+{{- end }}
+
+{{- if .Values.adminMs.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "icarus.fullname" . }}-admin-ms
+  labels:
+    {{- include "icarus.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.adminMs.service.type }}
+  ports:
+  - port: {{ .Values.adminMs.service.port }}
+    targetPort: {{ .Values.adminMs.service.port }}
+    protocol: TCP
+    name: http
+  selector:
+    app: icarus-admin-ms
+---
+{{- end }}
+
+{{- if .Values.workflowMs.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "icarus.fullname" . }}-workflow-ms
+  labels:
+    {{- include "icarus.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.workflowMs.service.type }}
+  ports:
+  - port: {{ .Values.workflowMs.service.port }}
+    targetPort: {{ .Values.workflowMs.service.port }}
+    protocol: TCP
+    name: http
+  selector:
+    app: icarus-workflow-ms
+---
+{{- end }}
+
+{{- if .Values.frontend.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "icarus.fullname" . }}-frontend
+  labels:
+    {{- include "icarus.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.frontend.service.type }}
+  ports:
+  - port: {{ .Values.frontend.service.port }}
+    targetPort: {{ .Values.frontend.service.port }}
+    protocol: TCP
+    name: http
+  selector:
+    app: icarus-frontend
+{{- end }}

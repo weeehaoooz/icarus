@@ -1,0 +1,177 @@
+{{- if .Values.authMs.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "icarus.fullname" . }}-auth-ms
+  labels:
+    {{- include "icarus.labels" . | nindent 4 }}
+    app: icarus-auth-ms
+spec:
+  {{- if not .Values.authMs.autoscaling.enabled }}
+  replicas: {{ .Values.authMs.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: icarus-auth-ms
+  template:
+    metadata:
+      labels:
+        app: icarus-auth-ms
+    spec:
+      containers:
+      - name: auth-ms
+        image: "{{ .Values.authMs.image.repository }}:{{ .Values.authMs.image.tag }}"
+        imagePullPolicy: {{ .Values.authMs.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.authMs.service.port }}
+        env:
+        - name: PORT
+          value: "{{ .Values.authMs.service.port }}"
+        - name: KEYS_DIR
+          value: "/app/keys"
+        - name: DATABASE_PATH
+          value: "/app/data/auth.db"
+        resources:
+          {{- toYaml .Values.authMs.resources | nindent 10 }}
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.authMs.service.port }}
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.authMs.service.port }}
+          initialDelaySeconds: 10
+          periodSeconds: 15
+---
+{{- end }}
+
+{{- if .Values.adminMs.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "icarus.fullname" . }}-admin-ms
+  labels:
+    {{- include "icarus.labels" . | nindent 4 }}
+    app: icarus-admin-ms
+spec:
+  {{- if not .Values.adminMs.autoscaling.enabled }}
+  replicas: {{ .Values.adminMs.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: icarus-admin-ms
+  template:
+    metadata:
+      labels:
+        app: icarus-admin-ms
+    spec:
+      containers:
+      - name: admin-ms
+        image: "{{ .Values.adminMs.image.repository }}:{{ .Values.adminMs.image.tag }}"
+        imagePullPolicy: {{ .Values.adminMs.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.adminMs.service.port }}
+        env:
+        - name: PORT
+          value: "{{ .Values.adminMs.service.port }}"
+        - name: DATABASE_PATH
+          value: "/app/data/platform.db"
+        - name: AUTH_MS_CERTS_URL
+          value: "http://{{ include "icarus.fullname" . }}-auth-ms:8080/certs?format=pem"
+        resources:
+          {{- toYaml .Values.adminMs.resources | nindent 10 }}
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.adminMs.service.port }}
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.adminMs.service.port }}
+          initialDelaySeconds: 10
+          periodSeconds: 15
+---
+{{- end }}
+
+{{- if .Values.workflowMs.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "icarus.fullname" . }}-workflow-ms
+  labels:
+    {{- include "icarus.labels" . | nindent 4 }}
+    app: icarus-workflow-ms
+spec:
+  {{- if not .Values.workflowMs.autoscaling.enabled }}
+  replicas: {{ .Values.workflowMs.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: icarus-workflow-ms
+  template:
+    metadata:
+      labels:
+        app: icarus-workflow-ms
+    spec:
+      containers:
+      - name: workflow-ms
+        image: "{{ .Values.workflowMs.image.repository }}:{{ .Values.workflowMs.image.tag }}"
+        imagePullPolicy: {{ .Values.workflowMs.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.workflowMs.service.port }}
+        env:
+        - name: PORT
+          value: "{{ .Values.workflowMs.service.port }}"
+        - name: DATABASE_PATH
+          value: "/app/data/workflow.db"
+        - name: AUTH_MS_CERTS_URL
+          value: "http://{{ include "icarus.fullname" . }}-auth-ms:8080/certs?format=pem"
+        - name: ADMIN_MS_URL
+          value: "http://{{ include "icarus.fullname" . }}-admin-ms:8081"
+        resources:
+          {{- toYaml .Values.workflowMs.resources | nindent 10 }}
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.workflowMs.service.port }}
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.workflowMs.service.port }}
+          initialDelaySeconds: 10
+          periodSeconds: 15
+---
+{{- end }}
+
+{{- if .Values.frontend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "icarus.fullname" . }}-frontend
+  labels:
+    {{- include "icarus.labels" . | nindent 4 }}
+    app: icarus-frontend
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      app: icarus-frontend
+  template:
+    metadata:
+      labels:
+        app: icarus-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+        imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.frontend.service.port }}
+{{- end }}

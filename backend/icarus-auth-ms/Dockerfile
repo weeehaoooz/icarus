@@ -14,6 +14,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o auth-server cmd/auth-s
 FROM alpine:3.19
 WORKDIR /app
 
+# Create required directories for keys and SQLite database
+RUN mkdir -p /app/keys /app/data
+
 # Copy the compiled binary
 COPY --from=builder /app/auth-server .
 

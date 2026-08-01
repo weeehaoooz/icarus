@@ -7,6 +7,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o workflow-server cmd/workflow-server/mai
 
 FROM alpine:latest
 WORKDIR /app
+RUN mkdir -p /app/data
 COPY --from=builder /app/workflow-server .
 COPY --from=builder /app/env/.env.example ./env/.env
 EXPOSE 8082
