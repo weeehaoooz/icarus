@@ -81,6 +81,8 @@ spec:
           value: "/app/data/platform.db"
         - name: AUTH_MS_CERTS_URL
           value: "http://{{ include "icarus.fullname" . }}-auth-ms:8080/certs?format=pem"
+        - name: AUTH_MS_URL
+          value: "http://{{ include "icarus.fullname" . }}-auth-ms:8080"
         resources:
           {{- toYaml .Values.adminMs.resources | nindent 10 }}
         readinessProbe:
@@ -174,4 +176,20 @@ spec:
         imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
         ports:
         - containerPort: {{ .Values.frontend.service.port }}
+        {{- if .Values.frontend.resources }}
+        resources:
+          {{- toYaml .Values.frontend.resources | nindent 10 }}
+        {{- end }}
+        readinessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.frontend.service.port }}
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.frontend.service.port }}
+          initialDelaySeconds: 10
+          periodSeconds: 15
 {{- end }}

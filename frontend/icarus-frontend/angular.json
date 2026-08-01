@@ -45,6 +45,27 @@
               ],
               "outputHashing": "all"
             },
+            "helm": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.helm.ts"
+                }
+              ],
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "600kB",
+                  "maximumError": "1.5MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "30kB",
+                  "maximumError": "40kB"
+                }
+              ],
+              "outputHashing": "all"
+            },
             "development": {
               "optimization": false,
               "extractLicenses": false,
@@ -59,8 +80,12 @@
             "production": {
               "buildTarget": "crm:build:production"
             },
+            "helm": {
+              "buildTarget": "crm:build:helm"
+            },
             "development": {
-              "buildTarget": "crm:build:development"
+              "buildTarget": "crm:build:development",
+              "proxyConfig": "src/proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"

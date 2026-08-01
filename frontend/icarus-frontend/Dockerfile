@@ -8,7 +8,7 @@ RUN npm ci
 
 # Copy source code and build
 COPY . .
-RUN npm run build
+RUN npm run build:helm
 
 # Production Stage
 FROM nginx:alpine
@@ -16,7 +16,7 @@ FROM nginx:alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy build output to nginx html directory
-COPY --from=builder /app/dist/crm/browser /usr/share/nginx/html/admin
+COPY --from=builder /app/dist/crm/browser /usr/share/nginx/html
 
 # Expose port
 EXPOSE 80

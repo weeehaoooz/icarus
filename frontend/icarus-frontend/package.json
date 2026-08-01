@@ -3,8 +3,9 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve --port 4201",
+    "start": "ng serve --configuration development --port 4201",
     "build": "ng build",
+    "build:helm": "ng build --configuration helm",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },

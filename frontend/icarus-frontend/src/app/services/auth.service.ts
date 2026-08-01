@@ -2,6 +2,7 @@ import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap, catchError, of, map } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface DecodedToken {
 	sub: string;
@@ -26,7 +27,7 @@ export interface UserSummary {
 export class AuthService {
 	private readonly http = inject(HttpClient);
 	private readonly router = inject(Router);
-	private readonly apiUrl = 'http://localhost:8080';
+	private readonly apiUrl = environment.apiAuth;
 
 	// Signals for state
 	readonly accessToken = signal<string | null>(localStorage.getItem('access_token'));

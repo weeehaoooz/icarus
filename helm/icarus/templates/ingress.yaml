@@ -2,13 +2,15 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "icarus.fullname" . }}-ingress
+  name: {{ include "icarus.fullname" . }}-backend-ingress
   labels:
     {{- include "icarus.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
   annotations:
+    {{- with .Values.ingress.annotations }}
     {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- end }}
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
 spec:
   {{- if .Values.ingress.className }}
   ingressClassName: {{ .Values.ingress.className }}
@@ -18,28 +20,63 @@ spec:
   - host: {{ .host | quote }}
     http:
       paths:
-      {{- range .paths }}
-      - path: {{ .path }}
-        pathType: {{ .pathType }}
+      {{- if $.Values.authMs.enabled }}
+      - path: /api/auth(/|$)(.*)
+        pathType: ImplementationSpecific
         backend:
           service:
-            {{- if eq .backendService "authMs" }}
             name: {{ include "icarus.fullname" $ }}-auth-ms
             port:
-              number: 8080
-            {{- else if eq .backendService "adminMs" }}
+              number: {{ $.Values.authMs.service.port }}
+      {{- end }}
+      {{- if $.Values.adminMs.enabled }}
+      - path: /api/admin(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
             name: {{ include "icarus.fullname" $ }}-admin-ms
             port:
-              number: 8081
-            {{- else if eq .backendService "workflowMs" }}
+              number: {{ $.Values.adminMs.service.port }}
+      {{- end }}
+      {{- if $.Values.workflowMs.enabled }}
+      - path: /api/workflow(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
             name: {{ include "icarus.fullname" $ }}-workflow-ms
             port:
-              number: 8082
-            {{- else if eq .backendService "frontend" }}
-            name: {{ include "icarus.fullname" $ }}-frontend
-            port:
-              number: 80
-            {{- end }}
+              number: {{ $.Values.workflowMs.service.port }}
       {{- end }}
   {{- end }}
+---
+{{- if .Values.frontend.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "icarus.fullname" . }}-frontend-ingress
+  labels:
+    {{- include "icarus.labels" . | nindent 4 }}
+  annotations:
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  rules:
+  {{- range .Values.ingress.hosts }}
+  - host: {{ .host | quote }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "icarus.fullname" $ }}-frontend
+            port:
+              number: {{ $.Values.frontend.service.port }}
+  {{- end }}
 {{- end }}
+{{- end }}
+

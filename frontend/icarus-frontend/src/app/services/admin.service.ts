@@ -1,13 +1,14 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 @Injectable({
 	providedIn: 'root'
 })
 export class AdminService {
 	private readonly http = inject(HttpClient);
-	private readonly apiUrl = 'http://localhost:8080/admin';
+	private readonly apiUrl = `${environment.apiAuth}/admin`;
 
 	// === Users ===
 	listUsers(): Observable<any[]> {
@@ -67,7 +68,7 @@ export class AdminService {
 		if (offset !== undefined) {
 			params = params.set('offset', offset.toString());
 		}
-		return this.http.get<any[]>('http://localhost:8080/roles', { params });
+		return this.http.get<any[]>(`${this.apiUrl}/roles`, { params });
 	}
 
 	createRole(role: any): Observable<any> {

@@ -86,8 +86,16 @@ frontend:
     pullPolicy: IfNotPresent
     tag: "latest"
   service:
-    type: ClusterIP
+    type: NodePort
     port: 80
+    nodePort: 30080
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
 
 # 5. Ingress Controller Rules
 ingress:
@@ -97,18 +105,8 @@ ingress:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
   hosts:
     - host: icarus.local
-      paths:
-        - path: /api/auth
-          pathType: Prefix
-          backendService: authMs
-        - path: /api/admin
-          pathType: Prefix
-          backendService: adminMs
-        - path: /api/workflow
-          pathType: Prefix
-          backendService: workflowMs
-        - path: /
-          pathType: Prefix
-          backendService: frontend
+
+

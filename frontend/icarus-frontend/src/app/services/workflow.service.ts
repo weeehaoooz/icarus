@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, fromEvent, merge, EMPTY, defer, of } from 'rxjs';
 import { map, switchMap, retry, delay } from 'rxjs/operators';
 import { AuthService } from './auth.service';
+import { environment } from '../../environments/environment';
 
 export interface PendingStepDetail {
   step_id: string;
@@ -111,7 +112,7 @@ export class WorkflowService {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
 
-  private readonly baseUrl = 'http://localhost:8082/api/v1';
+  private readonly baseUrl = environment.apiWorkflow;
 
   // ── Cart ───────────────────────────────────────────────────────────────────
 

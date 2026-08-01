@@ -41,7 +41,9 @@ func main() {
 	verifier := crypto.NewTokenVerifier(authMsCertsURL)
 
 	authMsBaseURL := "http://localhost:8080"
-	if idx := strings.Index(authMsCertsURL, "/certs"); idx != -1 {
+	if envAuthURL := os.Getenv("AUTH_MS_URL"); envAuthURL != "" {
+		authMsBaseURL = envAuthURL
+	} else if idx := strings.Index(authMsCertsURL, "/certs"); idx != -1 {
 		authMsBaseURL = authMsCertsURL[:idx]
 	}
 
