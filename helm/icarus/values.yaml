@@ -86,9 +86,8 @@ frontend:
     pullPolicy: IfNotPresent
     tag: "latest"
   service:
-    type: NodePort
+    type: ClusterIP
     port: 80
-    nodePort: 30080
   resources:
     requests:
       cpu: 100m
@@ -106,7 +105,6 @@ ingress:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-buffering: "off"
-  hosts:
-    - host: icarus.local
+  hosts: []
 
 

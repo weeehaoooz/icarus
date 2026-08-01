@@ -16,8 +16,11 @@ spec:
   ingressClassName: {{ .Values.ingress.className }}
   {{- end }}
   rules:
+  {{- if .Values.ingress.hosts }}
   {{- range .Values.ingress.hosts }}
-  - host: {{ .host | quote }}
+  - {{- if .host }}
+    host: {{ .host | quote }}
+    {{- end }}
     http:
       paths:
       {{- if $.Values.authMs.enabled }}
@@ -48,6 +51,37 @@ spec:
               number: {{ $.Values.workflowMs.service.port }}
       {{- end }}
   {{- end }}
+  {{- else }}
+  - http:
+      paths:
+      {{- if .Values.authMs.enabled }}
+      - path: /api/auth(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: {{ include "icarus.fullname" . }}-auth-ms
+            port:
+              number: {{ .Values.authMs.service.port }}
+      {{- end }}
+      {{- if .Values.adminMs.enabled }}
+      - path: /api/admin(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: {{ include "icarus.fullname" . }}-admin-ms
+            port:
+              number: {{ .Values.adminMs.service.port }}
+      {{- end }}
+      {{- if .Values.workflowMs.enabled }}
+      - path: /api/workflow(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: {{ include "icarus.fullname" . }}-workflow-ms
+            port:
+              number: {{ .Values.workflowMs.service.port }}
+      {{- end }}
+  {{- end }}
 ---
 {{- if .Values.frontend.enabled }}
 apiVersion: networking.k8s.io/v1
@@ -65,8 +99,11 @@ spec:
   ingressClassName: {{ .Values.ingress.className }}
   {{- end }}
   rules:
+  {{- if .Values.ingress.hosts }}
   {{- range .Values.ingress.hosts }}
-  - host: {{ .host | quote }}
+  - {{- if .host }}
+    host: {{ .host | quote }}
+    {{- end }}
     http:
       paths:
       - path: /
@@ -76,6 +113,17 @@ spec:
             name: {{ include "icarus.fullname" $ }}-frontend
             port:
               number: {{ $.Values.frontend.service.port }}
+  {{- end }}
+  {{- else }}
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "icarus.fullname" . }}-frontend
+            port:
+              number: {{ .Values.frontend.service.port }}
   {{- end }}
 {{- end }}
 {{- end }}
