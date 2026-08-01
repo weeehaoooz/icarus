@@ -29,38 +29,38 @@ func NewHandlerServer(repo *repository.SQLRepository, verifier *crypto.TokenVeri
 // RegisterRoutes maps all platform-ms routes to the multiplexer.
 func (s *HandlerServer) RegisterRoutes(mux *http.ServeMux) {
 	// Gateway route (handles reverse proxy and rate limits)
-	mux.HandleFunc("/gateway/{site_domain}/{path...}", s.GatewayHandler)
+	mux.HandleFunc("/api/v1/gateway/{site_domain}/{path...}", s.GatewayHandler)
 
 	// Dynamic onboarding route
 	mux.HandleFunc("POST /api/v1/governance/modules/register", s.OnboardModuleHandler)
 
 	// Admin APIs for Tenants
-	mux.HandleFunc("GET /admin/tenants", s.AdminRequired(s.AdminListTenantsHandler))
-	mux.HandleFunc("POST /admin/tenants", s.AdminRequired(s.AdminCreateTenantHandler))
-	mux.HandleFunc("PUT /admin/tenants/{id}", s.AdminRequired(s.AdminUpdateTenantHandler))
-	mux.HandleFunc("DELETE /admin/tenants/{id}", s.AdminRequired(s.AdminDeleteTenantHandler))
+	mux.HandleFunc("GET /api/v1/tenants", s.AdminRequired(s.AdminListTenantsHandler))
+	mux.HandleFunc("POST /api/v1/tenants", s.AdminRequired(s.AdminCreateTenantHandler))
+	mux.HandleFunc("PUT /api/v1/tenants/{id}", s.AdminRequired(s.AdminUpdateTenantHandler))
+	mux.HandleFunc("DELETE /api/v1/tenants/{id}", s.AdminRequired(s.AdminDeleteTenantHandler))
 
 	// Admin APIs for Modules
-	mux.HandleFunc("GET /admin/modules", s.AdminRequired(s.AdminListModulesHandler))
-	mux.HandleFunc("POST /admin/modules", s.AdminRequired(s.AdminCreateModuleHandler))
-	mux.HandleFunc("PUT /admin/modules/{id}", s.AdminRequired(s.AdminUpdateModuleHandler))
-	mux.HandleFunc("DELETE /admin/modules/{id}", s.AdminRequired(s.AdminDeleteModuleHandler))
-	mux.HandleFunc("GET /admin/modules/{id}/manifest", s.AdminRequired(s.AdminGetModuleManifestHandler))
+	mux.HandleFunc("GET /api/v1/modules", s.AdminRequired(s.AdminListModulesHandler))
+	mux.HandleFunc("POST /api/v1/modules", s.AdminRequired(s.AdminCreateModuleHandler))
+	mux.HandleFunc("PUT /api/v1/modules/{id}", s.AdminRequired(s.AdminUpdateModuleHandler))
+	mux.HandleFunc("DELETE /api/v1/modules/{id}", s.AdminRequired(s.AdminDeleteModuleHandler))
+	mux.HandleFunc("GET /api/v1/modules/{id}/manifest", s.AdminRequired(s.AdminGetModuleManifestHandler))
 
 	// Admin APIs for Applications
-	mux.HandleFunc("GET /admin/applications", s.AdminRequired(s.AdminListApplicationsHandler))
-	mux.HandleFunc("POST /admin/applications", s.AdminRequired(s.AdminCreateApplicationHandler))
-	mux.HandleFunc("PUT /admin/applications/{id}", s.AdminRequired(s.AdminUpdateApplicationHandler))
-	mux.HandleFunc("DELETE /admin/applications/{id}", s.AdminRequired(s.AdminDeleteApplicationHandler))
+	mux.HandleFunc("GET /api/v1/applications", s.AdminRequired(s.AdminListApplicationsHandler))
+	mux.HandleFunc("POST /api/v1/applications", s.AdminRequired(s.AdminCreateApplicationHandler))
+	mux.HandleFunc("PUT /api/v1/applications/{id}", s.AdminRequired(s.AdminUpdateApplicationHandler))
+	mux.HandleFunc("DELETE /api/v1/applications/{id}", s.AdminRequired(s.AdminDeleteApplicationHandler))
 
 	// Admin APIs for Module Application Onboarding
-	mux.HandleFunc("GET /admin/modules/{id}/applications", s.AdminRequired(s.AdminListModuleApplicationsHandler))
-	mux.HandleFunc("POST /admin/modules/{id}/applications", s.AdminRequired(s.AdminOnboardApplicationHandler))
-	mux.HandleFunc("DELETE /admin/modules/{id}/applications/{appCode}", s.AdminRequired(s.AdminOffboardApplicationHandler))
+	mux.HandleFunc("GET /api/v1/modules/{id}/applications", s.AdminRequired(s.AdminListModuleApplicationsHandler))
+	mux.HandleFunc("POST /api/v1/modules/{id}/applications", s.AdminRequired(s.AdminOnboardApplicationHandler))
+	mux.HandleFunc("DELETE /api/v1/modules/{id}/applications/{appCode}", s.AdminRequired(s.AdminOffboardApplicationHandler))
 
 	// Internal service-to-service routes (called by icarus-workflow-ms for approver resolution)
-	mux.HandleFunc("GET /internal/roles", s.InternalListRolesHandler)
-	mux.HandleFunc("GET /internal/roles/{role_name}/members", s.InternalListRoleMembersHandler)
+	mux.HandleFunc("GET /api/v1/internal/roles", s.InternalListRolesHandler)
+	mux.HandleFunc("GET /api/v1/internal/roles/{role_name}/members", s.InternalListRoleMembersHandler)
 }
 
 // LoggerMiddleware logs requests and latency.

@@ -64,7 +64,7 @@ func (s *HandlerServer) OnboardModuleHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	// 3. Propagate to auth-ms via internal HTTP sync endpoint
-	authSyncURL := fmt.Sprintf("%s/internal/modules/sync", s.AuthMSURL)
+	authSyncURL := fmt.Sprintf("%s/api/v1/internal/modules/sync", s.AuthMSURL)
 	syncPayload, err := json.Marshal(req)
 	if err != nil {
 		s.respondWithError(w, http.StatusInternalServerError, "failed to marshal sync request: "+err.Error())

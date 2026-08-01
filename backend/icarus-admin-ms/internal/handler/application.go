@@ -60,7 +60,7 @@ func (s *HandlerServer) AdminCreateApplicationHandler(w http.ResponseWriter, r *
 	}
 
 	// Propagate to auth-ms
-	authSyncURL := fmt.Sprintf("%s/internal/applications/sync", s.AuthMSURL)
+	authSyncURL := fmt.Sprintf("%s/api/v1/internal/applications/sync", s.AuthMSURL)
 	syncPayload, err := json.Marshal(req)
 	if err == nil {
 		resp, syncErr := http.Post(authSyncURL, "application/json", bytes.NewBuffer(syncPayload))
@@ -109,7 +109,7 @@ func (s *HandlerServer) AdminUpdateApplicationHandler(w http.ResponseWriter, r *
 	}
 
 	if updatedApp.ID != "" {
-		authSyncURL := fmt.Sprintf("%s/internal/applications/sync", s.AuthMSURL)
+		authSyncURL := fmt.Sprintf("%s/api/v1/internal/applications/sync", s.AuthMSURL)
 		syncPayload, err := json.Marshal(updatedApp)
 		if err == nil {
 			resp, syncErr := http.Post(authSyncURL, "application/json", bytes.NewBuffer(syncPayload))
@@ -140,7 +140,7 @@ func (s *HandlerServer) AdminDeleteApplicationHandler(w http.ResponseWriter, r *
 	}
 
 	// Propagate delete to auth-ms
-	authDeleteURL := fmt.Sprintf("%s/internal/applications/sync/%s", s.AuthMSURL, id)
+	authDeleteURL := fmt.Sprintf("%s/api/v1/internal/applications/sync/%s", s.AuthMSURL, id)
 	req, err := http.NewRequest(http.MethodDelete, authDeleteURL, nil)
 	if err == nil {
 		client := &http.Client{}
@@ -218,7 +218,7 @@ func (s *HandlerServer) AdminOnboardApplicationHandler(w http.ResponseWriter, r 
 	}
 
 	// Propagate to auth-ms
-	authSyncURL := fmt.Sprintf("%s/internal/modules/%s/applications/sync", s.AuthMSURL, moduleID)
+	authSyncURL := fmt.Sprintf("%s/api/v1/internal/modules/%s/applications/sync", s.AuthMSURL, moduleID)
 	syncPayload, err := json.Marshal(req)
 	if err == nil {
 		resp, syncErr := http.Post(authSyncURL, "application/json", bytes.NewBuffer(syncPayload))
@@ -255,7 +255,7 @@ func (s *HandlerServer) AdminOffboardApplicationHandler(w http.ResponseWriter, r
 	}
 
 	// Propagate delete to auth-ms
-	authSyncURL := fmt.Sprintf("%s/internal/modules/%s/applications/sync/%s", s.AuthMSURL, moduleID, appCode)
+	authSyncURL := fmt.Sprintf("%s/api/v1/internal/modules/%s/applications/sync/%s", s.AuthMSURL, moduleID, appCode)
 	delReq, err := http.NewRequest(http.MethodDelete, authSyncURL, nil)
 	if err == nil {
 		client := &http.Client{}

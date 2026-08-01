@@ -26,7 +26,7 @@ func (s *HandlerServer) InternalListRoleMembersHandler(w http.ResponseWriter, r 
 		return
 	}
 
-	resp, err := http.Get(s.AuthMSURL + "/internal/roles/" + roleName + "/members")
+	resp, err := http.Get(s.AuthMSURL + "/api/v1/internal/roles/" + roleName + "/members")
 	if err != nil {
 		s.respondWithError(w, http.StatusInternalServerError, "failed to call auth-ms: "+err.Error())
 		return

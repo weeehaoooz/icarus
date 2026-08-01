@@ -172,7 +172,7 @@ func (s *HandlerServer) AdminCreateModuleHandler(w http.ResponseWriter, r *http.
 	}
 
 	// Propagate to auth-ms via SyncModule endpoint
-	authSyncURL := fmt.Sprintf("%s/internal/modules/sync", s.AuthMSURL)
+	authSyncURL := fmt.Sprintf("%s/api/v1/internal/modules/sync", s.AuthMSURL)
 	syncPayload, err := json.Marshal(req)
 	if err == nil {
 		resp, syncErr := http.Post(authSyncURL, "application/json", bytes.NewBuffer(syncPayload))
@@ -235,7 +235,7 @@ func (s *HandlerServer) AdminUpdateModuleHandler(w http.ResponseWriter, r *http.
 	}
 
 	// Sync to auth-ms
-	authSyncURL := fmt.Sprintf("%s/internal/modules/sync", s.AuthMSURL)
+	authSyncURL := fmt.Sprintf("%s/api/v1/internal/modules/sync", s.AuthMSURL)
 	syncPayload, err := json.Marshal(req)
 	if err == nil {
 		resp, syncErr := http.Post(authSyncURL, "application/json", bytes.NewBuffer(syncPayload))
@@ -276,7 +276,7 @@ func (s *HandlerServer) AdminGetModuleManifestHandler(w http.ResponseWriter, r *
 		return
 	}
 
-	authSyncURL := fmt.Sprintf("%s/internal/modules/%s/roles-and-templates", s.AuthMSURL, module.Code)
+	authSyncURL := fmt.Sprintf("%s/api/v1/internal/modules/%s/roles-and-templates", s.AuthMSURL, module.Code)
 	resp, err := http.Get(authSyncURL)
 	var defaultRoles []models.Role
 	var appCentricRoles []models.Role
@@ -336,7 +336,7 @@ func (s *HandlerServer) AdminDeleteModuleHandler(w http.ResponseWriter, r *http.
 	}
 
 	// Propagate to auth-ms
-	authDeleteURL := fmt.Sprintf("%s/internal/modules/sync/%s", s.AuthMSURL, id)
+	authDeleteURL := fmt.Sprintf("%s/api/v1/internal/modules/sync/%s", s.AuthMSURL, id)
 	req, err := http.NewRequest(http.MethodDelete, authDeleteURL, nil)
 	if err == nil {
 		client := &http.Client{}

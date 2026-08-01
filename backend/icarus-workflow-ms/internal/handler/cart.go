@@ -302,7 +302,7 @@ func (s *HandlerServer) resolveNotificationTargets(step models.ExecutionNode) []
 
 // fetchRoleMembers calls admin-ms internal endpoint to get user IDs for a role.
 func (s *HandlerServer) fetchRoleMembers(roleName string) []string {
-	resp, err := http.Get(s.AdminMSURL + "/internal/roles/" + roleName + "/members")
+	resp, err := http.Get(s.AdminMSURL + "/api/v1/internal/roles/" + roleName + "/members")
 	if err != nil || resp.StatusCode != http.StatusOK {
 		return nil
 	}

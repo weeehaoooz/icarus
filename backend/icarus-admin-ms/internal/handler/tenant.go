@@ -61,7 +61,7 @@ func (s *HandlerServer) AdminCreateTenantHandler(w http.ResponseWriter, r *http.
 	}
 
 	// Propagate to auth-ms
-	authSyncURL := fmt.Sprintf("%s/internal/tenants/sync", s.AuthMSURL)
+	authSyncURL := fmt.Sprintf("%s/api/v1/internal/tenants/sync", s.AuthMSURL)
 	syncPayload, err := json.Marshal(req)
 	if err == nil {
 		resp, syncErr := http.Post(authSyncURL, "application/json", bytes.NewBuffer(syncPayload))
@@ -110,7 +110,7 @@ func (s *HandlerServer) AdminUpdateTenantHandler(w http.ResponseWriter, r *http.
 	}
 
 	if updatedTenant.ID != "" {
-		authSyncURL := fmt.Sprintf("%s/internal/tenants/sync", s.AuthMSURL)
+		authSyncURL := fmt.Sprintf("%s/api/v1/internal/tenants/sync", s.AuthMSURL)
 		syncPayload, err := json.Marshal(updatedTenant)
 		if err == nil {
 			resp, syncErr := http.Post(authSyncURL, "application/json", bytes.NewBuffer(syncPayload))
@@ -141,7 +141,7 @@ func (s *HandlerServer) AdminDeleteTenantHandler(w http.ResponseWriter, r *http.
 	}
 
 	// Propagate delete to auth-ms
-	authDeleteURL := fmt.Sprintf("%s/internal/tenants/sync/%s", s.AuthMSURL, id)
+	authDeleteURL := fmt.Sprintf("%s/api/v1/internal/tenants/sync/%s", s.AuthMSURL, id)
 	req, err := http.NewRequest(http.MethodDelete, authDeleteURL, nil)
 	if err == nil {
 		client := &http.Client{}

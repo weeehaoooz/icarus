@@ -60,7 +60,7 @@ func TestAccountStatusManagement(t *testing.T) {
 		"last_name":  "Test",
 	}
 	body, _ := json.Marshal(regReq)
-	resp, err := http.Post(ts.URL+"/register", "application/json", bytes.NewBuffer(body))
+	resp, err := http.Post(ts.URL+"/api/v1/register", "application/json", bytes.NewBuffer(body))
 	if err != nil || resp.StatusCode != http.StatusCreated {
 		t.Fatalf("Failed to register user: %v, status: %d", err, resp.StatusCode)
 	}
@@ -79,7 +79,7 @@ func TestAccountStatusManagement(t *testing.T) {
 		"password": "password123",
 	}
 	body, _ = json.Marshal(loginReq)
-	resp, err = http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(body))
+	resp, err = http.Post(ts.URL+"/api/v1/login", "application/json", bytes.NewBuffer(body))
 	if err != nil || resp.StatusCode != http.StatusOK {
 		t.Fatalf("Login failed for active user: %v", err)
 	}
@@ -92,7 +92,7 @@ func TestAccountStatusManagement(t *testing.T) {
 	// 4. Disable user via Admin API
 	statusReq := map[string]bool{"is_active": false}
 	body, _ = json.Marshal(statusReq)
-	req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/admin/users/%d/status", ts.URL, userObj.ID), bytes.NewBuffer(body))
+	req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/api/v1/admin/users/%d/status", ts.URL, userObj.ID), bytes.NewBuffer(body))
 	req.Header.Set("Authorization", "Bearer "+adminToken)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -104,7 +104,7 @@ func TestAccountStatusManagement(t *testing.T) {
 
 	// 5. Attempt login with disabled account (should fail 401)
 	body, _ = json.Marshal(loginReq)
-	resp, err = http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(body))
+	resp, err = http.Post(ts.URL+"/api/v1/login", "application/json", bytes.NewBuffer(body))
 	if err != nil || resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("Expected 401 Unauthorized for disabled user login, got %d", resp.StatusCode)
 	}
@@ -112,13 +112,13 @@ func TestAccountStatusManagement(t *testing.T) {
 	// 6. Attempt token refresh with revoked refresh token (should fail 401)
 	refReq := map[string]string{"refresh_token": refreshToken}
 	body, _ = json.Marshal(refReq)
-	resp, err = http.Post(ts.URL+"/refresh", "application/json", bytes.NewBuffer(body))
+	resp, err = http.Post(ts.URL+"/api/v1/refresh", "application/json", bytes.NewBuffer(body))
 	if err != nil || resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("Expected 401 Unauthorized for refresh token of disabled user, got %d", resp.StatusCode)
 	}
 
 	// 7. Access protected /me endpoint with old access token (UserRequired middleware should block disabled user)
-	req, _ = http.NewRequest(http.MethodGet, ts.URL+"/me", nil)
+	req, _ = http.NewRequest(http.MethodGet, ts.URL+"/api/v1/me", nil)
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	resp, err = client.Do(req)
 	if err != nil || resp.StatusCode != http.StatusUnauthorized {
@@ -128,7 +128,7 @@ func TestAccountStatusManagement(t *testing.T) {
 	// 8. Re-enable user via Admin API
 	statusReq = map[string]bool{"is_active": true}
 	body, _ = json.Marshal(statusReq)
-	req, _ = http.NewRequest(http.MethodPut, fmt.Sprintf("%s/admin/users/%d/status", ts.URL, userObj.ID), bytes.NewBuffer(body))
+	req, _ = http.NewRequest(http.MethodPut, fmt.Sprintf("%s/api/v1/admin/users/%d/status", ts.URL, userObj.ID), bytes.NewBuffer(body))
 	req.Header.Set("Authorization", "Bearer "+adminToken)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err = client.Do(req)
@@ -138,7 +138,7 @@ func TestAccountStatusManagement(t *testing.T) {
 
 	// 9. Login again after re-enabling (should succeed)
 	body, _ = json.Marshal(loginReq)
-	resp, err = http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(body))
+	resp, err = http.Post(ts.URL+"/api/v1/login", "application/json", bytes.NewBuffer(body))
 	if err != nil || resp.StatusCode != http.StatusOK {
 		t.Fatalf("Login failed after re-enabling user: %v, status: %d", err, resp.StatusCode)
 	}
@@ -150,7 +150,7 @@ func getAdminToken(t *testing.T, ts *httptest.Server) string {
 		"password": "admin123",
 	}
 	body, _ := json.Marshal(loginReq)
-	resp, err := http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(body))
+	resp, err := http.Post(ts.URL+"/api/v1/login", "application/json", bytes.NewBuffer(body))
 	if err != nil || resp.StatusCode != http.StatusOK {
 		t.Fatalf("Failed to login as admin: %v, status: %d", err, resp.StatusCode)
 	}

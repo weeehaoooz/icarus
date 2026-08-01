@@ -55,7 +55,7 @@ func TestAdminRBACFlow(t *testing.T) {
 		Password: "admin123",
 	}
 	loginBody, _ := json.Marshal(loginReq)
-	res, err := http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(loginBody))
+	res, err := http.Post(ts.URL+"/api/v1/login", "application/json", bytes.NewBuffer(loginBody))
 	if err != nil {
 		t.Fatalf("Admin login failed: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestAdminRBACFlow(t *testing.T) {
 		Password: "password123",
 	}
 	regBody, _ := json.Marshal(regReq)
-	res, err = http.Post(ts.URL+"/register", "application/json", bytes.NewBuffer(regBody))
+	res, err = http.Post(ts.URL+"/api/v1/register", "application/json", bytes.NewBuffer(regBody))
 	if err != nil {
 		t.Fatalf("Register bob failed: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestAdminRBACFlow(t *testing.T) {
 		Password: "password123",
 	}
 	bobLoginBody, _ := json.Marshal(bobLoginReq)
-	res, err = http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(bobLoginBody))
+	res, err = http.Post(ts.URL+"/api/v1/login", "application/json", bytes.NewBuffer(bobLoginBody))
 	if err != nil {
 		t.Fatalf("Bob login failed: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestAdminRBACFlow(t *testing.T) {
 
 	// 3. Verify Bob is forbidden from admin endpoints
 	client := &http.Client{}
-	req, _ := http.NewRequest("GET", ts.URL+"/admin/users", nil)
+	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/admin/users", nil)
 	req.Header.Set("Authorization", "Bearer "+bobToken)
 	res, err = client.Do(req)
 	if err != nil {
@@ -107,7 +107,7 @@ func TestAdminRBACFlow(t *testing.T) {
 	}
 
 	// 4. Verify Admin can list users
-	req, _ = http.NewRequest("GET", ts.URL+"/admin/users", nil)
+	req, _ = http.NewRequest("GET", ts.URL+"/api/v1/admin/users", nil)
 	req.Header.Set("Authorization", "Bearer "+adminToken)
 	res, err = client.Do(req)
 	if err != nil {
@@ -133,7 +133,7 @@ func TestAdminRBACFlow(t *testing.T) {
 		Roles:     []string{"admin"},
 	}
 	newUserBody, _ := json.Marshal(newUserReq)
-	req, _ = http.NewRequest("POST", ts.URL+"/admin/users", bytes.NewBuffer(newUserBody))
+	req, _ = http.NewRequest("POST", ts.URL+"/api/v1/admin/users", bytes.NewBuffer(newUserBody))
 	req.Header.Set("Authorization", "Bearer "+adminToken)
 	req.Header.Set("Content-Type", "application/json")
 	res, err = client.Do(req)
@@ -161,7 +161,7 @@ func TestAdminRBACFlow(t *testing.T) {
 		Permissions: []string{"manage:users"},
 	}
 	newRoleBody, _ := json.Marshal(newRoleReq)
-	req, _ = http.NewRequest("POST", ts.URL+"/admin/roles", bytes.NewBuffer(newRoleBody))
+	req, _ = http.NewRequest("POST", ts.URL+"/api/v1/admin/roles", bytes.NewBuffer(newRoleBody))
 	req.Header.Set("Authorization", "Bearer "+adminToken)
 	req.Header.Set("Content-Type", "application/json")
 	res, err = client.Do(req)
@@ -173,7 +173,7 @@ func TestAdminRBACFlow(t *testing.T) {
 	}
 
 	// List roles and check
-	req, _ = http.NewRequest("GET", ts.URL+"/admin/roles", nil)
+	req, _ = http.NewRequest("GET", ts.URL+"/api/v1/admin/roles", nil)
 	req.Header.Set("Authorization", "Bearer "+adminToken)
 	res, err = client.Do(req)
 	if err != nil {
@@ -234,7 +234,7 @@ func TestModuleGovernanceRBAC(t *testing.T) {
 		Password: "password123",
 	}
 	regBody, _ := json.Marshal(regReq)
-	_, _ = http.Post(ts.URL+"/register", "application/json", bytes.NewBuffer(regBody))
+	_, _ = http.Post(ts.URL+"/api/v1/register", "application/json", bytes.NewBuffer(regBody))
 
 	// Get Charlie ID
 	user, err := repo.GetUserByUsername("charlie")
@@ -250,7 +250,7 @@ func TestModuleGovernanceRBAC(t *testing.T) {
 		Creator: "charlie",
 	}
 	syncBody, _ := json.Marshal(syncReq)
-	res, err := http.Post(ts.URL+"/internal/modules/sync", "application/json", bytes.NewBuffer(syncBody))
+	res, err := http.Post(ts.URL+"/api/v1/internal/modules/sync", "application/json", bytes.NewBuffer(syncBody))
 	if err != nil {
 		t.Fatalf("Failed to sync module: %v", err)
 	}
@@ -276,7 +276,7 @@ func TestModuleGovernanceRBAC(t *testing.T) {
 	}
 
 	// Verify endpoint returns owners
-	endpointRes, err := http.Get(ts.URL + "/internal/modules/test-module/roles-and-templates")
+	endpointRes, err := http.Get(ts.URL + "/api/v1/internal/modules/test-module/roles-and-templates")
 	if err != nil {
 		t.Fatalf("Failed to call roles-and-templates endpoint: %v", err)
 	}
@@ -297,7 +297,7 @@ func TestModuleGovernanceRBAC(t *testing.T) {
 		Password: "password123",
 	}
 	loginBody, _ := json.Marshal(loginReq)
-	res, err = http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(loginBody))
+	res, err = http.Post(ts.URL+"/api/v1/login", "application/json", bytes.NewBuffer(loginBody))
 	if err != nil {
 		t.Fatalf("Login failed: %v", err)
 	}

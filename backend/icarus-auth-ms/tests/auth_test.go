@@ -72,7 +72,7 @@ func TestAuthFlowModular(t *testing.T) {
 	}
 	regBody, _ := json.Marshal(regReq)
 
-	res, err := http.Post(ts.URL+"/register", "application/json", bytes.NewBuffer(regBody))
+	res, err := http.Post(ts.URL+"/api/v1/register", "application/json", bytes.NewBuffer(regBody))
 	if err != nil {
 		t.Fatalf("POST /register failed: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestAuthFlowModular(t *testing.T) {
 	}
 
 	// Test conflict/duplicate register
-	resConf, _ := http.Post(ts.URL+"/register", "application/json", bytes.NewBuffer(regBody))
+	resConf, _ := http.Post(ts.URL+"/api/v1/register", "application/json", bytes.NewBuffer(regBody))
 	if resConf.StatusCode != http.StatusConflict {
 		t.Errorf("Expected status 409 Conflict for duplicate registration, got %d", resConf.StatusCode)
 	}
@@ -110,7 +110,7 @@ func TestAuthFlowModular(t *testing.T) {
 	}
 	loginBody, _ := json.Marshal(loginReq)
 
-	res, err = http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(loginBody))
+	res, err = http.Post(ts.URL+"/api/v1/login", "application/json", bytes.NewBuffer(loginBody))
 	if err != nil {
 		t.Fatalf("POST /login failed: %v", err)
 	}
@@ -135,7 +135,7 @@ func TestAuthFlowModular(t *testing.T) {
 	// TEST CASE 3: Access Token Verification
 	// ==========================================
 	client := &http.Client{}
-	req, _ := http.NewRequest("GET", ts.URL+"/verify", nil)
+	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/verify", nil)
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
 	res, err = client.Do(req)
@@ -160,7 +160,7 @@ func TestAuthFlowModular(t *testing.T) {
 	}
 	refBody, _ := json.Marshal(refReq)
 
-	res, err = http.Post(ts.URL+"/refresh", "application/json", bytes.NewBuffer(refBody))
+	res, err = http.Post(ts.URL+"/api/v1/refresh", "application/json", bytes.NewBuffer(refBody))
 	if err != nil {
 		t.Fatalf("POST /refresh failed: %v", err)
 	}
@@ -179,7 +179,7 @@ func TestAuthFlowModular(t *testing.T) {
 	}
 
 	// Try to reuse the old refresh token (should fail since it was rotated)
-	resReuse, err := http.Post(ts.URL+"/refresh", "application/json", bytes.NewBuffer(refBody))
+	resReuse, err := http.Post(ts.URL+"/api/v1/refresh", "application/json", bytes.NewBuffer(refBody))
 	if err != nil {
 		t.Fatalf("POST /refresh failed: %v", err)
 	}
@@ -196,7 +196,7 @@ func TestAuthFlowModular(t *testing.T) {
 	}
 	logoutBody, _ := json.Marshal(logoutReq)
 
-	resLogout, err := http.Post(ts.URL+"/logout", "application/json", bytes.NewBuffer(logoutBody))
+	resLogout, err := http.Post(ts.URL+"/api/v1/logout", "application/json", bytes.NewBuffer(logoutBody))
 	if err != nil {
 		t.Fatalf("POST /logout failed: %v", err)
 	}
@@ -209,7 +209,7 @@ func TestAuthFlowModular(t *testing.T) {
 		RefreshToken: newRefreshToken,
 	}
 	refBodyRevoked, _ := json.Marshal(refReqRevoked)
-	resPostLogoutRefresh, err := http.Post(ts.URL+"/refresh", "application/json", bytes.NewBuffer(refBodyRevoked))
+	resPostLogoutRefresh, err := http.Post(ts.URL+"/api/v1/refresh", "application/json", bytes.NewBuffer(refBodyRevoked))
 	if err != nil {
 		t.Fatalf("POST /refresh failed: %v", err)
 	}
@@ -219,13 +219,13 @@ func TestAuthFlowModular(t *testing.T) {
 
 	// 4b-2. Multi-device / All-devices Logout
 	// Login twice to generate two active refresh tokens
-	resDev1, _ := http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(loginBody))
+	resDev1, _ := http.Post(ts.URL+"/api/v1/login", "application/json", bytes.NewBuffer(loginBody))
 	var loginDev1 map[string]string
 	_ = json.NewDecoder(resDev1.Body).Decode(&loginDev1)
 	tokenDev1 := loginDev1["refresh_token"]
 	accTokenDev1 := loginDev1["access_token"]
 
-	resDev2, _ := http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(loginBody))
+	resDev2, _ := http.Post(ts.URL+"/api/v1/login", "application/json", bytes.NewBuffer(loginBody))
 	var loginDev2 map[string]string
 	_ = json.NewDecoder(resDev2.Body).Decode(&loginDev2)
 	tokenDev2 := loginDev2["refresh_token"]
@@ -239,7 +239,7 @@ func TestAuthFlowModular(t *testing.T) {
 		AllDevices: true,
 	}
 	allDevBody, _ := json.Marshal(allDevReq)
-	reqAllDev, _ := http.NewRequest("POST", ts.URL+"/logout", bytes.NewBuffer(allDevBody))
+	reqAllDev, _ := http.NewRequest("POST", ts.URL+"/api/v1/logout", bytes.NewBuffer(allDevBody))
 	reqAllDev.Header.Set("Authorization", "Bearer "+accTokenDev1)
 	reqAllDev.Header.Set("Content-Type", "application/json")
 
@@ -253,13 +253,13 @@ func TestAuthFlowModular(t *testing.T) {
 
 	// Verify both tokens are now invalid
 	refDev1Body, _ := json.Marshal(handler.RefreshRequest{RefreshToken: tokenDev1})
-	resRefDev1, _ := http.Post(ts.URL+"/refresh", "application/json", bytes.NewBuffer(refDev1Body))
+	resRefDev1, _ := http.Post(ts.URL+"/api/v1/refresh", "application/json", bytes.NewBuffer(refDev1Body))
 	if resRefDev1.StatusCode != http.StatusUnauthorized {
 		t.Errorf("Expected tokenDev1 refresh to fail after all_devices logout, got %d", resRefDev1.StatusCode)
 	}
 
 	refDev2Body, _ := json.Marshal(handler.RefreshRequest{RefreshToken: tokenDev2})
-	resRefDev2, _ := http.Post(ts.URL+"/refresh", "application/json", bytes.NewBuffer(refDev2Body))
+	resRefDev2, _ := http.Post(ts.URL+"/api/v1/refresh", "application/json", bytes.NewBuffer(refDev2Body))
 	if resRefDev2.StatusCode != http.StatusUnauthorized {
 		t.Errorf("Expected tokenDev2 refresh to fail after all_devices logout, got %d", resRefDev2.StatusCode)
 	}
@@ -268,7 +268,7 @@ func TestAuthFlowModular(t *testing.T) {
 	// ==========================================
 	// TEST CASE 5: Public Keys & JWKS Endpoint
 	// ==========================================
-	res, err = http.Get(ts.URL + "/certs")
+	res, err = http.Get(ts.URL + "/api/v1/certs")
 	if err != nil {
 		t.Fatalf("GET /certs failed: %v", err)
 	}
@@ -284,7 +284,7 @@ func TestAuthFlowModular(t *testing.T) {
 	}
 
 	// Check format=pem
-	resPem, err := http.Get(ts.URL + "/certs?format=pem")
+	resPem, err := http.Get(ts.URL + "/api/v1/certs?format=pem")
 	if err != nil {
 		t.Fatalf("GET /certs?format=pem failed: %v", err)
 	}
@@ -314,7 +314,7 @@ func TestAuthFlowModular(t *testing.T) {
 	}
 	clientBody, _ := json.Marshal(clientReq)
 
-	res, err = http.Post(ts.URL+"/client/register", "application/json", bytes.NewBuffer(clientBody))
+	res, err = http.Post(ts.URL+"/api/v1/client/register", "application/json", bytes.NewBuffer(clientBody))
 	if err != nil {
 		t.Fatalf("POST /client/register failed: %v", err)
 	}
@@ -343,7 +343,7 @@ func TestAuthFlowModular(t *testing.T) {
 	}
 	clientTokBody, _ := json.Marshal(clientTokReq)
 
-	res, err = http.Post(ts.URL+"/client/token", "application/json", bytes.NewBuffer(clientTokBody))
+	res, err = http.Post(ts.URL+"/api/v1/client/token", "application/json", bytes.NewBuffer(clientTokBody))
 	if err != nil {
 		t.Fatalf("POST /client/token failed: %v", err)
 	}
@@ -360,7 +360,7 @@ func TestAuthFlowModular(t *testing.T) {
 	}
 
 	// 6e. Verify Client Access Token
-	req, _ = http.NewRequest("GET", ts.URL+"/verify", nil)
+	req, _ = http.NewRequest("GET", ts.URL+"/api/v1/verify", nil)
 	req.Header.Set("Authorization", "Bearer "+clientAccessToken)
 
 	res, err = client.Do(req)
@@ -416,7 +416,7 @@ func TestBruteForceProtection(t *testing.T) {
 		Email:    "victim@example.com",
 	}
 	regBody, _ := json.Marshal(regReq)
-	_, _ = http.Post(ts.URL+"/register", "application/json", bytes.NewBuffer(regBody))
+	_, _ = http.Post(ts.URL+"/api/v1/register", "application/json", bytes.NewBuffer(regBody))
 
 	// 1. Test Account Lockout after 5 failed password attempts
 	badLoginReq := handler.LoginRequest{
@@ -426,7 +426,7 @@ func TestBruteForceProtection(t *testing.T) {
 	badLoginBody, _ := json.Marshal(badLoginReq)
 
 	for i := 1; i <= 5; i++ {
-		res, err := http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(badLoginBody))
+		res, err := http.Post(ts.URL+"/api/v1/login", "application/json", bytes.NewBuffer(badLoginBody))
 		if err != nil {
 			t.Fatalf("Failed request %d: %v", i, err)
 		}
@@ -436,7 +436,7 @@ func TestBruteForceProtection(t *testing.T) {
 	}
 
 	// 6th attempt should be blocked by Account Lockout (429 Too Many Requests)
-	resLocked, err := http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(badLoginBody))
+	resLocked, err := http.Post(ts.URL+"/api/v1/login", "application/json", bytes.NewBuffer(badLoginBody))
 	if err != nil {
 		t.Fatalf("6th attempt request failed: %v", err)
 	}
@@ -450,7 +450,7 @@ func TestBruteForceProtection(t *testing.T) {
 		Password: "CorrectPassword123!",
 	}
 	goodLoginBody, _ := json.Marshal(goodLoginReq)
-	resGoodLocked, _ := http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(goodLoginBody))
+	resGoodLocked, _ := http.Post(ts.URL+"/api/v1/login", "application/json", bytes.NewBuffer(goodLoginBody))
 	if resGoodLocked.StatusCode != http.StatusTooManyRequests {
 		t.Errorf("Expected status 429 for locked user even with correct password, got %d", resGoodLocked.StatusCode)
 	}
@@ -463,14 +463,14 @@ func TestBruteForceProtection(t *testing.T) {
 
 	// Default IP limiter allows 10 requests per minute
 	for i := 1; i <= 10; i++ {
-		res, _ := http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(goodLoginBody))
+		res, _ := http.Post(ts.URL+"/api/v1/login", "application/json", bytes.NewBuffer(goodLoginBody))
 		if i <= 10 && res.StatusCode != http.StatusOK {
 			t.Errorf("Attempt %d: expected 200 OK before hitting IP rate limit, got %d", i, res.StatusCode)
 		}
 	}
 
 	// 11th request from same IP should be blocked by IP Rate Limiting (429)
-	resIpExceeded, _ := http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(goodLoginBody))
+	resIpExceeded, _ := http.Post(ts.URL+"/api/v1/login", "application/json", bytes.NewBuffer(goodLoginBody))
 	if resIpExceeded.StatusCode != http.StatusTooManyRequests {
 		t.Errorf("Expected 11th request from same IP to return 429 Too Many Requests, got %d", resIpExceeded.StatusCode)
 	}
@@ -516,7 +516,7 @@ func TestAdminContextualUserRoleAssignment(t *testing.T) {
 	// Login as admin
 	adminLoginReq := handler.LoginRequest{Username: "admin", Password: "admin123"}
 	adminLoginBody, _ := json.Marshal(adminLoginReq)
-	resAdminLogin, err := http.Post(ts.URL+"/login", "application/json", bytes.NewBuffer(adminLoginBody))
+	resAdminLogin, err := http.Post(ts.URL+"/api/v1/login", "application/json", bytes.NewBuffer(adminLoginBody))
 	if err != nil || resAdminLogin.StatusCode != http.StatusOK {
 		t.Fatalf("Admin login failed: %v, code %d", err, resAdminLogin.StatusCode)
 	}
@@ -543,7 +543,7 @@ func TestAdminContextualUserRoleAssignment(t *testing.T) {
 	}
 
 	assignBody, _ := json.Marshal(assignReq)
-	reqAssign, _ := http.NewRequest("POST", ts.URL+"/admin/users/"+strconv.FormatInt(daveID, 10)+"/roles", bytes.NewBuffer(assignBody))
+	reqAssign, _ := http.NewRequest("POST", ts.URL+"/api/v1/admin/users/"+strconv.FormatInt(daveID, 10)+"/roles", bytes.NewBuffer(assignBody))
 	reqAssign.Header.Set("Authorization", "Bearer "+adminToken)
 	reqAssign.Header.Set("Content-Type", "application/json")
 
@@ -573,7 +573,7 @@ func TestAdminContextualUserRoleAssignment(t *testing.T) {
 	}
 
 	// 2. Revoke role from Dave via DELETE /admin/users/{id}/roles/{roleId}?tenant_id=tenant-1&module_id=module-1
-	reqRevoke, _ := http.NewRequest("DELETE", ts.URL+"/admin/users/"+strconv.FormatInt(daveID, 10)+"/roles/module-1:editor?tenant_id=tenant-1&module_id=module-1", nil)
+	reqRevoke, _ := http.NewRequest("DELETE", ts.URL+"/api/v1/admin/users/"+strconv.FormatInt(daveID, 10)+"/roles/module-1:editor?tenant_id=tenant-1&module_id=module-1", nil)
 	reqRevoke.Header.Set("Authorization", "Bearer "+adminToken)
 
 	resRevoke, err := client.Do(reqRevoke)
