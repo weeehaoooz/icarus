@@ -91,11 +91,7 @@ func (s *HandlerServer) DelegateStepHandler(w http.ResponseWriter, r *http.Reque
 
 	// Notify delegate via SSE
 	payload := fmt.Sprintf(`{"step_id":"%s"}`, newStep.ID)
-	_ = s.Repo.CreateSSENotification(&models.SSENotification{
-		ID: uuid.New().String(), UserID: *body.DelegateToUser,
-		EventType: "inbox.new", Payload: payload,
-	})
-	s.SSEBroker.Publish(*body.DelegateToUser, "inbox.new", payload)
+	s.sendSSENotification(*body.DelegateToUser, "inbox.new", payload)
 
 	s.respondWithJSON(w, http.StatusOK, map[string]interface{}{
 		"step_id":     stepID,
@@ -187,14 +183,8 @@ func (s *HandlerServer) actionStep(w http.ResponseWriter, r *http.Request, newSt
 	// Notify new approvers (if stage advanced)
 	for _, ns := range nextSteps {
 		targets := s.resolveNotificationTargets(ns)
-		for _, uid := range targets {
-			payload := fmt.Sprintf(`{"step_id":"%s"}`, ns.ID)
-			_ = s.Repo.CreateSSENotification(&models.SSENotification{
-				ID: uuid.New().String(), UserID: uid,
-				EventType: "inbox.new", Payload: payload,
-			})
-			s.SSEBroker.Publish(uid, "inbox.new", payload)
-		}
+		payload := fmt.Sprintf(`{"step_id":"%s"}`, ns.ID)
+		s.sendSSENotificationsToUsers(targets, "inbox.new", payload)
 	}
 
 	// Notify requester of cart item update
@@ -204,11 +194,7 @@ func (s *HandlerServer) actionStep(w http.ResponseWriter, r *http.Request, newSt
 		if cart != nil {
 			payload := fmt.Sprintf(`{"cart_id":"%s","item_id":"%s","status":"%s"}`,
 				cart.ID, cartItem.ID, newStatus)
-			_ = s.Repo.CreateSSENotification(&models.SSENotification{
-				ID: uuid.New().String(), UserID: cart.RequesterID,
-				EventType: "cart.updated", Payload: payload,
-			})
-			s.SSEBroker.Publish(cart.RequesterID, "cart.updated", payload)
+			s.sendSSENotification(cart.RequesterID, "cart.updated", payload)
 		}
 	}
 

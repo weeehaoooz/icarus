@@ -33,7 +33,7 @@ func main() {
 
 	repo := repository.NewSQLRepository(dbConn)
 
-	authMsCertsURL := "http://localhost:8080/certs?format=pem"
+	authMsCertsURL := "http://localhost:8080/api/v1/certs?format=pem"
 	if v := os.Getenv("AUTH_MS_CERTS_URL"); v != "" {
 		authMsCertsURL = v
 	}

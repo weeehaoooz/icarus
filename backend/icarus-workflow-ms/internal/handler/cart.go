@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"icarus-workflow-ms/internal/models"
 	"icarus-workflow-ms/internal/securitylog"
+	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -254,15 +256,9 @@ func (s *HandlerServer) SubmitCartHandler(w http.ResponseWriter, r *http.Request
 		// Notify approvers via SSE
 		for _, step := range newSteps {
 			notifUsers := s.resolveNotificationTargets(step)
-			for _, uid := range notifUsers {
-				payload := fmt.Sprintf(`{"step_id":"%s","role":"%s","cart_id":"%s"}`,
-					step.ID, item.RoleName, cartID)
-				_ = s.Repo.CreateSSENotification(&models.SSENotification{
-					ID: uuid.New().String(), UserID: uid,
-					EventType: "inbox.new", Payload: payload,
-				})
-				s.SSEBroker.Publish(uid, "inbox.new", payload)
-			}
+			payload := fmt.Sprintf(`{"step_id":"%s","role":"%s","cart_id":"%s"}`,
+				step.ID, item.RoleName, cartID)
+			s.sendSSENotificationsToUsers(notifUsers, "inbox.new", payload)
 		}
 
 		_ = s.Repo.WriteAuditLog(&models.AuditLog{
@@ -302,13 +298,25 @@ func (s *HandlerServer) resolveNotificationTargets(step models.ExecutionNode) []
 
 // fetchRoleMembers calls admin-ms internal endpoint to get user IDs for a role.
 func (s *HandlerServer) fetchRoleMembers(roleName string) []string {
-	resp, err := http.Get(s.AdminMSURL + "/api/v1/internal/roles/" + roleName + "/members")
-	if err != nil || resp.StatusCode != http.StatusOK {
+	if roleName == "" || s.AdminMSURL == "" {
+		return nil
+	}
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get(s.AdminMSURL + "/api/v1/internal/roles/" + roleName + "/members")
+	if err != nil {
+		log.Printf("[Notification] Warning: failed to fetch role members for '%s': %v", roleName, err)
 		return nil
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("[Notification] Warning: fetch role members for '%s' returned status %d", roleName, resp.StatusCode)
+		return nil
+	}
 	var members []string
-	_ = json.NewDecoder(resp.Body).Decode(&members)
+	if err := json.NewDecoder(resp.Body).Decode(&members); err != nil {
+		log.Printf("[Notification] Warning: failed to decode role members JSON for '%s': %v", roleName, err)
+		return nil
+	}
 	return members
 }
 
@@ -341,29 +349,18 @@ func (s *HandlerServer) WithdrawCartHandler(w http.ResponseWriter, r *http.Reque
 
 	// Notify requester (cart.updated)
 	payload := fmt.Sprintf(`{"cart_id":"%s","status":"CANCELLED"}`, cartID)
-	_ = s.Repo.CreateSSENotification(&models.SSENotification{
-		ID: uuid.New().String(), UserID: claims.Subject,
-		EventType: "cart.updated", Payload: payload,
-	})
-	s.SSEBroker.Publish(claims.Subject, "cart.updated", payload)
+	s.sendSSENotification(claims.Subject, "cart.updated", payload)
 
 	// Notify approvers so their inbox count updates
-	notifiedUsers := make(map[string]bool)
+	var approverTargets []string
 	for _, step := range pendingSteps {
-		var targets []string
 		if step.AssignedToUserID != nil {
-			targets = []string{*step.AssignedToUserID}
+			approverTargets = append(approverTargets, *step.AssignedToUserID)
 		} else if step.AssignedToRole != nil {
-			targets = s.fetchRoleMembers(*step.AssignedToRole)
-		}
-		for _, uid := range targets {
-			if notifiedUsers[uid] {
-				continue
-			}
-			notifiedUsers[uid] = true
-			s.SSEBroker.Publish(uid, "inbox.new", `{"action":"withdrawn"}`)
+			approverTargets = append(approverTargets, s.fetchRoleMembers(*step.AssignedToRole)...)
 		}
 	}
+	s.sendSSENotificationsToUsers(approverTargets, "inbox.new", `{"action":"withdrawn"}`)
 
 	s.respondWithJSON(w, http.StatusOK, map[string]string{
 		"message": "Request withdrawn successfully.",
@@ -407,7 +404,6 @@ func (s *HandlerServer) BumpCartHandler(w http.ResponseWriter, r *http.Request) 
 	})
 
 	// Notify approvers via SSE with inbox.bumped
-	notifiedUsers := make(map[string]bool)
 	for _, step := range steps {
 		var targets []string
 		if step.AssignedToUserID != nil {
@@ -416,20 +412,9 @@ func (s *HandlerServer) BumpCartHandler(w http.ResponseWriter, r *http.Request) 
 			targets = s.fetchRoleMembers(*step.AssignedToRole)
 		}
 
-		for _, uid := range targets {
-			if notifiedUsers[uid] {
-				continue
-			}
-			notifiedUsers[uid] = true
-
-			payload := fmt.Sprintf(`{"step_id":"%s","role":"%s","cart_id":"%s"}`,
-				step.StepID, step.RoleName, cartID)
-			_ = s.Repo.CreateSSENotification(&models.SSENotification{
-				ID: uuid.New().String(), UserID: uid,
-				EventType: "inbox.bumped", Payload: payload,
-			})
-			s.SSEBroker.Publish(uid, "inbox.bumped", payload)
-		}
+		payload := fmt.Sprintf(`{"step_id":"%s","role":"%s","cart_id":"%s"}`,
+			step.StepID, step.RoleName, cartID)
+		s.sendSSENotificationsToUsers(targets, "inbox.bumped", payload)
 	}
 
 	s.respondWithJSON(w, http.StatusOK, map[string]string{

@@ -70,17 +70,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.sseSub?.unsubscribe();
     this.sseSub = this.workflowService.connectSSE().subscribe({
       next: (event) => {
-        if (event.type === 'inbox.new') {
-          this.refreshInboxCount();
-          this.showToast('New pending access request received in your inbox.');
-        } else if (event.type === 'inbox.bumped') {
-          this.refreshInboxCount();
-          this.showToast('Reminder: A pending access request is awaiting your approval.');
-        } else if (event.type === 'cart.updated') {
-          this.showToast('One of your access requests has been updated.');
+        try {
+          if (event.type === 'inbox.new') {
+            this.refreshInboxCount();
+            this.showToast('New pending access request received in your inbox.');
+          } else if (event.type === 'inbox.bumped') {
+            this.refreshInboxCount();
+            this.showToast('Reminder: A pending access request is awaiting your approval.');
+          } else if (event.type === 'cart.updated') {
+            this.showToast('One of your access requests has been updated.');
+          }
+        } catch (err) {
+          console.warn('[Dashboard] Error processing incoming SSE event:', err);
         }
       },
-      error: () => {}
+      error: (err) => {
+        console.warn('[Dashboard] SSE subscription stream error:', err);
+      }
     });
   }
 

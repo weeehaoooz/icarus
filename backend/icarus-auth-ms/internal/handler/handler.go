@@ -40,6 +40,7 @@ func (s *HandlerServer) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/client/register", s.ClientRegisterHandler)
 	mux.HandleFunc("POST /api/v1/client/token", s.ClientTokenHandler)
 	mux.HandleFunc("GET /api/v1/certs", s.CertsHandler)
+	mux.HandleFunc("GET /certs", s.CertsHandler)
 	mux.HandleFunc("GET /api/v1/verify", s.VerifyTokenHandler)
 	mux.HandleFunc("POST /api/v1/internal/modules/sync", s.InternalSyncModuleHandler)
 	mux.HandleFunc("DELETE /api/v1/internal/modules/sync/{id}", s.InternalDeleteModuleHandler)

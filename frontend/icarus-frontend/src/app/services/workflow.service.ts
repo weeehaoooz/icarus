@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, fromEvent, merge, EMPTY, defer, of } from 'rxjs';
+import { Observable, fromEvent, merge, EMPTY, defer, of, catchError } from 'rxjs';
 import { map, switchMap, retry, delay } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 import { environment } from '../../environments/environment';
@@ -309,7 +309,7 @@ export class WorkflowService {
   /**
    * Opens an SSE connection to the workflow service.
    * Returns an Observable<SseEvent> that emits on every server-sent event.
-   * Automatically reconnects with exponential back-off on error.
+   * Automatically reconnects on error with backoff.
    */
   connectSSE(): Observable<SseEvent> {
     return defer(() => {
@@ -319,7 +319,12 @@ export class WorkflowService {
       }
 
       const token$ = this.isTokenExpired(token)
-        ? this.authService.refresh()
+        ? this.authService.refresh().pipe(
+            catchError(err => {
+              console.warn('[SSE] Token refresh failed before connecting SSE:', err);
+              return of(null);
+            })
+          )
         : of(token);
 
       return token$.pipe(
@@ -333,17 +338,25 @@ export class WorkflowService {
           const url = `${this.baseUrl}/workflow/events?token=${encodeURIComponent(activeToken)}`;
 
           return new Observable<SseEvent>(subscriber => {
-            const es = new EventSource(url);
+            let es: EventSource | null = null;
+            try {
+              es = new EventSource(url);
+            } catch (err) {
+              console.warn('[SSE] Failed to initialize EventSource:', err);
+              subscriber.error(err);
+              return;
+            }
 
             const handleEvent = (eventType: string) => (event: Event) => {
               try {
                 const msgEvent = event as MessageEvent;
+                const payload = msgEvent.data ? JSON.parse(msgEvent.data) : {};
                 subscriber.next({
                   type: eventType,
-                  payload: JSON.parse(msgEvent.data),
+                  payload,
                 });
-              } catch {
-                // Ignore malformed events
+              } catch (err) {
+                console.warn(`[SSE] Gracefully ignored malformed event payload for ${eventType}:`, err);
               }
             };
 
@@ -352,12 +365,16 @@ export class WorkflowService {
             es.addEventListener('cart.updated', handleEvent('cart.updated'));
             es.addEventListener('step.actioned', handleEvent('step.actioned'));
 
-            es.onerror = () => {
-              // Let the retry() operator handle reconnection
+            es.onerror = (err) => {
+              console.warn('[SSE] EventSource connection error, scheduling reconnect...', err);
               subscriber.error(new Error('SSE connection lost'));
             };
 
-            return () => es.close();
+            return () => {
+              if (es) {
+                es.close();
+              }
+            };
           });
         })
       );
