@@ -22,28 +22,19 @@
   }
 }
 
-/* Identity & Groups Cards Grid */
+/* Identity & Access Cards Grid */
 .identity-header-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 24px;
 }
 
-.glass-panel {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-md);
-  padding: 24px;
-  border-radius: 12px;
-  transition: var(--transition);
-
-  &:hover {
-    border-color: var(--border-color-hover);
-    box-shadow: var(--shadow-lg);
-  }
+.identity-card-panel,
+.access-card {
+  display: block;
 }
 
-.identity-card {
+.identity-card-content {
   display: flex;
   align-items: center;
   gap: 24px;
@@ -62,6 +53,7 @@
   font-family: var(--font-heading);
   font-size: 1.8rem;
   font-weight: 700;
+  flex-shrink: 0;
 }
 
 .identity-info {
@@ -96,158 +88,20 @@
   }
 }
 
-.groups-card {
-  display: flex;
-  flex-direction: column;
-}
-
-.panel-section-label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--primary);
-  letter-spacing: 0.05em;
-  margin-bottom: 4px;
-}
-
 .panel-section-title {
   font-family: var(--font-heading);
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--text-main);
-  margin-bottom: 12px;
-}
-
-.section-desc {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin-bottom: 16px;
-}
-
-.groups-badges-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.group-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  border-radius: 20px;
-
-  &.badge-ldap {
-    background: var(--warning-glow);
-    border: 1px solid rgba(251, 191, 36, 0.2);
-    color: var(--warning);
-  }
-
-  &.badge-custom {
-    background: var(--primary-glow);
-    border: 1px solid rgba(20, 184, 166, 0.2);
-    color: var(--primary);
-  }
-
-  .type-indicator {
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    opacity: 0.8;
-    background: rgba(255, 255, 255, 0.15);
-    padding: 1px 4px;
-    border-radius: 4px;
-  }
-}
-
-/* Access Section and Tables */
-.access-section {
-  display: flex;
-  flex-direction: column;
-}
-
-.table-container {
-  overflow-x: auto;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--bg-main);
-  max-height: 380px;
-  overflow-y: auto;
-  position: relative;
-  scroll-behavior: smooth;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-  font-size: 0.85rem;
-
-  th {
-    background: var(--bg-panel);
-    color: var(--text-main);
-    font-weight: 600;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border-color);
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    box-shadow: 0 1px 0 var(--border-color);
-  }
-
-  td {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border-color);
-    color: var(--text-main);
-    vertical-align: middle;
-  }
-
-  tr:last-child td {
-    border-bottom: none;
-  }
-}
-
-.mono-badge {
-  font-family: monospace;
-  font-size: 0.8rem;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-color);
-  padding: 2px 6px;
-  border-radius: 4px;
-  color: var(--text-muted);
-}
-
-.tenant-scope-badge {
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--text-muted);
-}
-
-.status-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 12px;
-
-  &--active {
-    background: var(--secondary-glow);
-    border: 1px solid rgba(52, 211, 153, 0.2);
-    color: var(--secondary);
-  }
+  margin-bottom: 4px;
 }
 
 .mt-6 {
   margin-top: 24px;
 }
 
-.py-4 {
-  padding-top: 16px;
-  padding-bottom: 16px;
+.mb-6 {
+  margin-bottom: 24px;
 }
 
 .font-semibold {
@@ -272,27 +126,6 @@
 
 .text-center {
   text-align: center;
-}
-
-/* Spinner Loader */
-.spinner {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  border-top-color: var(--primary);
-  animation: spin 0.8s linear infinite;
-}
-
-.loader-box {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 40px;
-  color: var(--text-muted);
-  font-size: 0.9rem;
 }
 
 @keyframes spin {

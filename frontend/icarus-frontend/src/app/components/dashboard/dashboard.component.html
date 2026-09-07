@@ -1,362 +1,96 @@
-<section class="dashboard-container animate-fade-in">
-  @if (toastMessage()) {
-  <div class="toast-notification animate-fade-in" role="alert" aria-live="polite">
-    {{ toastMessage() }}
-  </div>
-  }
+<talos-main-layout class="dashboard-shell">
 
-  <aside class="sidebar" role="navigation" aria-label="Main Navigation">
-    <div class="brand-section">
+  <!-- ─── Full-Height Left Sidebar (100vh) ──────────────────── -->
+  <talos-side-nav
+    [showHeader]="true"
+    [navGroups]="activeNavGroups()"
+    [footerItems]="[]"
+    [userProfile]="currentUserProfile()"
+    [showThemeToggle]="false"
+    [isDarkMode]="themeService.isDark()"
+    (itemClick)="onNavItemClick($event.id ?? '')"
+    (themeToggle)="themeService.toggle()">
+    <!-- Brand slot in sidebar header -->
+    <div side-nav-logo class="sidenav-brand">
       <div class="brand-icon" aria-hidden="true">I</div>
       <span class="brand-name">Icarus <span>IAM</span></span>
     </div>
+  </talos-side-nav>
 
+  <!-- ─── Right Area (Remainder of Width) ───────────────────── -->
+  <div class="main-column-wrapper">
 
-    <nav class="nav-body">
+    <!-- Top Navigation spanning the remainder of the width -->
+    <talos-top-nav
+      [bordered]="true"
+      [showBrand]="false"
+      [showLogo]="false"
+      [showSidebarToggle]="false"
+      [showThemeToggle]="true"
+      [isDarkMode]="themeService.isDark()"
+      (themeToggle)="themeService.toggle()">
 
-      @if (currentSpace() === 'user') {
-      <!-- ─── My Access Section ────────────────────────────── -->
-      <div class="nav-section animate-slide-in">
-        <span class="nav-section-label">My Access</span>
-        <ul class="nav-list" role="list">
-          <li class="nav-item">
-            <a routerLink="/dashboard/my-policies" routerLinkActive="active" class="nav-link"
-              aria-label="Access Overview">
-              <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-                <path d="M2 12h20" />
-              </svg>
-              Access Overview
-            </a>
-          </li>
-          <li class="nav-item">
-            <a routerLink="/dashboard/profile-settings" routerLinkActive="active" class="nav-link"
-              aria-label="Profile & Settings">
+      <!-- Left section of top nav: Space Switcher -->
+      <div top-nav-left class="top-nav-left-content">
+        @if (isAdmin()) {
+          <div class="space-switcher" role="radiogroup" aria-label="Workspace Space Switcher">
+            <button
+              class="switcher-btn"
+              [class.active]="currentSpace() === 'user'"
+              (click)="setSpace('user')"
+              role="radio"
+              [attr.aria-checked]="currentSpace() === 'user'"
+              aria-label="User Space">
               <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
                 <circle cx="12" cy="7" r="4" />
               </svg>
-              Profile &amp; Settings
-            </a>
-          </li>
-        </ul>
-      </div>
-
-      <!-- ─── Access Governance Section ────────────────────── -->
-      <div class="nav-section animate-slide-in">
-        <span class="nav-section-label">Access Governance</span>
-        <ul class="nav-list" role="list">
-          <li class="nav-item">
-            <a routerLink="/dashboard/request-access" routerLinkActive="active" class="nav-link"
-              aria-label="Request Access">
+              <span>User Space</span>
+            </button>
+            <button
+              class="switcher-btn"
+              [class.active]="currentSpace() === 'admin'"
+              (click)="setSpace('admin')"
+              role="radio"
+              [attr.aria-checked]="currentSpace() === 'admin'"
+              aria-label="Admin Console">
               <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
-              Request Access
-            </a>
-          </li>
-          <li class="nav-item">
-            <a routerLink="/dashboard/my-requests" routerLinkActive="active" class="nav-link" aria-label="My Requests">
-              <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <rect width="18" height="18" x="3" y="3" rx="2" />
-                <path d="M9 17h6" />
-                <path d="M9 12h6" />
-                <path d="M9 7h6" />
-              </svg>
-              My Requests
-            </a>
-          </li>
-          <li class="nav-item">
-            <a routerLink="/dashboard/approval-inbox" routerLinkActive="active" class="nav-link"
-              aria-label="Approval Inbox">
-              <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <rect x="3" y="4" width="18" height="16" rx="2" />
-                <path d="m3 8 9 6 9-6" />
-              </svg>
-              Approval Inbox
-              @if (inboxCount() > 0) {
-              <span class="badge badge-warning"
-                style="margin-left: auto; background: var(--warning); color: var(--text-inverse); font-weight: 700; padding: 2px 6px; border-radius: 10px; font-size: 0.75rem;">{{
-                inboxCount() }}</span>
-              }
-            </a>
-          </li>
-          <li class="nav-item">
-            <a routerLink="/dashboard/compare-access" routerLinkActive="active" class="nav-link"
-              aria-label="Compare Access">
-              <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="9" cy="7" r="4" />
-                <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                <path d="M21 21v-2a4 4 0 0 0-3-3.85" />
-              </svg>
-              Compare Access
-            </a>
-          </li>
-        </ul>
-      </div>
-
-      <!-- ─── Modules Section ─────────────────────── -->
-      <div class="nav-section animate-slide-in">
-        <span class="nav-section-label">Modules</span>
-        <ul class="nav-list" role="list">
-          <li class="nav-item">
-            <a routerLink="/dashboard/modules" routerLinkActive="active" class="nav-link nav-link--accent"
-              aria-label="Modules">
-              <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="m18 16 4-4-4-4" />
-                <path d="m6 8-4 4 4 4" />
-                <path d="m14.5 4-5 16" />
-              </svg>
-              Modules
-            </a>
-          </li>
-        </ul>
-      </div>
-      }
-
-      @if (isAdmin() && currentSpace() === 'admin') {
-      <!-- ─── IAM Section ─────────────────────────────────── -->
-      <div class="nav-section animate-slide-in">
-        <span class="nav-section-label">IAM</span>
-        <ul class="nav-list" role="list">
-          <li class="nav-item">
-            <a routerLink="/dashboard/overview" routerLinkActive="active" class="nav-link" aria-label="Overview">
-              <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <rect width="7" height="9" x="3" y="3" rx="1" />
-                <rect width="7" height="5" x="14" y="3" rx="1" />
-                <rect width="7" height="9" x="14" y="12" rx="1" />
-                <rect width="7" height="5" x="3" y="16" rx="1" />
-              </svg>
-              Overview
-            </a>
-          </li>
-          <li class="nav-item">
-            <a routerLink="/dashboard/users" routerLinkActive="active" class="nav-link" aria-label="Users">
-              <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-              Users
-            </a>
-          </li>
-          <li class="nav-item">
-            <a routerLink="/dashboard/clients" routerLinkActive="active" class="nav-link" aria-label="Clients">
-              <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M20 16V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12" />
-                <path d="M2 20h20" />
-                <path d="M12 20v-4" />
-              </svg>
-              Clients
-            </a>
-          </li>
-          <li class="nav-item">
-            <a routerLink="/dashboard/roles" routerLinkActive="active" class="nav-link" aria-label="Access Policies">
-              <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4" />
-              </svg>
-              Access Policies
-            </a>
-          </li>
-          <li class="nav-item">
-            <a routerLink="/dashboard/workflows" routerLinkActive="active" class="nav-link"
-              aria-label="Workflow Templates">
-              <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="5" cy="12" r="2" />
-                <circle cx="19" cy="5" r="2" />
-                <circle cx="19" cy="19" r="2" />
-                <path d="M7 12h10M7 11l8-5M7 13l8 5" />
-              </svg>
-              Workflows
-            </a>
-          </li>
-          <li class="nav-item">
-            <a routerLink="/dashboard/request-management" routerLinkActive="active" class="nav-link"
-              aria-label="Request Management">
-              <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <rect x="3" y="4" width="18" height="16" rx="2" />
-                <path d="M12 2v20" />
-                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-              </svg>
-              Request Management
-            </a>
-          </li>
-        </ul>
-      </div>
-
-      <!-- ─── Apps Section ─────────────────────── -->
-      <div class="nav-section animate-slide-in">
-        <span class="nav-section-label">Apps</span>
-        <ul class="nav-list" role="list">
-          <li class="nav-item">
-            <a routerLink="/dashboard/applications" routerLinkActive="active" class="nav-link"
-              aria-label="Applications">
-              <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                <path d="M9 3v18" />
-                <path d="M15 3v18" />
-                <path d="M3 9h18" />
-                <path d="M3 15h18" />
-              </svg>
-              Applications
-            </a>
-          </li>
-        </ul>
-      </div>
-
-      <!-- ─── Modules Section ─────────────────────── -->
-      <div class="nav-section animate-slide-in">
-        <span class="nav-section-label">Modules</span>
-        <ul class="nav-list" role="list">
-          <li class="nav-item">
-            <a routerLink="/dashboard/modules" routerLinkActive="active" class="nav-link nav-link--accent"
-              aria-label="Modules">
-              <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="m18 16 4-4-4-4" />
-                <path d="m6 8-4 4 4 4" />
-                <path d="m14.5 4-5 16" />
-              </svg>
-              Modules
-            </a>
-          </li>
-        </ul>
-      </div>
-
-      <!-- ─── Platform Section (low-priority) ────────────── -->
-      <div class="nav-section nav-section--platform animate-slide-in">
-        <span class="nav-section-label">Platform</span>
-        <ul class="nav-list" role="list">
-          <li class="nav-item">
-            <a routerLink="/dashboard/tenants" routerLinkActive="active" class="nav-link" aria-label="Tenants">
-              <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-                <path d="M2 12h20" />
-              </svg>
-              Tenants
-            </a>
-          </li>
-          <li class="nav-item">
-            <button (click)="toggleSettings()" class="nav-link sub-menu-toggle"
-              [class.active-parent]="isSettingsActive()" [attr.aria-expanded]="isSettingsExpanded()"
-              aria-controls="settings-submenu">
-              <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="12" r="3" />
-                <path
-                  d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-              </svg>
-              Settings
-              <svg class="lucide-icon arrow-icon" [class.rotated]="isSettingsExpanded()" viewBox="0 0 24 24"
-                aria-hidden="true" style="margin-left: auto; width: 14px; height: 14px;">
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
+              <span>Admin Console</span>
             </button>
-            @if (isSettingsExpanded()) {
-            <ul class="sub-nav-list" id="settings-submenu" role="list">
-              <li class="sub-nav-item">
-                <a routerLink="/dashboard/settings/integrations" routerLinkActive="active" class="sub-nav-link">
-                  Integrations
-                </a>
-              </li>
-            </ul>
-            }
-          </li>
-        </ul>
-      </div>
-      }
-
-    </nav>
-
-
-  </aside>
-
-  <main class="main-content" role="main">
-    <header class="top-navbar">
-      <div class="top-navbar-left">
-        @if (isAdmin()) {
-        <div class="space-switcher" role="radiogroup" aria-label="Workspace Space Switcher">
-          <button class="switcher-btn" [class.active]="currentSpace() === 'user'" (click)="setSpace('user')"
-            role="radio" [attr.aria-checked]="currentSpace() === 'user'" aria-label="User Space">
+          </div>
+        } @else {
+          <div class="user-space-badge">
             <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
               <circle cx="12" cy="7" r="4" />
             </svg>
             <span>User Space</span>
-          </button>
-          <button class="switcher-btn" [class.active]="currentSpace() === 'admin'" (click)="setSpace('admin')"
-            role="radio" [attr.aria-checked]="currentSpace() === 'admin'" aria-label="Admin Console">
-            <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
-            <span>Admin Console</span>
-          </button>
-        </div>
-        } @else {
-        <div class="user-space-badge">
-          <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
-          <span>User Space</span>
-        </div>
+          </div>
         }
       </div>
-      <div class="top-navbar-right">
-        <button class="theme-toggle-btn" (click)="toggleTheme()"
-          [attr.aria-label]="themeService.isDark() ? 'Switch to light mode' : 'Switch to dark mode'"
-          [attr.aria-pressed]="!themeService.isDark()" title="{{ themeService.isDark() ? 'Light mode' : 'Dark mode' }}">
-          @if (themeService.isDark()) {
-          <!-- Sun icon (switch to light) -->
-          <span class="toggle-icon" [class.icon-enter]="toggleAnimState() === 'entering'"
-            [class.icon-exit]="toggleAnimState() === 'exiting'">
-            <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="4" />
-              <path d="M12 2v2" />
-              <path d="M12 20v2" />
-              <path d="m4.93 4.93 1.41 1.41" />
-              <path d="m17.66 17.66 1.41 1.41" />
-              <path d="M2 12h2" />
-              <path d="M20 12h2" />
-              <path d="m6.34 17.66-1.41 1.41" />
-              <path d="m19.07 4.93-1.41 1.41" />
-            </svg>
-          </span>
-          } @else {
-          <!-- Moon icon (switch to dark) -->
-          <span class="toggle-icon" [class.icon-enter]="toggleAnimState() === 'entering'"
-            [class.icon-exit]="toggleAnimState() === 'exiting'">
-            <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-            </svg>
-          </span>
-          }
+
+      <!-- Right section of top nav: Profile Dropdown -->
+      <div top-nav-user class="profile-dropdown-container">
+        <button
+          class="profile-trigger"
+          (click)="toggleProfileDropdown($event)"
+          [attr.aria-expanded]="isProfileDropdownOpen()"
+          aria-haspopup="menu"
+          aria-label="User menu">
+          <div class="avatar-circle">{{ username().charAt(0) }}</div>
+          <div class="user-meta">
+            <span class="user-name">{{ username() }}</span>
+            <span class="user-role">{{ isAdmin() ? 'Administrator' : 'Standard User' }}</span>
+          </div>
+          <svg class="lucide-icon chevron-icon" [class.rotated]="isProfileDropdownOpen()" viewBox="0 0 24 24" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
         </button>
 
-        <div class="nav-divider" aria-hidden="true"></div>
-
-        <!-- Profile Dropdown Widget -->
-        <div class="profile-dropdown-container">
-          <button class="profile-trigger" (click)="toggleProfileDropdown($event)"
-            [attr.aria-expanded]="isProfileDropdownOpen()" aria-haspopup="menu" aria-label="User menu">
-            <div class="avatar-circle">
-              {{ username().charAt(0) }}
-            </div>
-            <div class="user-meta">
-              <span class="user-name">{{ username() }}</span>
-              <span class="user-role">{{ isAdmin() ? 'Administrator' : 'Standard User' }}</span>
-            </div>
-            <svg class="lucide-icon chevron-icon" [class.rotated]="isProfileDropdownOpen()" viewBox="0 0 24 24"
-              aria-hidden="true">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
-
-          @if (isProfileDropdownOpen()) {
-          <ul class="profile-dropdown-menu animate-slide-in" role="menu">
+        @if (isProfileDropdownOpen()) {
+          <ul class="profile-dropdown-menu animate-fade-in" role="menu">
             <li class="dropdown-header">
               <span class="header-name">{{ username() }}</span>
               <span class="header-role">{{ isAdmin() ? 'Administrator' : 'Standard User' }}</span>
@@ -383,12 +117,16 @@
               </button>
             </li>
           </ul>
-          }
-        </div>
+        }
       </div>
-    </header>
-    <div class="content-body">
-      <router-outlet></router-outlet>
-    </div>
-  </main>
-</section>
+
+    </talos-top-nav>
+
+    <!-- Scrollable Page Content Area -->
+    <main class="page-content-scroll">
+      <router-outlet />
+    </main>
+
+  </div>
+
+</talos-main-layout>

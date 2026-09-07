@@ -155,20 +155,20 @@
         <div class="form-group">
           <label class="form-label" for="module-name">Module Name</label>
           <input id="module-name" name="name" [(ngModel)]="formData.name" required
-            [disabled]="panel === 'edit' && !isOwner(selectedModule()?.code)" placeholder="e.g. Core API Portal"
+            [disabled]="panel === 'edit' && !isOwner($safeNavigationMigration(selectedModule()?.code))" placeholder="e.g. Core API Portal"
             class="form-input" />
         </div>
 
         <div class="form-group">
           <label class="form-label" for="module-baseUrl">Base URL</label>
           <input id="module-baseUrl" name="baseUrl" [(ngModel)]="formData.baseUrl" required
-            [disabled]="panel === 'edit' && !isOwner(selectedModule()?.code)" placeholder="e.g. http://localhost:8082"
+            [disabled]="panel === 'edit' && !isOwner($safeNavigationMigration(selectedModule()?.code))" placeholder="e.g. http://localhost:8082"
             class="form-input" />
         </div>
 
         <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-top: 16px;">
           <input type="checkbox" id="module-isActive" name="isActive" [(ngModel)]="formData.isActive"
-            [disabled]="panel === 'edit' && !isOwner(selectedModule()?.code)" class="form-checkbox" />
+            [disabled]="panel === 'edit' && !isOwner($safeNavigationMigration(selectedModule()?.code))" class="form-checkbox" />
           <label class="form-label" for="module-isActive" style="margin-bottom: 0; cursor: pointer;">Module is
             Active</label>
         </div>
@@ -207,7 +207,7 @@
             Applications</h3>
           <div
             style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; background: rgba(255,255,255,0.01); border: 1px solid var(--border-color); border-radius: 0; padding: 12px;">
-            @if (availableAppsToOnboard().length > 0 && isOwner(selectedModule()?.code)) {
+            @if (availableAppsToOnboard().length > 0 && isOwner($safeNavigationMigration(selectedModule()?.code))) {
             <div style="display: flex; gap: 8px; margin-bottom: 12px;">
               <select [(ngModel)]="onboardAppCode" name="onboardAppCode" class="form-input"
                 style="flex: 1; padding: 6px 10px; font-size: 0.85rem;">
@@ -229,7 +229,7 @@
                 style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 0; border: 1px solid rgba(255,255,255,0.05);">
                 <span style="font-family: monospace; font-size: 0.85rem; color: var(--primary); font-weight: 600;">{{
                   appCode }}</span>
-                @if (isOwner(selectedModule()?.code)) {
+                @if (isOwner($safeNavigationMigration(selectedModule()?.code))) {
                 <button type="button" (click)="offboardApplication(appCode)" class="icon-btn delete"
                   title="Offboard Application" style="padding: 2px;">
                   <svg class="lucide-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px;">
@@ -327,7 +327,7 @@
                   by their <strong>action key</strong> — path and method are optional metadata for documentation.</span>
               </p>
 
-              @if (panel === 'create' || isOwner(selectedModule()?.code)) {
+              @if (panel === 'create' || isOwner($safeNavigationMigration(selectedModule()?.code))) {
               <div class="inline-form">
                 <!-- Primary fields: what this permission IS -->
                 <div class="inline-form-row">
@@ -415,7 +415,7 @@
                       }
                     </div>
                   </div>
-                  @if (panel === 'create' || isOwner(selectedModule()?.code)) {
+                  @if (panel === 'create' || isOwner($safeNavigationMigration(selectedModule()?.code))) {
                   <div class="entry-actions">
                     <button type="button" class="icon-btn" title="Edit" (click)="startEditPermission(i)">
                       <svg class="lucide-icon" viewBox="0 0 24 24">
@@ -447,7 +447,7 @@
               <p class="subpanel-hint">System roles are module-wide and assigned directly to users. Select which
                 permissions each role grants.</p>
 
-              @if (panel === 'create' || isOwner(selectedModule()?.code)) {
+              @if (panel === 'create' || isOwner($safeNavigationMigration(selectedModule()?.code))) {
               <div class="inline-form">
                 <div class="inline-form-row">
                   <div class="form-group inline-form-field flex-2">
@@ -528,7 +528,7 @@
                       }
                     </div>
                   </div>
-                  @if (panel === 'create' || isOwner(selectedModule()?.code)) {
+                  @if (panel === 'create' || isOwner($safeNavigationMigration(selectedModule()?.code))) {
                   <div class="entry-actions">
                     <button type="button" class="icon-btn" title="Edit" (click)="startEditDefaultRole(i)">
                       <svg class="lucide-icon" viewBox="0 0 24 24">
@@ -560,7 +560,7 @@
               <p class="subpanel-hint">App roles are templates used when an application team is onboarded to this
                 module, creating scoped roles per application.</p>
 
-              @if (panel === 'create' || isOwner(selectedModule()?.code)) {
+              @if (panel === 'create' || isOwner($safeNavigationMigration(selectedModule()?.code))) {
               <div class="inline-form">
                 <div class="inline-form-row">
                   <div class="form-group inline-form-field flex-2">
@@ -641,7 +641,7 @@
                       }
                     </div>
                   </div>
-                  @if (panel === 'create' || isOwner(selectedModule()?.code)) {
+                  @if (panel === 'create' || isOwner($safeNavigationMigration(selectedModule()?.code))) {
                   <div class="entry-actions">
                     <button type="button" class="icon-btn" title="Edit" (click)="startEditAppRole(i)">
                       <svg class="lucide-icon" viewBox="0 0 24 24">
@@ -682,7 +682,7 @@
               your changes.
             </p>
             <textarea id="module-manifest" name="manifestJson" [(ngModel)]="manifestJson"
-              [disabled]="panel === 'edit' && !isOwner(selectedModule()?.code)" rows="14" required
+              [disabled]="panel === 'edit' && !isOwner($safeNavigationMigration(selectedModule()?.code))" rows="14" required
               class="form-input json-textarea"
               placeholder='{ "permissions": [], "default_roles": [], "app_centric_roles": [] }'></textarea>
           </div>
@@ -751,7 +751,7 @@
 
       <div class="panel-actions" style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
         <button type="button" (click)="closePanel()" class="btn btn-secondary">Cancel</button>
-        @if (panel === 'create' || isOwner(selectedModule()?.code)) {
+        @if (panel === 'create' || isOwner($safeNavigationMigration(selectedModule()?.code))) {
         <button type="submit" [disabled]="!moduleForm.form.valid" class="btn btn-primary">
           {{ panel === 'create' ? 'Register' : 'Save Changes' }}
         </button>

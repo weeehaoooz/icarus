@@ -2,6 +2,13 @@ import { Component, signal, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 
+// Talos UI
+import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
+import { TalosPasswordInputComponent } from '@weeehaoooz/talos-ui/form/password-input';
+import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+import { TalosAlertComponent } from '@weeehaoooz/talos-ui/feedback/alert';
+import { TalosCardComponent, TalosCardBodyComponent } from '@weeehaoooz/talos-ui/layout';
+
 interface UserProfile {
   id: number;
   username: string;
@@ -13,7 +20,15 @@ interface UserProfile {
 
 @Component({
   selector: 'app-profile-settings',
-  imports: [FormsModule],
+  imports: [
+    FormsModule,
+    TalosInputDirective,
+    TalosPasswordInputComponent,
+    TalosButtonDirective,
+    TalosAlertComponent,
+    TalosCardComponent,
+    TalosCardBodyComponent
+  ],
   templateUrl: './profile-settings.component.html',
   styleUrl: './profile-settings.component.scss'
 })
@@ -22,6 +37,8 @@ export class ProfileSettingsComponent implements OnInit {
 
   readonly userProfile = signal<UserProfile | null>(null);
   readonly isLoadingProfile = signal(false);
+  readonly isUpdatingProfile = signal(false);
+  readonly isChangingPassword = signal(false);
   readonly profileError = signal<string | null>(null);
 
   // Profile Form
@@ -69,6 +86,7 @@ export class ProfileSettingsComponent implements OnInit {
   updateProfile(): void {
     this.profileSuccessMessage.set(null);
     this.profileErrorMessage.set(null);
+    this.isUpdatingProfile.set(true);
 
     this.authService.updateProfile({
       first_name: this.profileForm.firstName,
@@ -77,10 +95,12 @@ export class ProfileSettingsComponent implements OnInit {
     }).subscribe({
       next: () => {
         this.profileSuccessMessage.set('Profile updated successfully.');
+        this.isUpdatingProfile.set(false);
         this.loadUserProfile();
       },
       error: (err) => {
         this.profileErrorMessage.set(err.error?.error || 'Failed to update profile.');
+        this.isUpdatingProfile.set(false);
       }
     });
   }
@@ -94,6 +114,7 @@ export class ProfileSettingsComponent implements OnInit {
       return;
     }
 
+    this.isChangingPassword.set(true);
     this.authService.changePassword({
       old_password: this.passwordForm.oldPassword,
       new_password: this.passwordForm.newPassword
@@ -101,9 +122,11 @@ export class ProfileSettingsComponent implements OnInit {
       next: () => {
         this.passwordSuccessMessage.set('Password changed successfully.');
         this.passwordForm = { oldPassword: '', newPassword: '', confirmPassword: '' };
+        this.isChangingPassword.set(false);
       },
       error: (err) => {
         this.passwordErrorMessage.set(err.error?.error || 'Failed to change password.');
+        this.isChangingPassword.set(false);
       }
     });
   }

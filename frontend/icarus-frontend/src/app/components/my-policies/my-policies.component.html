@@ -7,296 +7,150 @@
     </div>
   </header>
 
-  @if (isLoadingProfile() || isLoadingMetadata()) {
-  <!-- Skeleton Loader Layout -->
-  <div class="identity-header-grid">
-    <div class="glass-panel identity-card">
-      <div class="skeleton skeleton-avatar"></div>
-      <div class="identity-info" style="width: 100%;">
-        <div class="skeleton skeleton-name"></div>
-        <div class="skeleton skeleton-username"></div>
-        <div class="skeleton skeleton-email"></div>
-      </div>
-    </div>
-  </div>
+  @if (profileError()) {
+    <talos-alert severity="error" [dismissible]="true" (dismiss)="profileError.set(null)" class="mb-6">
+      {{ profileError() }}
+    </talos-alert>
+  }
 
-  <div class="glass-panel access-section mt-6">
-    <div class="section-header-row">
-      <div style="width: 60%;">
-        <div class="skeleton skeleton-section-title"></div>
-        <div class="skeleton skeleton-section-desc"></div>
-      </div>
-      <div class="search-bar">
-        <div class="skeleton skeleton-search"></div>
-      </div>
-    </div>
-    <div class="table-container">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th style="width: 25%;">
-              <div class="skeleton skeleton-th"></div>
-            </th>
-            <th style="width: 20%;">
-              <div class="skeleton skeleton-th"></div>
-            </th>
-            <th style="width: 20%;">
-              <div class="skeleton skeleton-th"></div>
-            </th>
-            <th style="width: 20%;">
-              <div class="skeleton skeleton-th"></div>
-            </th>
-            <th style="width: 15%;">
-              <div class="skeleton skeleton-th"></div>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (i of [1, 2, 3]; track i) {
-          <tr>
-            <td>
-              <div class="skeleton skeleton-text" style="width: 80%;"></div>
-            </td>
-            <td>
-              <div class="skeleton skeleton-text" style="width: 60px;"></div>
-            </td>
-            <td>
-              <div class="skeleton skeleton-text" style="width: 90px;"></div>
-            </td>
-            <td>
-              <div class="skeleton skeleton-text" style="width: 90%;"></div>
-            </td>
-            <td>
-              <div class="skeleton skeleton-text" style="width: 40px;"></div>
-            </td>
-          </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="glass-panel access-section mt-6">
-    <div class="section-header-row">
-      <div style="width: 60%;">
-        <div class="skeleton skeleton-section-title"></div>
-        <div class="skeleton skeleton-section-desc"></div>
-      </div>
-      <div class="search-bar">
-        <div class="skeleton skeleton-search"></div>
-      </div>
-    </div>
-    <div class="table-container">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th style="width: 30%;">
-              <div class="skeleton skeleton-th"></div>
-            </th>
-            <th style="width: 20%;">
-              <div class="skeleton skeleton-th"></div>
-            </th>
-            <th style="width: 50%;">
-              <div class="skeleton skeleton-th"></div>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (i of [1, 2, 3, 4]; track i) {
-          <tr>
-            <td>
-              <div class="skeleton skeleton-text" style="width: 85%;"></div>
-            </td>
-            <td>
-              <div class="skeleton skeleton-text" style="width: 70px;"></div>
-            </td>
-            <td>
-              <div class="skeleton skeleton-text" style="width: 90%;"></div>
-            </td>
-          </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  </div>
-  } @else if (profileError()) {
-  <div class="alert alert-danger" role="alert">
-    {{ profileError() }}
-  </div>
-  } @else {
   <!-- User Identity Card -->
   <div class="identity-header-grid">
-    <div class="glass-panel identity-card">
-      <div class="user-avatar-badge">{{ userProfile()?.username?.substring(0, 2)?.toUpperCase() }}</div>
-      <div class="identity-info">
-        <h2 class="user-display-name">{{ userProfile()?.first_name }} {{ userProfile()?.last_name }}</h2>
-        <p class="user-username">&#64;{{ userProfile()?.username }}</p>
-        <div class="user-email-row">
-          <svg class="lucide-icon text-muted" viewBox="0 0 24 24">
-            <rect width="20" height="16" x="2" y="4" rx="2" />
-            <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-          </svg>
-          <span>{{ userProfile()?.email || 'No email provided' }}</span>
-        </div>
-      </div>
-    </div>
+    <talos-card variant="elevated" class="identity-card-panel">
+      <talos-card-body>
+        @if (isLoadingProfile()) {
+          <div class="identity-card-content">
+            <div class="skeleton skeleton-avatar"></div>
+            <div class="identity-info" style="width: 100%;">
+              <div class="skeleton skeleton-name"></div>
+              <div class="skeleton skeleton-username"></div>
+              <div class="skeleton skeleton-email"></div>
+            </div>
+          </div>
+        } @else {
+          <div class="identity-card-content">
+            <div class="user-avatar-badge">{{ userProfile()?.username?.substring(0, 2)?.toUpperCase() }}</div>
+            <div class="identity-info">
+              <h2 class="user-display-name">{{ userProfile()?.first_name }} {{ userProfile()?.last_name }}</h2>
+              <p class="user-username">&#64;{{ userProfile()?.username }}</p>
+              <div class="user-email-row">
+                <svg class="lucide-icon text-muted" viewBox="0 0 24 24">
+                  <rect width="20" height="16" x="2" y="4" rx="2" />
+                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                </svg>
+                <span>{{ userProfile()?.email || 'No email provided' }}</span>
+              </div>
+            </div>
+          </div>
+        }
+      </talos-card-body>
+    </talos-card>
   </div>
 
-  <!-- Active Roles Grid -->
-  <div class="glass-panel access-section mt-6">
-    <div class="section-header-row">
-      <div>
-        <h3 class="panel-section-title">Active Role Assignments</h3>
-        <p class="section-desc">These access roles are currently linked to your user account across core platform
-          components.</p>
-      </div>
-      <div class="search-bar">
-        <div class="search-wrapper">
-          <span class="search-icon" aria-hidden="true">
-            <svg class="lucide-icon" viewBox="0 0 24 24" style="width:15px;height:15px;">
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-          </span>
-          <input type="search" class="search-input" placeholder="Search roles..." [value]="roleSearchQuery()"
-            (input)="roleSearchQuery.set($any($event.target).value)" autocomplete="off" aria-label="Search roles" />
-          <span class="search-suffix">
+  <!-- Active Roles Grid Section -->
+  <talos-card variant="elevated" class="access-card mt-6">
+    <talos-card-body>
+      <div class="section-header-row">
+        <div>
+          <h3 class="panel-section-title">Active Role Assignments</h3>
+          <p class="section-desc">These access roles are currently linked to your user account across core platform components.</p>
+        </div>
+        <div class="search-bar">
+          <talos-form-field label="Search roles" [floating]="true" size="sm">
+            <svg talosPrefix lucideSearch [size]="16"></svg>
+            <input
+              type="text"
+              talosInput
+              size="sm"
+              placeholder="Search roles..."
+              [value]="roleSearchQuery()"
+              (input)="roleSearchQuery.set($any($event.target).value)"
+              autocomplete="off"
+            />
             @if (roleSearchQuery()) {
-            <button class="search-clear-btn" type="button" (click)="roleSearchQuery.set('')"
-              aria-label="Clear search">✕</button>
+              <button
+                type="button"
+                talosSuffix
+                talosButton
+                variant="ghost"
+                size="xs"
+                class="affix-interactive"
+                (click)="roleSearchQuery.set('')"
+                aria-label="Clear search"
+              >
+                <svg lucideX [size]="14"></svg>
+              </button>
             }
-          </span>
+          </talos-form-field>
         </div>
       </div>
-    </div>
-    <div class="table-container" (scroll)="onRolesScroll($event)">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Role ID</th>
-            <th>Module</th>
-            <th>Tenant Scope</th>
-            <th>Description</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          @if (displayedActiveRoles().length > 0) {
-          @for (role of displayedActiveRoles(); track role.id || role.name) {
-          <tr>
-            <td class="font-semibold text-accent">{{ role.name }}</td>
-            <td>
-              <span class="mono-badge">{{ role.module_id }}</span>
-            </td>
-            <td>
-              <span class="tenant-scope-badge">
-                {{ role.module_id === 'icarus-auth-ms' ? 'system-tenant' : 'global' }}
-              </span>
-            </td>
-            <td class="text-muted text-small">{{ role.description }}</td>
-            <td>
-              <span class="status-indicator status-indicator--active">Active</span>
-            </td>
-          </tr>
-          }
-          @if (hasMoreRoles()) {
-          <tr class="loading-sentinel-row">
-            <td colspan="5" class="text-center py-3">
-              <div class="sentinel-loader">
-                <span class="spinner"></span>
-                <span class="loading-text">Loading more roles...</span>
-              </div>
-            </td>
-          </tr>
-          }
-          } @else {
-          <tr>
-            <td colspan="5" class="text-center text-muted py-4">
-              @if (roleSearchQuery()) {
-              No active roles match your search query.
-              } @else {
-              No active roles are assigned to this user profile.
-              }
-            </td>
-          </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  </div>
 
-  <!-- Resolved Permissions Grid -->
-  <div class="glass-panel access-section mt-6">
-    <div class="section-header-row">
-      <div>
-        <h3 class="panel-section-title">Resolved Access Permissions</h3>
-        <p class="section-desc">These fine-grained access permissions are automatically resolved from your role
-          hierarchy.</p>
-      </div>
-      <div class="search-bar">
-        <div class="search-wrapper">
-          <span class="search-icon" aria-hidden="true">
-            <svg class="lucide-icon" viewBox="0 0 24 24" style="width:15px;height:15px;">
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-          </span>
-          <input type="search" class="search-input" placeholder="Search permissions..."
-            [value]="permissionSearchQuery()" (input)="permissionSearchQuery.set($any($event.target).value)"
-            autocomplete="off" aria-label="Search permissions" />
-          <span class="search-suffix">
+      <talos-data-grid
+        [data]="filteredActiveRoles()"
+        [columns]="roleColumns"
+        [loading]="isLoadingMetadata()"
+        [pagination]="true"
+        [pageSize]="10"
+        [pageSizeOptions]="[5, 10, 20, 50]"
+        [filterable]="true"
+        [resizable]="true"
+        [hoverable]="true"
+        [bordered]="true"
+        [emptyMessage]="roleSearchQuery() ? 'No active roles match your search query.' : 'No active roles are assigned to this user profile.'"
+      />
+    </talos-card-body>
+  </talos-card>
+
+  <!-- Resolved Permissions Grid Section -->
+  <talos-card variant="elevated" class="access-card mt-6">
+    <talos-card-body>
+      <div class="section-header-row">
+        <div>
+          <h3 class="panel-section-title">Resolved Access Permissions</h3>
+          <p class="section-desc">These fine-grained access permissions are automatically resolved from your role hierarchy.</p>
+        </div>
+        <div class="search-bar">
+          <talos-form-field label="Search permissions" [floating]="true" size="sm">
+            <svg talosPrefix lucideSearch [size]="16"></svg>
+            <input
+              type="text"
+              talosInput
+              size="sm"
+              placeholder="Search permissions..."
+              [value]="permissionSearchQuery()"
+              (input)="permissionSearchQuery.set($any($event.target).value)"
+              autocomplete="off"
+            />
             @if (permissionSearchQuery()) {
-            <button class="search-clear-btn" type="button" (click)="permissionSearchQuery.set('')"
-              aria-label="Clear search">✕</button>
+              <button
+                type="button"
+                talosSuffix
+                talosButton
+                variant="ghost"
+                size="xs"
+                class="affix-interactive"
+                (click)="permissionSearchQuery.set('')"
+                aria-label="Clear search"
+              >
+                <svg lucideX [size]="14"></svg>
+              </button>
             }
-          </span>
+          </talos-form-field>
         </div>
       </div>
-    </div>
-    <div class="table-container" (scroll)="onPermissionsScroll($event)">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Permission Action</th>
-            <th>Module</th>
-            <th>Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          @if (displayedResolvedPermissionDetails().length > 0) {
-          @for (perm of displayedResolvedPermissionDetails(); track perm.id) {
-          <tr>
-            <td class="font-mono font-semibold">{{ perm.action }}</td>
-            <td>
-              <span class="mono-badge">{{ perm.module_id }}</span>
-            </td>
-            <td class="text-muted text-small">{{ perm.description }}</td>
-          </tr>
-          }
-          @if (hasMorePermissions()) {
-          <tr class="loading-sentinel-row">
-            <td colspan="3" class="text-center py-3">
-              <div class="sentinel-loader">
-                <span class="spinner"></span>
-                <span class="loading-text">Loading more permissions...</span>
-              </div>
-            </td>
-          </tr>
-          }
-          } @else {
-          <tr>
-            <td colspan="3" class="text-center text-muted py-4">
-              @if (permissionSearchQuery()) {
-              No permissions match your search query.
-              } @else {
-              No permissions resolved. Navigate to the Request Access portal to apply for a role.
-              }
-            </td>
-          </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  </div>
-  }
+
+      <talos-data-grid
+        [data]="filteredResolvedPermissionDetails()"
+        [columns]="permissionColumns"
+        [loading]="isLoadingMetadata()"
+        [pagination]="true"
+        [pageSize]="10"
+        [pageSizeOptions]="[5, 10, 20, 50]"
+        [filterable]="true"
+        [resizable]="true"
+        [hoverable]="true"
+        [bordered]="true"
+        [emptyMessage]="permissionSearchQuery() ? 'No permissions match your search query.' : 'No permissions resolved. Navigate to the Request Access portal to apply for a role.'"
+      />
+    </talos-card-body>
+  </talos-card>
 </section>

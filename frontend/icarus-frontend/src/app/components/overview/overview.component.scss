@@ -1,19 +1,33 @@
 .overview-header {
-  margin-bottom: 32px;
-  
+  margin-bottom: 24px;
+
+  .header-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
   .overview-title {
     font-size: 2.2rem;
     font-weight: 700;
     margin-bottom: 6px;
     letter-spacing: -0.03em;
   }
-  
+
   .overview-subtitle {
     color: var(--text-muted);
     font-size: 0.95rem;
   }
 }
 
+/* ─── Alert Banner ───────────────────────────────────────────── */
+.overview-alert {
+  display: block;
+  margin-bottom: 28px;
+}
+
+/* ─── Stat Card Grid ─────────────────────────────────────────── */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -21,98 +35,96 @@
   margin-bottom: 32px;
 }
 
-.stat-card {
+/* Inner stat layout (inside talos-card-body) */
+.stat-card-inner {
   padding: 24px;
   display: flex;
   align-items: center;
   gap: 20px;
-  background: var(--bg-card);
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border-color);
-  
-  .stat-icon {
-    font-size: 2rem;
-    width: 48px;
-    height: 48px;
+  flex-shrink: 0;
+
+  &.users  { color: var(--primary); }
+  &.clients { color: var(--secondary); }
+  &.roles  { color: var(--warning); }
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+
+  .stat-value-row {
     display: flex;
     align-items: center;
-    justify-content: center;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid var(--border-color);
+    gap: 8px;
   }
-  
-  .stat-info {
-    display: flex;
-    flex-direction: column;
-    
-    .stat-value {
-      font-family: var(--font-heading);
-      font-size: 2rem;
-      font-weight: 700;
-      line-height: 1;
-      color: var(--text-main);
-    }
-    
-    .stat-label {
-      color: var(--text-muted);
-      font-size: 0.85rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-top: 4px;
-    }
+
+  .stat-value {
+    font-family: var(--font-heading);
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text-main);
+  }
+
+  .stat-label {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 4px;
+  }
+
+  .stat-sparkline {
+    margin-top: 10px;
+    display: block;
   }
 }
 
+/* ─── Info Section Grid ──────────────────────────────────────── */
 .info-section {
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 24px;
   align-items: start;
-  
+
   @media (max-width: 992px) {
     grid-template-columns: 1fr;
   }
 }
 
-.info-card {
-  padding: 24px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  
-  .card-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 20px;
-    color: var(--text-main);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 10px;
-  }
-}
-
+/* ─── System Details Table ───────────────────────────────────── */
 .system-details {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  
+  gap: 0;
+
   .detail-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 0;
+    padding: 12px 0;
     border-bottom: 1px solid var(--border-color);
     font-size: 0.9rem;
-    
-    &:last-child {
-      border-bottom: none;
-    }
-    
+
+    &:last-child { border-bottom: none; }
+
     .detail-label {
       color: var(--text-muted);
       font-weight: 500;
     }
-    
+
     .detail-value {
       color: var(--text-main);
       font-weight: 600;
@@ -121,13 +133,9 @@
   }
 }
 
+/* ─── Quick Actions ──────────────────────────────────────────── */
 .actions-container {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  
-  .btn {
-    width: 100%;
-    justify-content: flex-start;
-  }
 }

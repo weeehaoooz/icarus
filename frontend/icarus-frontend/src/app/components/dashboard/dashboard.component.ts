@@ -1,14 +1,41 @@
 import { Component, inject, computed, signal, OnInit, OnDestroy } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
+import { Router, NavigationEnd } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
+import { RouterOutlet, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
 import { WorkflowService } from '../../services/workflow.service';
 
+// Talos UI — Layout & Nav
+import { MainLayoutComponent } from '@weeehaoooz/talos-ui/layout';
+import { SideNavComponent, TopNavComponent } from '@weeehaoooz/talos-ui/nav';
+import type { SideNavGroup, SideNavUserProfile } from '@weeehaoooz/talos-ui/nav';
+
+// Talos UI — Snackbar
+import { TalosSnackbarService } from '@weeehaoooz/talos-ui/feedback/snackbar';
+
+// Lucide icons for nav items
+import {
+  LucideGlobe,
+  LucideUser,
+  LucideShield,
+  LucideInbox,
+  LucideUsers,
+  LucideUsers2,
+  LucideMonitor,
+  LucideKey,
+  LucideGitBranch,
+  LucideClipboardList,
+  LucideCode2,
+  LucideLayoutGrid,
+  LucideSettings,
+  LucideDatabase,
+} from '@lucide/angular';
+
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, MainLayoutComponent, TopNavComponent, SideNavComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
   host: {
@@ -20,14 +47,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly themeService = inject(ThemeService);
   private readonly router = inject(Router);
   private readonly workflowService = inject(WorkflowService);
-
-  /** Tracks which icon is visible: 'idle' | 'entering' | 'exiting' */
-  readonly toggleAnimState = signal<'idle' | 'entering' | 'exiting'>('idle');
+  private readonly snackbar = inject(TalosSnackbarService);
 
   readonly isSettingsExpanded = signal(false);
   readonly inboxCount = signal(0);
-  readonly toastMessage = signal<string | null>(null);
-
   readonly currentSpace = signal<'user' | 'admin'>('user');
   readonly isProfileDropdownOpen = signal(false);
 
@@ -73,12 +96,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
         try {
           if (event.type === 'inbox.new') {
             this.refreshInboxCount();
-            this.showToast('New pending access request received in your inbox.');
+            this.snackbar.info('New pending access request received in your inbox.');
           } else if (event.type === 'inbox.bumped') {
             this.refreshInboxCount();
-            this.showToast('Reminder: A pending access request is awaiting your approval.');
+            this.snackbar.warning('Reminder: A pending access request is awaiting your approval.');
           } else if (event.type === 'cart.updated') {
-            this.showToast('One of your access requests has been updated.');
+            this.snackbar.info('One of your access requests has been updated.');
           }
         } catch (err) {
           console.warn('[Dashboard] Error processing incoming SSE event:', err);
@@ -88,15 +111,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
         console.warn('[Dashboard] SSE subscription stream error:', err);
       }
     });
-  }
-
-  showToast(message: string): void {
-    this.toastMessage.set(message);
-    setTimeout(() => {
-      if (this.toastMessage() === message) {
-        this.toastMessage.set(null);
-      }
-    }, 5000);
   }
 
   readonly username = computed(() => {
@@ -111,22 +125,211 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.authService.isModuleOwner();
   });
 
-  isSettingsActive(): boolean {
-    return this.router.url.includes('/dashboard/settings');
-  }
+  readonly currentUserProfile = computed<SideNavUserProfile>(() => ({
+    name: this.username(),
+    email: this.isAdmin() ? 'Administrator' : 'Standard User'
+  }));
 
-  toggleSettings(): void {
-    this.isSettingsExpanded.update(val => !val);
-  }
+  /** Active nav item id derived from the current URL */
+  readonly activeNavItemId = computed(() => {
+    const url = this.router.url;
+    if (url.includes('/dashboard/overview')) return 'overview';
+    if (url.includes('/dashboard/users')) return 'users';
+    if (url.includes('/dashboard/clients')) return 'clients';
+    if (url.includes('/dashboard/roles')) return 'roles';
+    if (url.includes('/dashboard/workflows')) return 'workflows';
+    if (url.includes('/dashboard/request-management')) return 'request-management';
+    if (url.includes('/dashboard/applications')) return 'applications';
+    if (url.includes('/dashboard/tenants')) return 'tenants';
+    if (url.includes('/dashboard/settings')) return 'settings-integrations';
+    if (url.includes('/dashboard/modules')) return 'modules';
+    if (url.includes('/dashboard/my-policies')) return 'my-policies';
+    if (url.includes('/dashboard/request-access')) return 'request-access';
+    if (url.includes('/dashboard/my-requests')) return 'my-requests';
+    if (url.includes('/dashboard/approval-inbox')) return 'approval-inbox';
+    if (url.includes('/dashboard/compare-access')) return 'compare-access';
+    if (url.includes('/dashboard/profile-settings')) return 'profile-settings';
+    return '';
+  });
 
-  toggleTheme(): void {
-    // Play exit → switch → enter sequence
-    this.toggleAnimState.set('exiting');
-    setTimeout(() => {
-      this.themeService.toggle();
-      this.toggleAnimState.set('entering');
-      setTimeout(() => this.toggleAnimState.set('idle'), 380);
-    }, 220);
+  /** User-space nav groups */
+  readonly userNavGroups = computed<SideNavGroup[]>(() => [
+    {
+      title: 'My Access',
+      items: [
+        {
+          id: 'my-policies',
+          label: 'Access Overview',
+          icon: LucideGlobe,
+          active: this.activeNavItemId() === 'my-policies',
+        },
+        {
+          id: 'profile-settings',
+          label: 'Profile & Settings',
+          icon: LucideUser,
+          active: this.activeNavItemId() === 'profile-settings',
+        },
+      ],
+    },
+    {
+      title: 'Access Governance',
+      items: [
+        {
+          id: 'request-access',
+          label: 'Request Access',
+          icon: LucideShield,
+          active: this.activeNavItemId() === 'request-access',
+        },
+        {
+          id: 'my-requests',
+          label: 'My Requests',
+          icon: LucideClipboardList,
+          active: this.activeNavItemId() === 'my-requests',
+        },
+        {
+          id: 'approval-inbox',
+          label: 'Approval Inbox',
+          icon: LucideInbox,
+          badge: this.inboxCount() > 0 ? this.inboxCount() : undefined,
+          active: this.activeNavItemId() === 'approval-inbox',
+        },
+        {
+          id: 'compare-access',
+          label: 'Compare Access',
+          icon: LucideUsers2,
+          active: this.activeNavItemId() === 'compare-access',
+        },
+      ],
+    },
+    {
+      title: 'Modules',
+      items: [
+        {
+          id: 'modules',
+          label: 'Modules',
+          icon: LucideCode2,
+          active: this.activeNavItemId() === 'modules',
+        },
+      ],
+    },
+  ]);
+
+  /** Admin-space nav groups */
+  readonly adminNavGroups = computed<SideNavGroup[]>(() => [
+    {
+      title: 'IAM',
+      items: [
+        {
+          id: 'overview',
+          label: 'Overview',
+          icon: LucideLayoutGrid,
+          active: this.activeNavItemId() === 'overview',
+        },
+        {
+          id: 'users',
+          label: 'Users',
+          icon: LucideUsers,
+          active: this.activeNavItemId() === 'users',
+        },
+        {
+          id: 'clients',
+          label: 'Clients',
+          icon: LucideMonitor,
+          active: this.activeNavItemId() === 'clients',
+        },
+        {
+          id: 'roles',
+          label: 'Access Policies',
+          icon: LucideKey,
+          active: this.activeNavItemId() === 'roles',
+        },
+        {
+          id: 'workflows',
+          label: 'Workflows',
+          icon: LucideGitBranch,
+          active: this.activeNavItemId() === 'workflows',
+        },
+        {
+          id: 'request-management',
+          label: 'Request Management',
+          icon: LucideClipboardList,
+          active: this.activeNavItemId() === 'request-management',
+        },
+      ],
+    },
+    {
+      title: 'Apps',
+      items: [
+        {
+          id: 'applications',
+          label: 'Applications',
+          icon: LucideLayoutGrid,
+          active: this.activeNavItemId() === 'applications',
+        },
+      ],
+    },
+    {
+      title: 'Modules',
+      items: [
+        {
+          id: 'modules',
+          label: 'Modules',
+          icon: LucideCode2,
+          active: this.activeNavItemId() === 'modules',
+        },
+      ],
+    },
+    {
+      title: 'Platform',
+      collapsible: true,
+      items: [
+        {
+          id: 'tenants',
+          label: 'Tenants',
+          icon: LucideGlobe,
+          active: this.activeNavItemId() === 'tenants',
+        },
+        {
+          id: 'settings-integrations',
+          label: 'Integrations',
+          icon: LucideSettings,
+          active: this.activeNavItemId() === 'settings-integrations',
+        },
+      ],
+    },
+  ]);
+
+  /** Active nav groups based on current space */
+  readonly activeNavGroups = computed<SideNavGroup[]>(() => {
+    if (this.isAdmin() && this.currentSpace() === 'admin') {
+      return this.adminNavGroups();
+    }
+    return this.userNavGroups();
+  });
+
+  onNavItemClick(itemId: string): void {
+    const routeMap: Record<string, string> = {
+      'my-policies': '/dashboard/my-policies',
+      'profile-settings': '/dashboard/profile-settings',
+      'request-access': '/dashboard/request-access',
+      'my-requests': '/dashboard/my-requests',
+      'approval-inbox': '/dashboard/approval-inbox',
+      'compare-access': '/dashboard/compare-access',
+      'modules': '/dashboard/modules',
+      'overview': '/dashboard/overview',
+      'users': '/dashboard/users',
+      'clients': '/dashboard/clients',
+      'roles': '/dashboard/roles',
+      'workflows': '/dashboard/workflows',
+      'request-management': '/dashboard/request-management',
+      'applications': '/dashboard/applications',
+      'tenants': '/dashboard/tenants',
+      'settings-integrations': '/dashboard/settings/integrations',
+    };
+    const route = routeMap[itemId];
+    if (route) {
+      this.router.navigate([route]);
+    }
   }
 
   isAdminRoute(url: string): boolean {

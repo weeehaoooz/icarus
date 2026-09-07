@@ -1,56 +1,99 @@
-.dashboard-container {
-  display: flex;
-  min-height: 100vh;
-  background-color: var(--bg-main);
-}
+/* ──────────────────────────────────────────────────────────────
+   Dashboard Shell — Component-scoped overrides for Talos layout
+   All sidebar / nav-link CSS removed; handled by talos-side-nav
+   ────────────────────────────────────────────────────────────── */
 
-.sidebar {
-  width: 260px;
-  background: var(--bg-sidebar);
-  border-right: 1px solid var(--border-color);
-  display: flex;
-  flex-direction: column;
-  padding: 24px 16px;
-  position: fixed;
+/* ─── Talos Layout & Nav Token Overrides ─────────────────────── */
+:host {
+  display: block;
   height: 100vh;
-  left: 0;
-  top: 0;
-  z-index: 100;
-  overflow-y: auto;
+  height: 100dvh;
+  --main-padding: 0px;
+  --talos-sidebar-width: 260px;
+  --talos-sidebar-collapsed-width: 68px;
+  --talos-sidenav-active-bg: var(--primary-glow);
+  --talos-sidenav-active-color: var(--primary);
+  --talos-sidenav-active-border: var(--primary);
+  --talos-sidenav-bg: var(--bg-sidebar);
+  --talos-sidenav-border: var(--border-color);
+  --talos-top-nav-height: 64px;
 }
 
-.brand-section {
+/* Hide duplicate sidebar footer user profile card (profile is in top-nav) */
+:host ::ng-deep .talos-side-nav-host .user-profile-card {
+  display: none !important;
+}
+
+/* ─── Full-Height Sidebar Brand & Right Column Layout ────────── */
+.sidenav-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 28px;
-  padding-left: 8px;
-  flex-shrink: 0;
-
-  .brand-icon {
-    width: 28px;
-    height: 28px;
-    background: var(--primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 800;
-    color: var(--text-inverse);
-    font-family: var(--font-heading);
-    font-size: 1.1rem;
-  }
+  gap: 10px;
+  overflow: hidden;
+  white-space: nowrap;
 
   .brand-name {
     font-family: var(--font-heading);
-    font-size: 1.2rem;
+    font-size: 1.05rem;
     font-weight: 700;
     color: var(--text-main);
     letter-spacing: -0.02em;
 
     span {
       color: var(--primary);
+      font-weight: 800;
     }
   }
+}
+
+.main-column-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.page-content-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 32px 40px;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    padding: 16px;
+  }
+}
+
+/* ─── Brand Icon ─────────────────────────────────────────────── */
+.brand-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: var(--text-inverse);
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  flex-shrink: 0;
+}
+
+.top-nav-center-content {
+  display: flex;
+  align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
 }
 
 /* ─── Space Switcher (Segmented Control) ─────────────────────── */
@@ -62,7 +105,6 @@
   border-radius: 8px;
   padding: 4px;
   gap: 4px;
-  position: relative;
   flex-shrink: 0;
 
   :host-context([data-theme="light"]) & {
@@ -95,6 +137,7 @@
 
   &:hover {
     color: var(--text-main);
+
     .lucide-icon {
       opacity: 1;
     }
@@ -117,177 +160,7 @@
   }
 }
 
-.animate-slide-in {
-  animation: slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* ─── Nav Body ────────────────────────────────────────────── */
-.nav-body {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex-grow: 1;
-}
-
-/* ─── Section Groups ──────────────────────────────────────── */
-.nav-section {
-  margin-bottom: 4px;
-
-  /* Label row */
-  .nav-section-label {
-    display: block;
-    padding: 10px 12px 6px;
-    font-family: var(--font-heading);
-    font-size: 0.65rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    opacity: 0.6;
-    user-select: none;
-  }
-
-  /* Dim the whole Platform section slightly */
-  &.nav-section--platform {
-    margin-top: 4px;
-    padding-top: 4px;
-    border-top: 1px solid var(--border-color);
-
-    .nav-section-label {
-      opacity: 0.45;
-    }
-
-    .nav-link:not(.active):not(:hover),
-    .sub-menu-toggle:not(.active-parent):not(:hover) {
-      opacity: 0.65;
-    }
-  }
-}
-
-/* ─── Nav List ────────────────────────────────────────────── */
-.nav-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-
-  .nav-item {
-    display: block;
-  }
-
-  .nav-link {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 9px 12px;
-    color: var(--text-muted);
-    text-decoration: none;
-    font-family: var(--font-heading);
-    font-size: 0.875rem;
-    font-weight: 600;
-    transition: var(--transition);
-    border: 1px solid transparent;
-
-    &:hover {
-      color: var(--text-main);
-      background: rgba(255, 255, 255, 0.03);
-      opacity: 1 !important; /* override platform dimming on hover */
-    }
-
-    &.active {
-      color: var(--text-main);
-      background: var(--primary-glow);
-      border-color: rgba(20, 184, 166, 0.15);
-    }
-
-    /* Accent variant for Modules */
-    &.nav-link--accent {
-      .nav-accent-dot {
-        display: block;
-        margin-left: auto;
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: var(--primary);
-        opacity: 0.8;
-        flex-shrink: 0;
-        transition: opacity 0.2s ease, transform 0.2s ease;
-      }
-
-      &:hover .nav-accent-dot,
-      &.active .nav-accent-dot {
-        opacity: 1;
-        transform: scale(1.2);
-      }
-
-      &.active {
-        /* slightly stronger left accent for Modules */
-        border-left: 2px solid var(--primary);
-      }
-    }
-  }
-}
-
-
-
-/* ─── Main Content & Top Navbar ───────────────────────────── */
-.main-content {
-  margin-left: 260px;
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  position: relative;
-}
-
-.top-navbar {
-  height: 70px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 40px;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-sidebar);
-  backdrop-filter: blur(12px);
-  position: sticky;
-  top: 0;
-  z-index: 90;
-  flex-shrink: 0;
-
-  :host-context([data-theme="light"]) & {
-    background: rgba(255, 255, 255, 0.85);
-  }
-}
-
-.top-navbar-left {
-  display: flex;
-  align-items: center;
-}
-
-.top-navbar-right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.nav-divider {
-  width: 1px;
-  height: 24px;
-  background-color: var(--border-color);
-}
-
+/* ─── User Space Badge ────────────────────────────────────────── */
 .user-space-badge {
   display: flex;
   align-items: center;
@@ -312,51 +185,14 @@
   }
 }
 
-.theme-toggle-btn {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--border-color);
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  color: var(--text-muted);
-  transition: var(--transition);
-
-  &:hover {
-    color: var(--text-main);
-    border-color: var(--border-color-hover);
-    background: rgba(255, 255, 255, 0.05);
-  }
-
-  .toggle-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-    position: absolute;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
-  }
-
-  .lucide-icon {
-    width: 16px;
-    height: 16px;
-  }
-
-  :host-context([data-theme="light"]) & {
-    background: rgba(0, 0, 0, 0.02);
-    &:hover {
-      background: rgba(0, 0, 0, 0.04);
-    }
-  }
+/* ─── Nav Divider ─────────────────────────────────────────────── */
+.nav-divider {
+  width: 1px;
+  height: 24px;
+  background-color: var(--border-color);
 }
 
-/* ─── Profile Dropdown ────────────────────────────────────── */
+/* ─── Profile Dropdown ────────────────────────────────────────── */
 .profile-dropdown-container {
   position: relative;
 }
@@ -446,7 +282,7 @@
   border-radius: 8px;
   padding: 6px;
   box-shadow: var(--shadow-lg);
-  z-index: 100;
+  z-index: 200;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -532,95 +368,8 @@
   }
 }
 
-.content-body {
-  padding: 40px;
-  flex-grow: 1;
-}
-
-/* ─── Settings Sub-Menu ───────────────────────────────────── */
-.sub-menu-toggle {
-  background: transparent;
-  border: 1px solid transparent;
-  cursor: pointer;
+/* ─── Page Content Slot ───────────────────────────────────────── */
+.page-content {
   width: 100%;
-  text-align: left;
-  outline: none;
-
-  &.active-parent {
-    color: var(--text-main);
-    opacity: 1 !important;
-  }
+  box-sizing: border-box;
 }
-
-.arrow-icon {
-  transition: transform 0.2s ease;
-  &.rotated {
-    transform: rotate(180deg);
-  }
-}
-
-.sub-nav-list {
-  list-style: none;
-  padding-left: 28px;
-  margin-top: 2px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  animation: slideDown 0.18s ease-out;
-}
-
-.sub-nav-link {
-  display: block;
-  padding: 7px 12px;
-  color: var(--text-muted);
-  text-decoration: none;
-  font-family: var(--font-heading);
-  font-size: 0.8rem;
-  font-weight: 500;
-  transition: var(--transition);
-  border-left: 2px solid transparent;
-
-  &:hover {
-    color: var(--text-main);
-    border-left-color: var(--border-color-hover);
-    opacity: 1 !important;
-  }
-
-  &.active {
-    color: var(--primary);
-    font-weight: 600;
-    border-left-color: var(--primary);
-    opacity: 1 !important;
-  }
-}
-
-/* ─── Animations ──────────────────────────────────────────── */
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* ─── Toast Notification ──────────────────────────────────── */
-.toast-notification {
-  position: fixed;
-  top: 24px;
-  right: 24px;
-  background: var(--bg-card);
-  border: 1px solid var(--primary);
-  box-shadow: var(--shadow-lg), 0 0 12px var(--primary-glow);
-  padding: 14px 20px;
-  border-radius: 8px;
-  z-index: 1100;
-  max-width: 360px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--text-main);
-  backdrop-filter: blur(8px);
-}
-

@@ -1,3 +1,6 @@
+@use '@weeehaoooz/talos-calendar/styles/calendar.scss';
+@use '@weeehaoooz/talos-ui/styles/index';
+@use './styles/theme';
 /* Modern Sleek High-Contrast Professional Design System */
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 @import '@angular/cdk/overlay-prebuilt.css';
@@ -20,32 +23,6 @@
 }
 
 :root {
-  /* Color Palette - Neutrals & Accents (WCAG 2.2 AAA Compliant) */
-  --bg-main: #090d16;
-  --bg-sidebar: #0c101d;
-  --bg-card: #131924;
-  --bg-panel: #1b2336;
-  --border-color: #242f41;
-  --border-color-hover: #3b4d6b;
-  
-  --primary: #14b8a6; /* High-contrast teal */
-  --primary-hover: #2dd4bf;
-  --primary-glow: rgba(20, 184, 166, 0.1);
-  
-  --secondary: #34d399; /* Emerald green - status only */
-  --secondary-glow: rgba(52, 211, 153, 0.1);
-  
-  --danger: #f87171; /* High-contrast red - danger/warning only */
-  --danger-hover: #fca5a5;
-  --danger-glow: rgba(248, 113, 113, 0.1);
-
-  --warning: #fbbf24; /* Amber - status only */
-  --warning-glow: rgba(251, 191, 36, 0.1);
-  
-  --text-main: #ffffff;
-  --text-muted: #94a3b8; /* Passes AAA contrast > 7:1 against dark backgrounds */
-  --text-inverse: #090d16;
-  
   --font-family: 'Plus Jakarta Sans', sans-serif;
   --font-heading: 'Outfit', sans-serif;
   
@@ -55,33 +32,7 @@
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.5);
 }
 
-/* ===== Light Theme Overrides ===== */
 [data-theme="light"] {
-  --bg-main: #f0f4f8;
-  --bg-sidebar: #ffffff;
-  --bg-card: #ffffff;
-  --bg-panel: #e8edf5;
-  --border-color: #d1dae8;
-  --border-color-hover: #a0b2cc;
-
-  --primary: #0d9488;
-  --primary-hover: #0f766e;
-  --primary-glow: rgba(13, 148, 136, 0.1);
-
-  --secondary: #059669;
-  --secondary-glow: rgba(5, 150, 105, 0.1);
-
-  --danger: #dc2626;
-  --danger-hover: #b91c1c;
-  --danger-glow: rgba(220, 38, 38, 0.08);
-
-  --warning: #d97706;
-  --warning-glow: rgba(217, 119, 6, 0.1);
-
-  --text-main: #0f172a;
-  --text-muted: #475569;
-  --text-inverse: #ffffff;
-
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.08);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);

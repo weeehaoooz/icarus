@@ -3,9 +3,22 @@ import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 
+// Talos UI
+import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
+import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+import { TalosAlertComponent } from '@weeehaoooz/talos-ui/feedback/alert';
+import { TalosCardComponent, TalosCardBodyComponent } from '@weeehaoooz/talos-ui/layout';
+
 @Component({
   selector: 'app-login',
-  imports: [FormsModule],
+  imports: [
+    FormsModule,
+    TalosInputDirective,
+    TalosButtonDirective,
+    TalosAlertComponent,
+    TalosCardComponent,
+    TalosCardBodyComponent,
+  ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss'
 })

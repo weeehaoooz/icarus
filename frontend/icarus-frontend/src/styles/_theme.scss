@@ -1,0 +1,308 @@
+/* ==========================================================================
+   Global Theme & Color Tokens (Single Source of Truth)
+   Overrides Talos UI component & semantic design tokens to teal brand palette
+   ========================================================================== */
+
+/* ─── SCSS Color Palette Constants ─────────────────────────────────────── */
+$brand-teal-300: #5eead4;
+$brand-teal-400: #2dd4bf;
+$brand-teal-500: #14b8a6;
+$brand-teal-600: #0d9488;
+$brand-teal-700: #0f766e;
+$brand-teal-800: #115e59;
+
+$dark-canvas:    #090d16;
+$dark-sidebar:   #0c101d;
+$dark-surface:   #131924;
+$dark-subtle:    #1b2336;
+$dark-border:    #242f41;
+$dark-border-hover: #3b4d6b;
+
+$light-canvas:   #f0f4f8;
+$light-sidebar:  #ffffff;
+$light-surface:  #ffffff;
+$light-subtle:   #e8edf5;
+$light-border:   #d1dae8;
+$light-border-hover: #a0b2cc;
+
+/* ─── SCSS Mixin: Dark Theme Token Definitions ────────────────────────── */
+@mixin dark-tokens {
+  /* Brand Primary Intent */
+  --primary:                      #{$brand-teal-500};
+  --primary-hover:                #{$brand-teal-400};
+  --primary-active:               #{$brand-teal-600};
+  --primary-glow:                 rgba(20, 184, 166, 0.15);
+  --primary-color:                #{$brand-teal-500};
+  --primary-light:                rgba(20, 184, 166, 0.12);
+  --primary-light-hover:          rgba(20, 184, 166, 0.22);
+
+  /* Talos Primary Semantic Tokens */
+  --talos-primary:                #{$brand-teal-500};
+  --talos-primary-color:          #{$brand-teal-500};
+  --talos-primary-hover:          #{$brand-teal-400};
+  --talos-primary-active:         #{$brand-teal-600};
+  --talos-primary-subtle:         rgba(20, 184, 166, 0.12);
+  --talos-primary-subtle-bg:      rgba(20, 184, 166, 0.12);
+  --talos-primary-subtle-bg-hover: rgba(20, 184, 166, 0.22);
+  --talos-primary-subtle-border:  rgba(20, 184, 166, 0.3);
+  --talos-primary-border:         rgba(20, 184, 166, 0.3);
+  --talos-primary-text:           #{$brand-teal-400};
+  --talos-primary-solid-bg:       #{$brand-teal-500};
+  --talos-primary-solid-text:     #090d16;
+  --talos-primary-light:          rgba(20, 184, 166, 0.12);
+  --talos-primary-light-hover:    rgba(20, 184, 166, 0.22);
+
+  /* Talos Button Component Tokens */
+  --talos-btn-primary-bg:         #{$brand-teal-500};
+  --talos-btn-primary-hover:      #{$brand-teal-400};
+  --talos-btn-primary-active:     #{$brand-teal-600};
+  --talos-btn-primary-text:       #090d16;
+  --talos-btn-ripple-color:       rgba(255, 255, 255, 0.35);
+
+  --talos-btn-secondary-bg:       #{$dark-subtle};
+  --talos-btn-secondary-hover:    #242f41;
+  --talos-btn-secondary-active:   #2d3a50;
+  --talos-btn-secondary-text:     #ffffff;
+
+  --talos-btn-outline-bg:         transparent;
+  --talos-btn-outline-border:     #{$dark-border};
+  --talos-btn-outline-hover-bg:   #{$dark-subtle};
+  --talos-btn-outline-hover-border: #{$dark-border-hover};
+  --talos-btn-outline-text:       #cbd5e1;
+
+  --talos-btn-ghost-bg:           transparent;
+  --talos-btn-ghost-text:         #94a3b8;
+  --talos-btn-ghost-hover-bg:     rgba(20, 184, 166, 0.12);
+  --talos-btn-ghost-hover-text:   #{$brand-teal-400};
+  --talos-btn-ghost-active-bg:    rgba(20, 184, 166, 0.22);
+
+  /* Talos Form Control Tokens */
+  --talos-input-bg:               #{$dark-canvas};
+  --talos-input-border:           #{$dark-border};
+  --talos-input-border-hover:     #{$dark-border-hover};
+  --talos-input-border-focus:     #{$brand-teal-500};
+  --talos-input-color:            #ffffff;
+  --talos-input-placeholder-color: #94a3b8;
+  --talos-input-disabled-bg:      rgba(255, 255, 255, 0.02);
+  --talos-input-disabled-border:  #{$dark-border};
+  --talos-input-disabled-color:   #94a3b8;
+  --talos-input-radius:           0.375rem;
+
+  /* Focus & Focus Ring Tokens */
+  --talos-border-focus:           #{$brand-teal-500};
+  --talos-focus-ring:             0 0 0 3px rgba(20, 184, 166, 0.25);
+  --border-focus:                 #{$brand-teal-500};
+  --focus-ring:                   0 0 0 3px rgba(20, 184, 166, 0.25);
+
+  /* Input Form-Control Variable Aliases */
+  --input-bg:                     #{$dark-canvas};
+  --input-border:                 #{$dark-border};
+  --input-border-hover:           #{$dark-border-hover};
+  --input-border-focus:           #{$brand-teal-500};
+  --input-shadow-focus:           0 0 0 3px rgba(20, 184, 166, 0.25);
+  --input-color:                  #ffffff;
+  --input-placeholder-color:      #94a3b8;
+
+  /* Surfaces & Backgrounds */
+  --bg-main:                      #{$dark-canvas};
+  --bg-sidebar:                   #{$dark-sidebar};
+  --bg-card:                      #{$dark-surface};
+  --bg-panel:                     #{$dark-subtle};
+  --border-color:                 #{$dark-border};
+  --border-color-hover:           #{$dark-border-hover};
+
+  --talos-bg-canvas:              #{$dark-canvas};
+  --talos-bg-surface:             #{$dark-surface};
+  --talos-bg-subtle:              #{$dark-subtle};
+  --talos-bg-overlay:             rgba(9, 13, 22, 0.75);
+
+  --talos-border-subtle:          rgba(36, 47, 65, 0.6);
+  --talos-border-default:         #{$dark-border};
+  --talos-border-hover:           #{$dark-border-hover};
+
+  /* Typography */
+  --text-main:                    #ffffff;
+  --text-muted:                   #94a3b8;
+  --text-inverse:                 #090d16;
+
+  --talos-text-primary:           #ffffff;
+  --talos-text-secondary:         #cbd5e1;
+  --talos-text-muted:             #94a3b8;
+  --talos-text-inverse:           #090d16;
+
+  /* Semantic Intents */
+  --secondary:                    #34d399;
+  --secondary-glow:               rgba(52, 211, 153, 0.1);
+  --talos-success:                #34d399;
+  --talos-success-solid-bg:       #10b981;
+  --talos-success-solid-text:     #ffffff;
+
+  --danger:                       #f87171;
+  --danger-hover:                 #fca5a5;
+  --danger-glow:                  rgba(248, 113, 113, 0.1);
+  --talos-danger:                 #f87171;
+  --talos-danger-solid-bg:        #ef4444;
+  --talos-danger-solid-text:      #ffffff;
+
+  --warning:                      #fbbf24;
+  --warning-glow:                 rgba(251, 191, 36, 0.1);
+  --talos-warning:                #fbbf24;
+  --talos-warning-solid-bg:       #f59e0b;
+  --talos-warning-solid-text:     #ffffff;
+}
+
+/* ─── SCSS Mixin: Light Theme Token Definitions ───────────────────────── */
+@mixin light-tokens {
+  /* Brand Primary Intent */
+  --primary:                      #{$brand-teal-600};
+  --primary-hover:                #{$brand-teal-700};
+  --primary-active:               #{$brand-teal-800};
+  --primary-glow:                 rgba(13, 148, 136, 0.15);
+  --primary-color:                #{$brand-teal-600};
+  --primary-light:                rgba(13, 148, 136, 0.08);
+  --primary-light-hover:          rgba(13, 148, 136, 0.16);
+
+  /* Talos Primary Semantic Tokens */
+  --talos-primary:                #{$brand-teal-600};
+  --talos-primary-color:          #{$brand-teal-600};
+  --talos-primary-hover:          #{$brand-teal-700};
+  --talos-primary-active:         #{$brand-teal-800};
+  --talos-primary-subtle:         rgba(13, 148, 136, 0.08);
+  --talos-primary-subtle-bg:      rgba(13, 148, 136, 0.08);
+  --talos-primary-subtle-bg-hover: rgba(13, 148, 136, 0.16);
+  --talos-primary-subtle-border:  rgba(13, 148, 136, 0.25);
+  --talos-primary-border:         rgba(13, 148, 136, 0.25);
+  --talos-primary-text:           #{$brand-teal-600};
+  --talos-primary-solid-bg:       #{$brand-teal-600};
+  --talos-primary-solid-text:     #ffffff;
+  --talos-primary-light:          rgba(13, 148, 136, 0.08);
+  --talos-primary-light-hover:    rgba(13, 148, 136, 0.16);
+
+  /* Talos Button Component Tokens */
+  --talos-btn-primary-bg:         #{$brand-teal-600};
+  --talos-btn-primary-hover:      #{$brand-teal-700};
+  --talos-btn-primary-active:     #{$brand-teal-800};
+  --talos-btn-primary-text:       #ffffff;
+  --talos-btn-ripple-color:       rgba(255, 255, 255, 0.35);
+
+  --talos-btn-secondary-bg:       #{$light-subtle};
+  --talos-btn-secondary-hover:    #d1dae8;
+  --talos-btn-secondary-active:   #b8c7dc;
+  --talos-btn-secondary-text:     #0f172a;
+
+  --talos-btn-outline-bg:         transparent;
+  --talos-btn-outline-border:     #{$light-border};
+  --talos-btn-outline-hover-bg:   #{$light-subtle};
+  --talos-btn-outline-hover-border: #{$light-border-hover};
+  --talos-btn-outline-text:       #334155;
+
+  --talos-btn-ghost-bg:           transparent;
+  --talos-btn-ghost-text:         #475569;
+  --talos-btn-ghost-hover-bg:     rgba(13, 148, 136, 0.08);
+  --talos-btn-ghost-hover-text:   #{$brand-teal-700};
+  --talos-btn-ghost-active-bg:    rgba(13, 148, 136, 0.16);
+
+  /* Talos Form Control Tokens */
+  --talos-input-bg:               #{$light-surface};
+  --talos-input-border:           #{$light-border};
+  --talos-input-border-hover:     #{$light-border-hover};
+  --talos-input-border-focus:     #{$brand-teal-600};
+  --talos-input-color:            #0f172a;
+  --talos-input-placeholder-color: #94a3b8;
+  --talos-input-disabled-bg:      #{$light-subtle};
+  --talos-input-disabled-border:  #{$light-border};
+  --talos-input-disabled-color:   #94a3b8;
+  --talos-input-radius:           0.375rem;
+
+  /* Focus & Focus Ring Tokens */
+  --talos-border-focus:           #{$brand-teal-600};
+  --talos-focus-ring:             0 0 0 3px rgba(13, 148, 136, 0.2);
+  --border-focus:                 #{$brand-teal-600};
+  --focus-ring:                   0 0 0 3px rgba(13, 148, 136, 0.2);
+
+  /* Input Form-Control Variable Aliases */
+  --input-bg:                     #{$light-surface};
+  --input-border:                 #{$light-border};
+  --input-border-hover:           #{$light-border-hover};
+  --input-border-focus:           #{$brand-teal-600};
+  --input-shadow-focus:           0 0 0 3px rgba(13, 148, 136, 0.2);
+  --input-color:                  #0f172a;
+  --input-placeholder-color:      #94a3b8;
+
+  /* Surfaces & Backgrounds */
+  --bg-main:                      #{$light-canvas};
+  --bg-sidebar:                   #{$light-sidebar};
+  --bg-card:                      #{$light-surface};
+  --bg-panel:                     #{$light-subtle};
+  --border-color:                 #{$light-border};
+  --border-color-hover:           #{$light-border-hover};
+
+  --talos-bg-canvas:              #{$light-canvas};
+  --talos-bg-surface:             #{$light-surface};
+  --talos-bg-subtle:              #{$light-subtle};
+  --talos-bg-overlay:             rgba(0, 0, 0, 0.4);
+
+  --talos-border-subtle:          rgba(209, 218, 232, 0.6);
+  --talos-border-default:         #{$light-border};
+  --talos-border-hover:           #{$light-border-hover};
+
+  /* Typography */
+  --text-main:                    #0f172a;
+  --text-muted:                   #475569;
+  --text-inverse:                 #ffffff;
+
+  --talos-text-primary:           #0f172a;
+  --talos-text-secondary:         #334155;
+  --talos-text-muted:             #475569;
+  --talos-text-inverse:           #ffffff;
+
+  /* Semantic Intents */
+  --secondary:                    #059669;
+  --secondary-glow:               rgba(5, 150, 105, 0.1);
+  --talos-success:                #059669;
+  --talos-success-solid-bg:       #059669;
+  --talos-success-solid-text:     #ffffff;
+
+  --danger:                       #dc2626;
+  --danger-hover:                 #b91c1c;
+  --danger-glow:                  rgba(220, 38, 38, 0.08);
+  --talos-danger:                 #dc2626;
+  --talos-danger-solid-bg:        #dc2626;
+  --talos-danger-solid-text:      #ffffff;
+
+  --warning:                      #d97706;
+  --warning-glow:                 rgba(217, 119, 6, 0.1);
+  --talos-warning:                #d97706;
+  --talos-warning-solid-bg:       #d97706;
+  --talos-warning-solid-text:     #ffffff;
+}
+
+/* ─── Global Scope Application (High Specificity Overrides) ────────────── */
+
+/* 1. Default Root & Dark Mode Selectors */
+:root,
+:root[data-theme="dark"],
+:root.dark,
+[data-theme="dark"],
+[data-mode="dark"],
+.dark,
+.dark-theme {
+  @include dark-tokens;
+}
+
+/* 2. Light Theme Selectors */
+:root[data-theme="light"],
+:root.light,
+[data-theme="light"],
+[data-mode="light"],
+.light,
+.light-theme {
+  @include light-tokens;
+}
+
+/* 3. System Dark Mode Fallback */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not(.light) {
+    @include dark-tokens;
+  }
+}

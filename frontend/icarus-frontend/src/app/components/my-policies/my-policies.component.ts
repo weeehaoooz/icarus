@@ -1,8 +1,21 @@
-import { Component, signal, computed, inject, OnInit, effect } from '@angular/core';
+import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AuthService } from '../../services/auth.service';
 import { AdminService } from '../../services/admin.service';
+
+// Talos UI
+import { TalosDataGridComponent } from '@weeehaoooz/talos-ui/data-display/data-grid';
+import type { TalosGridColDef } from '@weeehaoooz/talos-ui/data-display/data-grid';
+import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
+import { TalosPrefixDirective, TalosSuffixDirective } from '@weeehaoooz/talos-ui/form/affix';
+import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
+import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+import { TalosAlertComponent } from '@weeehaoooz/talos-ui/feedback/alert';
+import { TalosCardComponent, TalosCardBodyComponent } from '@weeehaoooz/talos-ui/layout';
+
+// Lucide Icons
+import { LucideSearch, LucideX } from '@lucide/angular';
 
 interface UserProfile {
   id: number;
@@ -11,6 +24,17 @@ interface UserProfile {
   first_name: string;
   last_name: string;
   roles?: string[];
+}
+
+interface RoleRow {
+  id?: string;
+  module_id: string;
+  name: string;
+  tenant_scope: string;
+  description: string;
+  status: string;
+  permissions: string[];
+  nested_roles?: string[];
 }
 
 interface Role {
@@ -31,7 +55,19 @@ interface Permission {
 
 @Component({
   selector: 'app-my-policies',
-  imports: [],
+  imports: [
+    TalosDataGridComponent,
+    TalosFormFieldComponent,
+    TalosPrefixDirective,
+    TalosSuffixDirective,
+    TalosInputDirective,
+    TalosButtonDirective,
+    TalosAlertComponent,
+    TalosCardComponent,
+    TalosCardBodyComponent,
+    LucideSearch,
+    LucideX,
+  ],
   templateUrl: './my-policies.component.html',
   styleUrl: './my-policies.component.scss'
 })
@@ -51,32 +87,25 @@ export class MyPoliciesComponent implements OnInit {
 
   readonly isLoadingMetadata = signal(false);
 
-  readonly rolesLimit = signal(10);
-  readonly permissionsLimit = signal(10);
+  readonly roleColumns: TalosGridColDef<RoleRow>[] = [
+    { field: 'name', header: 'Role ID', sortType: 'string', filterMode: 'set', minWidth: '180px', width: '220px' },
+    { field: 'module_id', header: 'Module', sortType: 'string', filterMode: 'set', width: '180px' },
+    { field: 'tenant_scope', header: 'Tenant Scope', sortType: 'string', filterMode: 'set', width: '160px' },
+    { field: 'description', header: 'Description', sortType: 'string', filterMode: 'set', minWidth: '220px' },
+    {
+      field: 'status',
+      header: 'Status',
+      type: 'status',
+      width: '120px',
+      statusConfig: { variant: 'subtle', size: 'sm', shape: 'rounded', showIcon: true }
+    }
+  ];
 
-  readonly hasMoreRoles = computed(() => this.rolesLimit() < this.filteredActiveRoles().length);
-  readonly hasMorePermissions = computed(() => this.permissionsLimit() < this.filteredResolvedPermissionDetails().length);
-
-  readonly displayedActiveRoles = computed(() => {
-    return this.filteredActiveRoles().slice(0, this.rolesLimit());
-  });
-
-  readonly displayedResolvedPermissionDetails = computed(() => {
-    return this.filteredResolvedPermissionDetails().slice(0, this.permissionsLimit());
-  });
-
-  constructor() {
-    effect(() => {
-      // Reset limit when query changes
-      this.roleSearchQuery();
-      this.rolesLimit.set(10);
-    });
-    effect(() => {
-      // Reset limit when query changes
-      this.permissionSearchQuery();
-      this.permissionsLimit.set(10);
-    });
-  }
+  readonly permissionColumns: TalosGridColDef<Permission>[] = [
+    { field: 'action', header: 'Permission Action', sortType: 'string', filterMode: 'set', minWidth: '200px', width: '260px' },
+    { field: 'module_id', header: 'Module', sortType: 'string', filterMode: 'set', width: '200px' },
+    { field: 'description', header: 'Description', sortType: 'string', filterMode: 'set', minWidth: '260px' }
+  ];
 
   private readonly fallbackRoles: Role[] = [
     { name: 'admin', description: 'Administrator access profile', module_id: 'icarus-auth-ms', permissions: ['login', 'read', 'write'] },
@@ -171,18 +200,27 @@ export class MyPoliciesComponent implements OnInit {
     return allPerms.filter(p => actions.includes(p.module_id + ':' + p.action) || actions.includes(p.action));
   });
 
-  readonly filteredActiveRoles = computed(() => {
+  readonly activeRoleRows = computed<RoleRow[]>(() => {
+    return this.myActiveRoles().map(role => ({
+      ...role,
+      tenant_scope: role.module_id === 'icarus-auth-ms' ? 'system-tenant' : 'global',
+      status: 'Active'
+    }));
+  });
+
+  readonly filteredActiveRoles = computed<RoleRow[]>(() => {
     const query = this.roleSearchQuery().toLowerCase().trim();
-    const list = this.myActiveRoles();
+    const list = this.activeRoleRows();
     if (!query) return list;
     return list.filter(r =>
       r.name.toLowerCase().includes(query) ||
       (r.module_id && r.module_id.toLowerCase().includes(query)) ||
+      (r.tenant_scope && r.tenant_scope.toLowerCase().includes(query)) ||
       (r.description && r.description.toLowerCase().includes(query))
     );
   });
 
-  readonly filteredResolvedPermissionDetails = computed(() => {
+  readonly filteredResolvedPermissionDetails = computed<Permission[]>(() => {
     const query = this.permissionSearchQuery().toLowerCase().trim();
     const list = this.myResolvedPermissionDetails();
     if (!query) return list;
@@ -242,31 +280,5 @@ export class MyPoliciesComponent implements OnInit {
         this.isLoadingMetadata.set(false);
       }
     });
-  }
-
-  onRolesScroll(event: Event): void {
-    if (!this.hasMoreRoles()) return;
-    const element = event.target as HTMLElement;
-    const threshold = 30; // pixels from the bottom
-    if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
-      this.loadMoreRoles();
-    }
-  }
-
-  onPermissionsScroll(event: Event): void {
-    if (!this.hasMorePermissions()) return;
-    const element = event.target as HTMLElement;
-    const threshold = 30; // pixels from the bottom
-    if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
-      this.loadMorePermissions();
-    }
-  }
-
-  loadMoreRoles(): void {
-    this.rolesLimit.update(limit => Math.min(limit + 10, this.filteredActiveRoles().length));
-  }
-
-  loadMorePermissions(): void {
-    this.permissionsLimit.update(limit => Math.min(limit + 10, this.filteredResolvedPermissionDetails().length));
   }
 }

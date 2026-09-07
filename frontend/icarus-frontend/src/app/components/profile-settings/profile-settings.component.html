@@ -12,133 +12,153 @@
       <span class="spinner"></span> Loading profile settings...
     </div>
   } @else if (profileError()) {
-    <div class="alert alert-danger" role="alert">
+    <talos-alert severity="error" [dismissible]="true" (dismiss)="profileError.set(null)" class="mb-6">
       {{ profileError() }}
-    </div>
+    </talos-alert>
   } @else {
     <div class="profile-settings-layout">
       <!-- Personal Profile Form -->
-      <div class="glass-panel">
-        <h3 class="panel-section-title">Personal Identity Details</h3>
-        <p class="section-desc">Manage your core identity parameters stored in the baseline repository.</p>
+      <talos-card variant="elevated">
+        <talos-card-body>
+          <h3 class="panel-section-title">Personal Identity Details</h3>
+          <p class="section-desc">Manage your core identity parameters stored in the baseline repository.</p>
 
-        @if (profileSuccessMessage()) {
-          <div class="alert alert-success animate-fade-in">
-            {{ profileSuccessMessage() }}
-          </div>
-        }
-        @if (profileErrorMessage()) {
-          <div class="alert alert-danger animate-fade-in">
-            {{ profileErrorMessage() }}
-          </div>
-        }
+          @if (profileSuccessMessage()) {
+            <talos-alert severity="success" [dismissible]="true" (dismiss)="profileSuccessMessage.set(null)" class="mb-4">
+              {{ profileSuccessMessage() }}
+            </talos-alert>
+          }
+          @if (profileErrorMessage()) {
+            <talos-alert severity="error" [dismissible]="true" (dismiss)="profileErrorMessage.set(null)" class="mb-4">
+              {{ profileErrorMessage() }}
+            </talos-alert>
+          }
 
-        <form (ngSubmit)="updateProfile()" #profileEditForm="ngForm" class="form-grid mt-4">
-          <div class="form-group">
-            <label for="pf-firstname" class="form-label">First Name</label>
-            <input 
-              type="text" 
-              id="pf-firstname" 
-              name="firstName" 
-              [(ngModel)]="profileForm.firstName" 
-              class="form-input" 
-              required
-            />
-          </div>
+          <form (ngSubmit)="updateProfile()" #profileEditForm="ngForm" class="form-grid mt-4">
+            <div class="form-group">
+              <label for="pf-firstname" class="form-label">First Name</label>
+              <input 
+                talosInput
+                type="text" 
+                id="pf-firstname" 
+                name="firstName" 
+                [(ngModel)]="profileForm.firstName" 
+                placeholder="Enter first name"
+                required
+              />
+            </div>
 
-          <div class="form-group">
-            <label for="pf-lastname" class="form-label">Last Name</label>
-            <input 
-              type="text" 
-              id="pf-lastname" 
-              name="lastName" 
-              [(ngModel)]="profileForm.lastName" 
-              class="form-input" 
-              required
-            />
-          </div>
+            <div class="form-group">
+              <label for="pf-lastname" class="form-label">Last Name</label>
+              <input 
+                talosInput
+                type="text" 
+                id="pf-lastname" 
+                name="lastName" 
+                [(ngModel)]="profileForm.lastName" 
+                placeholder="Enter last name"
+                required
+              />
+            </div>
 
-          <div class="form-group">
-            <label for="pf-email" class="form-label">Email Address</label>
-            <input 
-              type="email" 
-              id="pf-email" 
-              name="email" 
-              [(ngModel)]="profileForm.email" 
-              class="form-input" 
-              required
-            />
-          </div>
+            <div class="form-group">
+              <label for="pf-email" class="form-label">Email Address</label>
+              <input 
+                talosInput
+                type="email" 
+                id="pf-email" 
+                name="email" 
+                [(ngModel)]="profileForm.email" 
+                placeholder="user@example.com"
+                required
+              />
+            </div>
 
-          <button type="submit" class="btn btn-primary mt-4" [disabled]="!profileEditForm.form.valid">
-            Save Personal Details
-          </button>
-        </form>
-      </div>
+            <button 
+              talosButton 
+              variant="primary" 
+              type="submit" 
+              [loading]="isUpdatingProfile()"
+              [disabled]="!profileEditForm.form.valid || isUpdatingProfile()"
+              class="mt-4"
+            >
+              @if (!isUpdatingProfile()) { Save Personal Details }
+            </button>
+          </form>
+        </talos-card-body>
+      </talos-card>
 
       <!-- Password Settings Form -->
-      <div class="glass-panel">
-        <h3 class="panel-section-title">Update Identity Password</h3>
-        <p class="section-desc">Change the credentials used to verify your identity on system login.</p>
+      <talos-card variant="elevated">
+        <talos-card-body>
+          <h3 class="panel-section-title">Update Identity Password</h3>
+          <p class="section-desc">Change the credentials used to verify your identity on system login.</p>
 
-        @if (passwordSuccessMessage()) {
-          <div class="alert alert-success animate-fade-in">
-            {{ passwordSuccessMessage() }}
-          </div>
-        }
-        @if (passwordErrorMessage()) {
-          <div class="alert alert-danger animate-fade-in">
-            {{ passwordErrorMessage() }}
-          </div>
-        }
+          @if (passwordSuccessMessage()) {
+            <talos-alert severity="success" [dismissible]="true" (dismiss)="passwordSuccessMessage.set(null)" class="mb-4">
+              {{ passwordSuccessMessage() }}
+            </talos-alert>
+          }
+          @if (passwordErrorMessage()) {
+            <talos-alert severity="error" [dismissible]="true" (dismiss)="passwordErrorMessage.set(null)" class="mb-4">
+              {{ passwordErrorMessage() }}
+            </talos-alert>
+          }
 
-        <form (ngSubmit)="changePassword()" #passForm="ngForm" class="form-grid mt-4">
-          <div class="form-group">
-            <label for="pw-old" class="form-label">Current Password</label>
-            <input 
-              type="password" 
-              id="pw-old" 
-              name="oldPassword" 
-              [(ngModel)]="passwordForm.oldPassword" 
-              class="form-input" 
-              required
-            />
-          </div>
+          <form (ngSubmit)="changePassword()" #passForm="ngForm" class="form-grid mt-4">
+            <div class="form-group">
+              <label for="pw-old" class="form-label">Current Password</label>
+              <talos-password-input
+                id="pw-old"
+                name="oldPassword"
+                [(ngModel)]="passwordForm.oldPassword"
+                placeholder="Enter current password"
+                [allowToggleMask]="true"
+                autocomplete="current-password"
+                required
+              />
+            </div>
 
-          <div class="form-group">
-            <label for="pw-new" class="form-label">New Secure Password</label>
-            <input 
-              type="password" 
-              id="pw-new" 
-              name="newPassword" 
-              [(ngModel)]="passwordForm.newPassword" 
-              class="form-input" 
-              required
-              minlength="6"
-            />
-          </div>
+            <div class="form-group">
+              <label for="pw-new" class="form-label">New Secure Password</label>
+              <talos-password-input
+                id="pw-new"
+                name="newPassword"
+                [(ngModel)]="passwordForm.newPassword"
+                placeholder="Enter new password (min. 6 chars)"
+                [allowToggleMask]="true"
+                [showStrengthMeter]="true"
+                autocomplete="new-password"
+                required
+              />
+            </div>
 
-          <div class="form-group">
-            <label for="pw-confirm" class="form-label">Confirm New Password</label>
-            <input 
-              type="password" 
-              id="pw-confirm" 
-              name="confirmPassword" 
-              [(ngModel)]="passwordForm.confirmPassword" 
-              class="form-input" 
-              required
-            />
-          </div>
+            <div class="form-group">
+              <label for="pw-confirm" class="form-label">Confirm New Password</label>
+              <talos-password-input
+                id="pw-confirm"
+                name="confirmPassword"
+                [(ngModel)]="passwordForm.confirmPassword"
+                placeholder="Confirm new password"
+                [allowToggleMask]="true"
+                autocomplete="new-password"
+                required
+              />
+            </div>
 
-          <button 
-            type="submit" 
-            class="btn btn-secondary mt-4" 
-            [disabled]="!passForm.form.valid || passwordForm.newPassword !== passwordForm.confirmPassword"
-          >
-            Change Password
-          </button>
-        </form>
-      </div>
+            <button 
+              talosButton 
+              variant="secondary" 
+              type="submit" 
+              [loading]="isChangingPassword()"
+              [disabled]="!passForm.form.valid || !passwordForm.newPassword || passwordForm.newPassword.length < 6 || passwordForm.newPassword !== passwordForm.confirmPassword || isChangingPassword()"
+              class="mt-4"
+            >
+              @if (!isChangingPassword()) { Change Password }
+            </button>
+          </form>
+        </talos-card-body>
+      </talos-card>
     </div>
   }
 </section>
