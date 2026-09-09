@@ -1,15 +1,42 @@
 import '@angular/compiler';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { RequestDetailComponent } from './request-detail.component';
-import { WorkflowService, AuditLog } from '../../services/workflow.service';
+import { WorkflowService, AuditLog, AccessCart } from '../../services/workflow.service';
 import { of, throwError } from 'rxjs';
 
 describe('RequestDetailComponent', () => {
-  let component: RequestDetailComponent;
-  let mockWorkflowService: { getAuditTrail: any };
+  let mockWorkflowService: { getAuditTrail: any; getCart: any; bumpCart: any; withdrawCart: any };
   let mockRoute: any;
   let mockRouter: any;
   let mockLocation: any;
+
+  const mockCart: AccessCart = {
+    id: 'cart-123',
+    requester_id: 'alice@example.com',
+    status: 'IN_PROGRESS',
+    justification: 'Need access for production debugging',
+    created_at: '2026-09-09T08:00:00Z',
+    submitted_at: '2026-09-09T09:00:00Z',
+    items: [
+      {
+        id: 'item-1',
+        cart_id: 'cart-123',
+        role_id: 'auth-ms:Admin',
+        role_name: 'Admin',
+        status: 'PENDING',
+        execution_id: 'exec-456',
+        created_at: '2026-09-09T08:00:00Z'
+      }
+    ],
+    pending_steps: [
+      {
+        step_id: 'step-001',
+        role_name: 'Admin',
+        cart_id: 'cart-123',
+        assigned_to_user_id: 'bob@example.com'
+      }
+    ]
+  };
 
   const mockEvents: AuditLog[] = [
     {
@@ -36,17 +63,24 @@ describe('RequestDetailComponent', () => {
 
   beforeEach(() => {
     mockWorkflowService = {
-      getAuditTrail: (id: string) => of({ events: mockEvents })
+      getAuditTrail: (id: string) => of({ events: mockEvents }),
+      getCart: (id: string) => of(mockCart),
+      bumpCart: (id: string) => of({ message: 'Approvers notified' }),
+      withdrawCart: (id: string) => of({ message: 'Request withdrawn' })
     };
     mockRoute = {
       snapshot: {
         paramMap: {
-          get: (key: string) => (key === 'instanceId' ? 'inst-999' : null)
+          get: (key: string) => (key === 'instanceId' ? 'cart-123' : null)
+        },
+        queryParamMap: {
+          get: (key: string) => null
         }
       }
     };
     mockRouter = {
-      navigate: () => {}
+      navigate: () => {},
+      navigateByUrl: () => {}
     };
     mockLocation = {
       back: () => {}
@@ -54,7 +88,6 @@ describe('RequestDetailComponent', () => {
   });
 
   it('should map actions to semantic statuses correctly', () => {
-    // Instantiate component and test status mapping
     const instance = Object.create(RequestDetailComponent.prototype) as RequestDetailComponent;
 
     expect(instance.mapActionToStatus('APPROVED')).toBe('completed');
@@ -65,6 +98,20 @@ describe('RequestDetailComponent', () => {
     expect(instance.mapActionToStatus('STARTED')).toBe('in-progress');
     expect(instance.mapActionToStatus('SUBMITTED')).toBe('primary');
     expect(instance.mapActionToStatus('UNKNOWN')).toBe('neutral');
+  });
+
+  it('should map cart status to status tag variants correctly', () => {
+    const instance = Object.create(RequestDetailComponent.prototype) as RequestDetailComponent;
+
+    expect(instance.mapStatus('APPROVED')).toBe('success');
+    expect(instance.mapStatus('COMPLETED')).toBe('success');
+    expect(instance.mapStatus('REJECTED')).toBe('danger');
+    expect(instance.mapStatus('CANCELLED')).toBe('danger');
+    expect(instance.mapStatus('IN_PROGRESS')).toBe('warning');
+    expect(instance.mapStatus('SUBMITTED')).toBe('warning');
+    expect(instance.mapStatus('DRAFT')).toBe('info');
+    expect(instance.mapStatus('ARCHIVED')).toBe('info');
+    expect(instance.mapStatus(undefined)).toBe('neutral');
   });
 
   it('should navigate back correctly in goBack() based on query parameters or history', () => {
@@ -109,5 +156,3 @@ describe('RequestDetailComponent', () => {
     expect(navigatedTo).toEqual(['/dashboard/my-requests']);
   });
 });
-
-

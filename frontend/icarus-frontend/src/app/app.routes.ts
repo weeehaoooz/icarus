@@ -25,6 +25,7 @@ export const routes: Routes = [
       { path: 'compare-access', loadComponent: () => import('./components/compare-access/compare-access.component').then(m => m.CompareAccessComponent) },
       { path: 'approval-inbox', loadComponent: () => import('./components/approval-inbox/approval-inbox.component').then(m => m.ApprovalInboxComponent) },
       { path: 'request-detail/:instanceId', loadComponent: () => import('./components/request-detail/request-detail.component').then(m => m.RequestDetailComponent) },
+      { path: 'requests/:instanceId', loadComponent: () => import('./components/request-detail/request-detail.component').then(m => m.RequestDetailComponent) },
       { path: 'request-management', loadComponent: () => import('./components/request-management/request-management.component').then(m => m.RequestManagementComponent), canActivate: [adminGuard] },
       { path: 'workflows', loadComponent: () => import('./components/workflow-templates/workflow-templates.component').then(m => m.WorkflowTemplatesComponent), canActivate: [adminGuard] },
       { path: 'workflows/:id', loadComponent: () => import('./components/workflow-details/workflow-details.component').then(m => m.WorkflowDetailsComponent), canActivate: [adminGuard] },

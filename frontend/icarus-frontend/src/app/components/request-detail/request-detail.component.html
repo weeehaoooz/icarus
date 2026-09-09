@@ -1,66 +1,96 @@
 <section class="request-detail animate-fade-in">
+  <!-- Clean Page Header -->
   <header class="page-header">
     <div class="header-nav">
       <button
-        talosButton
-        variant="secondary"
-        size="sm"
-        class="btn-back"
+        type="button"
+        class="btn-back-link"
         (click)="goBack()"
-        aria-label="Return to the request"
+        aria-label="Back to requests"
       >
         <svg lucideArrowLeft [size]="15" aria-hidden="true"></svg>
-        <span>Back to Request</span>
+        <span>Back to Requests</span>
       </button>
-
-      @if (cartId()) {
-        <span class="nav-separator" aria-hidden="true">/</span>
-        <span class="nav-context">Request: <code>{{ cartId() }}</code></span>
-      }
     </div>
 
-    <div class="header-main">
-      <div class="header-title-row">
-        <div class="title-with-icon">
-          <div class="header-icon-box" aria-hidden="true">
-            <svg lucideShieldCheck [size]="24"></svg>
-          </div>
+    @if (!isLoading() && (cart() || events().length > 0)) {
+      <div class="header-main">
+        <div class="header-title-row">
           <div>
-            <h1>Request Audit Trail</h1>
+            <div class="title-badge-group">
+              <h1>Request <code>{{ (cart()?.id || instanceId()).slice(0, 8) }}…</code></h1>
+              <button
+                type="button"
+                class="btn-copy-id"
+                (click)="copyId(cart()?.id || instanceId())"
+                [attr.aria-label]="copiedId() ? 'Copied' : 'Copy request ID'"
+                title="Copy full Request ID"
+              >
+                @if (copiedId()) {
+                  <svg lucideCheck [size]="13" class="text-success" aria-hidden="true"></svg>
+                  <span>Copied</span>
+                } @else {
+                  <svg lucideCopy [size]="13" aria-hidden="true"></svg>
+                  <span>Copy ID</span>
+                }
+              </button>
+              @if (cart()) {
+                <talos-status-tag [status]="mapStatus(cart()?.status)" size="sm">
+                  {{ cart()?.status }}
+                </talos-status-tag>
+              }
+            </div>
             <p class="subtitle">
-              Detailed chronological execution log & compliance trail for instance
-              <code class="instance-code">{{ instanceId() }}</code>
+              @if (cart()?.submitted_at) {
+                Submitted {{ cart()?.submitted_at | date:'dd MMM yyyy, HH:mm' }}
+                @if (cart()?.requester_id) {
+                  by <strong class="text-contrast">{{ cart()!.requester_id }}</strong>
+                }
+              } @else if (cart()?.created_at) {
+                Created {{ cart()?.created_at | date:'dd MMM yyyy, HH:mm' }}
+              } @else {
+                Workflow instance <code>{{ instanceId() }}</code>
+              }
             </p>
           </div>
-        </div>
 
-        <div class="header-actions">
-          <talos-status-tag status="NEW" variant="subtle" size="sm">
-            <svg lucideActivity [size]="12" style="margin-right: 4px;" aria-hidden="true"></svg>
-            {{ events().length }} {{ events().length === 1 ? 'Event' : 'Events' }}
-          </talos-status-tag>
-
-          <button
-            talosButton
-            variant="outline"
-            size="sm"
-            (click)="loadAuditTrail(instanceId())"
-            [disabled]="isLoading()"
-            aria-label="Refresh audit trail"
-          >
-            <svg lucideRotateCcw [size]="14" [class.spin]="isLoading()" aria-hidden="true"></svg>
-            <span>Refresh</span>
-          </button>
+          <!-- Header Utility Actions -->
+          <div class="header-actions">
+            <button
+              talosButton
+              variant="ghost"
+              size="sm"
+              (click)="refresh()"
+              [disabled]="isLoading()"
+              aria-label="Refresh request details"
+            >
+              <svg lucideRotateCcw [size]="14" [class.spin]="isLoading()" aria-hidden="true"></svg>
+              <span>Refresh</span>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    }
   </header>
 
+  <!-- Feedback Alerts -->
+  @if (actionSuccess()) {
+    <talos-alert severity="success" [dismissible]="true" (dismiss)="actionSuccess.set(null)" class="mb-4">
+      {{ actionSuccess() }}
+    </talos-alert>
+  }
+  @if (actionError()) {
+    <talos-alert severity="error" [dismissible]="true" (dismiss)="actionError.set(null)" class="mb-4">
+      {{ actionError() }}
+    </talos-alert>
+  }
+
+  <!-- Loading State -->
   @if (isLoading()) {
     <div class="state-card">
       <div class="loading-state" aria-busy="true">
         <div class="spinner" aria-hidden="true"></div>
-        <p>Loading audit trail timeline…</p>
+        <p>Loading request details & audit trail…</p>
       </div>
     </div>
   } @else if (error()) {
@@ -70,51 +100,332 @@
     <div class="state-actions">
       <button talosButton variant="secondary" size="sm" (click)="goBack()">
         <svg lucideArrowLeft [size]="15" aria-hidden="true"></svg>
-        <span>Back to Request</span>
+        <span>Back to Requests</span>
+      </button>
+      <button talosButton variant="outline" size="sm" (click)="refresh()" style="margin-left: 8px;">
+        <svg lucideRotateCcw [size]="14" aria-hidden="true"></svg>
+        <span>Retry</span>
       </button>
     </div>
-  } @else if (events().length === 0) {
-    <div class="empty-card">
-      <div class="empty-state">
-        <div class="empty-icon-box" aria-hidden="true">
-          <svg lucideHistory [size]="36"></svg>
-        </div>
-        <h3>No Audit Events Found</h3>
-        <p>There are no audit log events recorded for workflow instance <code>{{ instanceId() }}</code>.</p>
-        <div class="empty-actions">
-          <button talosButton variant="secondary" size="sm" (click)="loadAuditTrail(instanceId())">
-            <svg lucideRotateCcw [size]="14" aria-hidden="true"></svg>
-            <span>Try Again</span>
-          </button>
-          <button talosButton variant="outline" size="sm" (click)="goBack()">
-            <svg lucideArrowLeft [size]="14" aria-hidden="true"></svg>
-            <span>Back to Request</span>
-          </button>
-        </div>
-      </div>
-    </div>
   } @else {
-    <div class="timeline-container">
-      <talos-timeline
-        [items]="timelineItems()"
-        mode="card"
-        align="left"
-      />
+    <!-- Main Content: Clean Two-column layout -->
+    <div class="request-grid">
+      <!-- Left Column: Consolidated Request Details & Audit Trail -->
+      <div class="main-column">
+        <!-- 1. Consolidated Request Information (Justification + Roles) -->
+        <talos-card variant="elevated" [padding]="'none'" class="detail-card mb-4">
+          <talos-card-body>
+            <div class="card-inner-padded">
+              <!-- Card Header -->
+              <div class="section-header">
+                <div class="section-title-wrap">
+                  <svg lucideFileText [size]="17" class="section-icon" aria-hidden="true"></svg>
+                  <h2>Request Overview & Permissions</h2>
+                </div>
+                @if (cart()?.items && cart()!.items.length > 0) {
+                  <span class="badge-count">{{ cart()!.items.length }} {{ cart()!.items.length === 1 ? 'Role' : 'Roles' }}</span>
+                }
+              </div>
 
-      <div class="timeline-footer">
-        <button
-          talosButton
-          variant="secondary"
-          size="sm"
-          class="btn-footer-back"
-          (click)="goBack()"
-          aria-label="Return to the request"
-        >
-          <svg lucideArrowLeft [size]="15" aria-hidden="true"></svg>
-          <span>Back to Request</span>
-        </button>
+              <!-- Consolidated Section: Business Justification -->
+              <div class="consolidated-subgroup">
+                <span class="subgroup-label">Business Justification</span>
+                <div class="justification-box">
+                  <p class="justification-text">
+                    {{ cart()?.justification || 'No business justification provided.' }}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Consolidated Section: Requested Roles -->
+              <div class="consolidated-subgroup mt-4">
+                <span class="subgroup-label">Requested Roles & Permissions</span>
+                @if (!cart()?.items || cart()!.items.length === 0) {
+                  <div class="empty-roles-box">
+                    <p>No specific roles in this request.</p>
+                  </div>
+                } @else {
+                  <div class="roles-list" role="list">
+                    @for (item of cart()!.items; track item.id) {
+                      <div class="role-row" role="listitem">
+                        <div class="role-main-info">
+                          <svg lucideLayers [size]="15" class="role-row-icon" aria-hidden="true"></svg>
+                          <div class="role-texts">
+                            <div class="role-title-row">
+                              <span class="role-name">{{ item.role_name }}</span>
+                              <talos-status-tag [status]="mapStatus(item.status)" size="sm">
+                                {{ item.status }}
+                              </talos-status-tag>
+                            </div>
+                            <div class="role-meta-row">
+                              <span class="role-id">Role ID: <code>{{ item.role_id }}</code></span>
+                              @if (item.execution_id) {
+                                <span class="execution-tag">
+                                  Execution: <code>{{ item.execution_id.slice(0, 8) }}…</code>
+                                </span>
+                              }
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          </talos-card-body>
+        </talos-card>
+
+        <!-- 2. Audit Trail & Workflow Execution Log -->
+        <talos-card variant="elevated" [padding]="'none'" class="detail-card mb-4">
+          <talos-card-body>
+            <div class="card-inner-padded">
+              <div class="section-header">
+                <div class="section-title-wrap">
+                  <svg lucideHistory [size]="17" class="section-icon" aria-hidden="true"></svg>
+                  <h2>Audit Trail & Execution Log</h2>
+                </div>
+
+                <div class="timeline-controls">
+                  @if (availableRoleFilters().length > 1) {
+                    <div class="role-filter-pills" role="group" aria-label="Filter audit trail by role">
+                      <button
+                        type="button"
+                        class="filter-pill"
+                        [class.active]="selectedRoleFilter() === 'ALL'"
+                        (click)="selectedRoleFilter.set('ALL')"
+                      >
+                        All Events
+                      </button>
+                      @for (r of availableRoleFilters(); track r.id) {
+                        <button
+                          type="button"
+                          class="filter-pill"
+                          [class.active]="selectedRoleFilter() === r.execution_id"
+                          (click)="selectedRoleFilter.set(r.execution_id!)"
+                        >
+                          {{ r.role_name }}
+                        </button>
+                      }
+                    </div>
+                  }
+
+                  <talos-status-tag status="NEW" variant="subtle" size="sm">
+                    <svg lucideActivity [size]="12" style="margin-right: 4px;" aria-hidden="true"></svg>
+                    {{ filteredEvents().length }} {{ filteredEvents().length === 1 ? 'Event' : 'Events' }}
+                  </talos-status-tag>
+                </div>
+              </div>
+
+              <!-- Deferred / Integrated Pending Approvers Notice (if active) -->
+              @if ((cart()?.status === 'SUBMITTED' || cart()?.status === 'IN_PROGRESS') && cart()?.pending_steps && cart()!.pending_steps!.length > 0) {
+                <div class="pending-approvers-banner">
+                  <svg lucideClock [size]="15" class="banner-icon" aria-hidden="true"></svg>
+                  <div class="banner-content">
+                    <span class="banner-title">Awaiting Approval:</span>
+                    <div class="banner-assignees">
+                      @for (step of cart()!.pending_steps; track step.step_id) {
+                        <span class="assignee-token">
+                          {{ step.role_name }}:
+                          @if (step.assigned_to_user_id) {
+                            <span class="token-user">
+                              <svg lucideUser [size]="12" aria-hidden="true"></svg>
+                              {{ step.assigned_to_user_id }}
+                            </span>
+                          }
+                          @if (step.assigned_to_role) {
+                            <span class="token-role">
+                              <svg lucideUsers [size]="12" aria-hidden="true"></svg>
+                              {{ step.assigned_to_role }}
+                            </span>
+                          }
+                        </span>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- Timeline Events -->
+              @if (events().length === 0) {
+                <div class="empty-timeline">
+                  <div class="empty-icon-box" aria-hidden="true">
+                    <svg lucideHistory [size]="28"></svg>
+                  </div>
+                  <h3>No Audit Events Recorded</h3>
+                  <p>
+                    @if (cart()?.status === 'DRAFT') {
+                      Audit trail events are recorded once the request is submitted.
+                    } @else {
+                      There are no audit log events recorded for this request yet.
+                    }
+                  </p>
+                </div>
+              } @else {
+                <div class="timeline-wrapper">
+                  <talos-timeline
+                    [items]="timelineItems()"
+                    mode="card"
+                    align="left"
+                  />
+                </div>
+              }
+            </div>
+          </talos-card-body>
+        </talos-card>
       </div>
+
+      <!-- Right Column: Prioritized Actions & Request Summary Sidebar -->
+      <aside class="sidebar-column">
+        <!-- 1. Prioritized Actions Card (ON TOP!) -->
+        <talos-card variant="elevated" [padding]="'none'" class="sidebar-card action-card-prioritized mb-4">
+          <talos-card-body>
+            <div class="card-inner-padded">
+              <div class="sidebar-card-header">
+                <svg lucideZap [size]="15" class="sidebar-icon" aria-hidden="true"></svg>
+                <h3>Request Actions</h3>
+              </div>
+
+              <div class="sidebar-actions-stack">
+                @if (cart()?.status === 'SUBMITTED' || cart()?.status === 'IN_PROGRESS') {
+                  <button
+                    talosButton
+                    variant="secondary"
+                    size="sm"
+                    class="btn-full-width btn-bump"
+                    [loading]="isActionLoading()"
+                    [disabled]="isActionLoading()"
+                    (click)="bumpRequest()"
+                  >
+                    <svg lucideZap [size]="14" aria-hidden="true"></svg>
+                    <span>Bump Approvers</span>
+                  </button>
+
+                  <button
+                    talosButton
+                    variant="outline"
+                    size="sm"
+                    class="btn-full-width btn-withdraw"
+                    [loading]="isActionLoading()"
+                    [disabled]="isActionLoading()"
+                    (click)="withdrawRequest()"
+                  >
+                    <svg lucideBan [size]="14" aria-hidden="true"></svg>
+                    <span>Withdraw Request</span>
+                  </button>
+                }
+
+                @if (cart()?.status === 'DRAFT') {
+                  <button
+                    talosButton
+                    variant="primary"
+                    size="sm"
+                    class="btn-full-width"
+                    (click)="resumeDraft()"
+                  >
+                    <svg lucideRotateCcw [size]="14" aria-hidden="true"></svg>
+                    <span>Resume Draft</span>
+                  </button>
+
+                  <button
+                    talosButton
+                    variant="danger"
+                    size="sm"
+                    class="btn-full-width"
+                    [loading]="isActionLoading()"
+                    [disabled]="isActionLoading()"
+                    (click)="deleteRequest()"
+                  >
+                    <svg lucideTrash2 [size]="14" aria-hidden="true"></svg>
+                    <span>Delete Draft</span>
+                  </button>
+                }
+
+                @if (cart()?.status !== 'DRAFT' && cart()?.status !== 'SUBMITTED' && cart()?.status !== 'IN_PROGRESS') {
+                  <button
+                    talosButton
+                    variant="danger"
+                    size="sm"
+                    class="btn-full-width"
+                    [loading]="isActionLoading()"
+                    [disabled]="isActionLoading()"
+                    (click)="deleteRequest()"
+                  >
+                    <svg lucideTrash2 [size]="14" aria-hidden="true"></svg>
+                    <span>Delete Request</span>
+                  </button>
+                }
+              </div>
+            </div>
+          </talos-card-body>
+        </talos-card>
+
+        <!-- 2. Request Summary Metadata Card -->
+        <talos-card variant="elevated" [padding]="'none'" class="sidebar-card">
+          <talos-card-body>
+            <div class="card-inner-padded">
+              <div class="sidebar-card-header">
+                <svg lucideInfo [size]="15" class="sidebar-icon" aria-hidden="true"></svg>
+                <h3>Request Summary</h3>
+              </div>
+
+              <div class="meta-list">
+                <div class="meta-row">
+                  <span class="meta-label">Status</span>
+                  <div class="meta-value">
+                    <talos-status-tag [status]="mapStatus(cart()?.status)" size="sm">
+                      {{ cart()?.status || 'UNKNOWN' }}
+                    </talos-status-tag>
+                  </div>
+                </div>
+
+                <div class="meta-row">
+                  <span class="meta-label">Request ID</span>
+                  <span class="meta-value code-val">
+                    <code>{{ cart()?.id || instanceId() }}</code>
+                  </span>
+                </div>
+
+                @if (cart()?.requester_id) {
+                  <div class="meta-row">
+                    <span class="meta-label">Requester</span>
+                    <span class="meta-value user-val">
+                      <svg lucideUser [size]="13" aria-hidden="true"></svg>
+                      {{ cart()!.requester_id }}
+                    </span>
+                  </div>
+                }
+
+                @if (cart()?.submitted_at) {
+                  <div class="meta-row">
+                    <span class="meta-label">Submitted</span>
+                    <span class="meta-value">{{ cart()!.submitted_at | date:'dd MMM yyyy, HH:mm' }}</span>
+                  </div>
+                }
+
+                <div class="meta-row">
+                  <span class="meta-label">Created</span>
+                  <span class="meta-value">{{ (cart()?.created_at || cart()?.submitted_at) | date:'dd MMM yyyy, HH:mm' }}</span>
+                </div>
+
+                @if (cart()?.completed_at) {
+                  <div class="meta-row">
+                    <span class="meta-label">Completed</span>
+                    <span class="meta-value">{{ cart()!.completed_at | date:'dd MMM yyyy, HH:mm' }}</span>
+                  </div>
+                }
+
+                @if (cart()?.items) {
+                  <div class="meta-row">
+                    <span class="meta-label">Total Roles</span>
+                    <span class="meta-value font-semibold">{{ cart()!.items.length }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          </talos-card-body>
+        </talos-card>
+      </aside>
     </div>
   }
 </section>
-

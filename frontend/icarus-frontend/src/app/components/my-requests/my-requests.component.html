@@ -7,13 +7,13 @@
     <div class="header-stats">
       @if (activeCounts().drafts > 0) {
         <span class="stat-chip stat-chip--draft">
-          <svg lucideFileText [size]="13" aria-hidden="true"></svg>
+          <svg lucideFileText [size]="14" aria-hidden="true"></svg>
           {{ activeCounts().drafts }} draft{{ activeCounts().drafts === 1 ? '' : 's' }}
         </span>
       }
       @if (activeCounts().active > 0) {
         <span class="stat-chip stat-chip--active">
-          <svg lucideClock [size]="13" aria-hidden="true"></svg>
+          <svg lucideClock [size]="14" aria-hidden="true"></svg>
           {{ activeCounts().active }} pending approval
         </span>
       }
@@ -56,12 +56,12 @@
                 talosSuffix
                 talosButton
                 variant="ghost"
-                size="xs"
+                size="sm"
                 class="affix-interactive"
                 (click)="searchQuery.set('')"
                 aria-label="Clear search"
               >
-                <svg lucideX [size]="13"></svg>
+                <svg lucideX [size]="14"></svg>
               </button>
             }
           </talos-form-field>
@@ -89,17 +89,17 @@
     <div class="error-state" role="alert">
       <svg lucideAlertCircle [size]="32" class="state-icon" aria-hidden="true"></svg>
       <p>{{ error() }}</p>
-      <button talosButton variant="secondary" size="xs" (click)="loadMyRequests()">Retry</button>
+      <button talosButton variant="secondary" size="sm" (click)="loadMyRequests()">Retry</button>
     </div>
   } @else if (filteredRequests().length === 0) {
     <div class="empty-state">
       <svg lucideInbox [size]="36" class="state-icon" aria-hidden="true"></svg>
       @if (statusFilter() === 'ALL' && !searchQuery()) {
         <p>You haven't submitted any access requests yet.</p>
-        <a routerLink="/dashboard/request-access" talosButton variant="primary" size="xs">Browse & Request Access</a>
+        <a routerLink="/dashboard/request-access" talosButton variant="primary" size="sm">Browse & Request Access</a>
       } @else {
         <p>No requests match your current filters.</p>
-        <button talosButton variant="secondary" size="xs" (click)="statusFilter.set('ALL'); searchQuery.set('')">Clear Filters</button>
+        <button talosButton variant="secondary" size="sm" (click)="statusFilter.set('ALL'); searchQuery.set('')">Clear Filters</button>
       }
     </div>
   } @else {
@@ -133,16 +133,25 @@
                 <talos-status-tag [status]="mapStatus(cart.status)">
                   {{ cart.status }}
                 </talos-status-tag>
+
                 <div class="request-id-block">
                   <span class="request-id-label">Request ID</span>
                   <code class="request-id">{{ cart.id.slice(0, 8) }}…</code>
                 </div>
+
                 @if (cart.items && cart.items.length > 0) {
                   <span class="item-count-badge" aria-label="{{ cart.items.length }} roles">
                     {{ cart.items.length }} role{{ cart.items.length === 1 ? '' : 's' }}
                   </span>
                 }
+
+                @if (cart.justification) {
+                  <span class="justification-snippet" title="{{ cart.justification }}">
+                    "{{ cart.justification }}"
+                  </span>
+                }
               </div>
+
               <div class="summary-right">
                 <span class="date-label">
                   @if (cart.status === 'DRAFT') {
@@ -151,8 +160,25 @@
                     Submitted {{ cart.submitted_at | date:'dd MMM yyyy, HH:mm' }}
                   }
                 </span>
+
+                <div class="quick-summary-actions" (click)="$event.stopPropagation()">
+                  <a
+                    [routerLink]="['/dashboard/request-detail', cart.id]"
+                    [queryParams]="{ from: 'my-requests' }"
+                    talosButton
+                    variant="outline"
+                    size="sm"
+                    class="btn-full-details"
+                    title="View Full Request Details Page"
+                    aria-label="View full details"
+                  >
+                    <span>Details</span>
+                    <svg lucideArrowRight [size]="14" style="margin-left: 4px;"></svg>
+                  </a>
+                </div>
+
                 <span class="chevron-icon" [class.rotated]="isCartExpanded(cart.id)">
-                  <svg lucideChevronDown [size]="16" aria-hidden="true"></svg>
+                  <svg lucideChevronDown [size]="18" aria-hidden="true"></svg>
                 </span>
               </div>
             </header>
@@ -177,18 +203,19 @@
                         <div class="role-item-card">
                           <div class="role-item-header">
                             <span class="role-name">{{ item.role_name }}</span>
-                            <talos-status-tag [status]="mapStatus(item.status)">
+                            <talos-status-tag [status]="mapStatus(item.status)" size="sm">
                               {{ item.status }}
                             </talos-status-tag>
                           </div>
                           @if (item.execution_id) {
                             <a
                               [routerLink]="['/dashboard/request-detail', item.execution_id]"
+                              [queryParams]="{ cartId: cart.id, from: 'my-requests' }"
                               class="audit-trail-link"
                               aria-label="View audit trail for {{ item.role_name }}"
                             >
                               <span>View Audit Trail</span>
-                              <svg lucideArrowRight [size]="12" style="margin-left: 3px;"></svg>
+                              <svg lucideArrowRight [size]="13" style="margin-left: 4px;"></svg>
                             </a>
                           }
                         </div>
@@ -197,235 +224,100 @@
                   }
                 </div>
 
-                <!-- Actions -->
+                <!-- Actions: Left actions and Right Full Details button -->
                 <div class="card-actions">
-                  @if (cart.status === 'DRAFT') {
-                    <button
+                  <div class="actions-left">
+                    @if (cart.status === 'DRAFT') {
+                      <button
+                        talosButton
+                        variant="primary"
+                        size="sm"
+                        (click)="resumeDraft(cart); $event.stopPropagation()"
+                        [disabled]="actioningCartId() === cart.id"
+                        aria-label="Resume draft request"
+                      >
+                        <svg lucideRotateCcw [size]="14" style="margin-right: 5px;"></svg>
+                        Resume Draft
+                      </button>
+                      <button
+                        talosButton
+                        variant="danger"
+                        size="sm"
+                        (click)="deleteRequest(cart.id); $event.stopPropagation()"
+                        [loading]="actioningCartId() === cart.id"
+                        [disabled]="actioningCartId() === cart.id"
+                        aria-label="Delete draft request"
+                      >
+                        <svg lucideTrash2 [size]="14" style="margin-right: 5px;"></svg>
+                        Delete Draft
+                      </button>
+                    }
+
+                    @if (cart.status === 'SUBMITTED' || cart.status === 'IN_PROGRESS') {
+                      <button
+                        talosButton
+                        variant="secondary"
+                        size="sm"
+                        class="btn-bump"
+                        (click)="bumpRequest(cart.id); $event.stopPropagation()"
+                        [loading]="actioningCartId() === cart.id"
+                        [disabled]="actioningCartId() === cart.id"
+                        aria-label="Bump approvers for this request"
+                      >
+                        <svg lucideZap [size]="14" style="margin-right: 5px;"></svg>
+                        Bump Approvers
+                      </button>
+                      <button
+                        talosButton
+                        variant="outline"
+                        size="sm"
+                        class="btn-withdraw"
+                        (click)="withdrawRequest(cart.id); $event.stopPropagation()"
+                        [loading]="actioningCartId() === cart.id"
+                        [disabled]="actioningCartId() === cart.id"
+                        aria-label="Withdraw this request"
+                      >
+                        <svg lucideBan [size]="14" style="margin-right: 5px;"></svg>
+                        Withdraw
+                      </button>
+                    }
+
+                    @if (cart.status !== 'DRAFT' && cart.status !== 'SUBMITTED' && cart.status !== 'IN_PROGRESS') {
+                      <button
+                        talosButton
+                        variant="danger"
+                        size="sm"
+                        (click)="deleteRequest(cart.id); $event.stopPropagation()"
+                        [loading]="actioningCartId() === cart.id"
+                        [disabled]="actioningCartId() === cart.id"
+                        aria-label="Delete request"
+                      >
+                        <svg lucideTrash2 [size]="14" style="margin-right: 5px;"></svg>
+                        Delete Request
+                      </button>
+                    }
+                  </div>
+
+                  <div class="actions-right">
+                    <a
+                      [routerLink]="['/dashboard/request-detail', cart.id]"
+                      [queryParams]="{ from: 'my-requests' }"
                       talosButton
                       variant="primary"
-                      size="xs"
-                      (click)="resumeDraft(cart); $event.stopPropagation()"
-                      [disabled]="actioningCartId() === cart.id"
-                      aria-label="Resume draft request"
-                    >
-                      <svg lucideRotateCcw [size]="13" style="margin-right: 4px;"></svg>
-                      Resume Draft
-                    </button>
-                    <button
-                      talosButton
-                      variant="danger"
-                      size="xs"
-                      (click)="deleteRequest(cart.id); $event.stopPropagation()"
-                      [loading]="actioningCartId() === cart.id"
-                      [disabled]="actioningCartId() === cart.id"
-                      aria-label="Delete draft request"
-                    >
-                      <svg lucideTrash2 [size]="13" style="margin-right: 4px;"></svg>
-                      Delete Draft
-                    </button>
-                  }
-
-                  @if (cart.status === 'SUBMITTED' || cart.status === 'IN_PROGRESS') {
-                    <button
-                      talosButton
-                      variant="secondary"
-                      size="xs"
-                      class="btn-bump"
-                      (click)="bumpRequest(cart.id); $event.stopPropagation()"
-                      [loading]="actioningCartId() === cart.id"
-                      [disabled]="actioningCartId() === cart.id"
-                      aria-label="Bump approvers for this request"
-                    >
-                      <svg lucideZap [size]="13" style="margin-right: 4px;"></svg>
-                      Bump Approvers
-                    </button>
-                    <button
-                      talosButton
-                      variant="outline"
-                      size="xs"
-                      class="btn-withdraw"
-                      (click)="withdrawRequest(cart.id); $event.stopPropagation()"
-                      [loading]="actioningCartId() === cart.id"
-                      [disabled]="actioningCartId() === cart.id"
-                      aria-label="Withdraw this request"
-                    >
-                      <svg lucideBan [size]="13" style="margin-right: 4px;"></svg>
-                      Withdraw
-                    </button>
-                    <button
-                      talosButton
-                      variant="ghost"
-                      size="xs"
-                      (click)="selectRequest(cart); $event.stopPropagation()"
+                      size="sm"
+                      class="btn-full-details-main"
+                      (click)="$event.stopPropagation()"
                       aria-label="View full details for this request"
                     >
-                      <svg lucideEye [size]="13" style="margin-right: 4px;"></svg>
-                      View Details
-                    </button>
-                  }
-
-                  @if (cart.status !== 'DRAFT' && cart.status !== 'SUBMITTED' && cart.status !== 'IN_PROGRESS') {
-                    <button
-                      talosButton
-                      variant="ghost"
-                      size="xs"
-                      (click)="selectRequest(cart); $event.stopPropagation()"
-                      aria-label="View full details for this request"
-                    >
-                      <svg lucideEye [size]="13" style="margin-right: 4px;"></svg>
-                      View Details
-                    </button>
-                    <button
-                      talosButton
-                      variant="danger"
-                      size="xs"
-                      (click)="deleteRequest(cart.id); $event.stopPropagation()"
-                      [loading]="actioningCartId() === cart.id"
-                      [disabled]="actioningCartId() === cart.id"
-                      aria-label="Delete request"
-                    >
-                      <svg lucideTrash2 [size]="13" style="margin-right: 4px;"></svg>
-                      Delete Request
-                    </button>
-                  }
+                      <span>Full Details Page</span>
+                      <svg lucideArrowRight [size]="14" style="margin-left: 5px;"></svg>
+                    </a>
+                  </div>
                 </div>
               </div>
             }
           </talos-card-body>
         </talos-card>
-      }
-    </div>
-  }
-
-  <!-- Slide-over Drawer: Full Request Details -->
-  @if (selectedRequest(); as selected) {
-    <div class="drawer-backdrop" (click)="closeDetails()" aria-hidden="true"></div>
-    <div class="details-drawer" role="dialog" aria-modal="true" [attr.aria-labelledby]="'drawer-title-' + selected.id">
-      <div class="drawer-header">
-        <div>
-          <span class="drawer-eyebrow">Access Request Details</span>
-          <h2 [id]="'drawer-title-' + selected.id" class="drawer-title">
-            Request <code>{{ selected.id.slice(0, 8) }}…</code>
-          </h2>
-        </div>
-        <button talosButton variant="ghost" size="xs" [iconOnly]="true" class="btn-close-drawer" (click)="closeDetails()" aria-label="Close request details">
-          <svg lucideX [size]="16"></svg>
-        </button>
-      </div>
-
-      <div class="drawer-body">
-        <!-- Meta -->
-        <div class="drawer-meta-grid">
-          <div class="meta-item">
-            <span class="meta-label">Status</span>
-            <talos-status-tag [status]="mapStatus(selected.status)">{{ selected.status }}</talos-status-tag>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label">Submitted</span>
-            <span class="meta-value">{{ selected.submitted_at | date:'dd MMM yyyy, HH:mm' }}</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label">Created</span>
-            <span class="meta-value">{{ selected.created_at | date:'dd MMM yyyy, HH:mm' }}</span>
-          </div>
-        </div>
-
-        <!-- Justification -->
-        <div class="drawer-section">
-          <h3>Justification</h3>
-          <p class="drawer-justification">{{ selected.justification || 'No justification provided.' }}</p>
-        </div>
-
-        <!-- Requested Roles -->
-        <div class="drawer-section">
-          <h3>Requested Roles</h3>
-          <ul class="drawer-items-list" role="list">
-            @for (item of selected.items; track item.id) {
-              <li class="drawer-item-row">
-                <div class="item-name-info">
-                  <span class="item-role-name">{{ item.role_name }}</span>
-                  <span class="item-role-id">Role ID: {{ item.role_id }}</span>
-                </div>
-                <div class="item-status-actions">
-                  <talos-status-tag [status]="mapStatus(item.status)">{{ item.status }}</talos-status-tag>
-                  @if (item.execution_id) {
-                    <a
-                      [routerLink]="['/dashboard/request-detail', item.execution_id]"
-                      [queryParams]="{ cartId: selected.id, from: 'my-requests' }"
-                      (click)="closeDetails()"
-                      class="history-trail-link"
-                      [attr.aria-label]="'View audit trail for ' + item.role_name"
-                    >View Trail →</a>
-                  }
-                </div>
-              </li>
-            }
-          </ul>
-        </div>
-
-        <!-- Active Approval Steps -->
-        @if (selected.status === 'SUBMITTED' || selected.status === 'IN_PROGRESS') {
-          <div class="drawer-section">
-            <h3>Active Approval Steps</h3>
-            @if (selected.pending_steps && selected.pending_steps.length > 0) {
-              <ul class="pending-steps-list" role="list">
-                @for (step of selected.pending_steps; track step.step_id) {
-                  <li class="pending-step-item">
-                    <span class="pending-step-label">{{ step.role_name }} — <code>{{ step.step_id.slice(0, 8) }}…</code></span>
-                    <div class="assignee-badges">
-                      @if (step.assigned_to_user_id) {
-                        <span class="assignee-badge">
-                          <svg lucideUser [size]="13" aria-hidden="true"></svg>
-                          {{ step.assigned_to_user_id }}
-                        </span>
-                      }
-                      @if (step.assigned_to_role) {
-                        <span class="assignee-badge">
-                          <svg lucideUsers [size]="13" aria-hidden="true"></svg>
-                          {{ step.assigned_to_role }}
-                        </span>
-                      }
-                    </div>
-                  </li>
-                }
-              </ul>
-            } @else {
-              <p class="text-muted small">No pending approval steps found.</p>
-            }
-          </div>
-        }
-      </div>
-
-      <!-- Drawer Footer Actions -->
-      @if (selected.status === 'SUBMITTED' || selected.status === 'IN_PROGRESS') {
-        <div class="drawer-footer">
-          <button
-            talosButton
-            variant="secondary"
-            size="xs"
-            class="btn-bump"
-            [loading]="actioningCartId() === selected.id"
-            [disabled]="actioningCartId() === selected.id"
-            (click)="bumpRequest(selected.id)"
-            aria-label="Bump approvers"
-          >
-            <svg lucideZap [size]="13" style="margin-right: 4px;"></svg>
-            Bump Approvers
-          </button>
-          <button
-            talosButton
-            variant="outline"
-            size="xs"
-            class="btn-withdraw"
-            [loading]="actioningCartId() === selected.id"
-            [disabled]="actioningCartId() === selected.id"
-            (click)="withdrawRequest(selected.id)"
-            aria-label="Withdraw request"
-          >
-            <svg lucideBan [size]="13" style="margin-right: 4px;"></svg>
-            Withdraw Request
-          </button>
-        </div>
       }
     </div>
   }

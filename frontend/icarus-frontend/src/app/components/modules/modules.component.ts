@@ -12,13 +12,25 @@ import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
 import { TalosPrefixDirective, TalosSuffixDirective } from '@weeehaoooz/talos-ui/form/affix';
 import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
 import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+import { TalosButtonGroupComponent, TalosButtonGroupItemDirective } from '@weeehaoooz/talos-ui/button/button-group';
+import { TalosCardComponent, TalosCardHeaderComponent, TalosCardBodyComponent } from '@weeehaoooz/talos-ui/layout';
 import { TalosAlertComponent } from '@weeehaoooz/talos-ui/feedback/alert';
 import { TalosSlideToggleComponent } from '@weeehaoooz/talos-ui/form/slide-toggle';
 import { SelectInputComponent, OptionComponent } from '@weeehaoooz/talos-ui/form/select-input';
 import { TalosCheckboxDirective } from '@weeehaoooz/talos-ui/form/checkbox';
 
 // Lucide Icons
-import { LucideSearch, LucideX, LucidePlus, LucideEdit, LucideTrash2 } from '@lucide/angular';
+import {
+  LucideSearch,
+  LucideX,
+  LucidePlus,
+  LucideEdit,
+  LucideTrash2,
+  LucideUser,
+  LucideLayers,
+  LucideCode2,
+  LucideInfo
+} from '@lucide/angular';
 
 interface Module {
   id: string;
@@ -54,6 +66,11 @@ const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'
     TalosSuffixDirective,
     TalosInputDirective,
     TalosButtonDirective,
+    TalosButtonGroupComponent,
+    TalosButtonGroupItemDirective,
+    TalosCardComponent,
+    TalosCardHeaderComponent,
+    TalosCardBodyComponent,
     TalosStatusTagComponent,
     TalosAlertComponent,
     TalosSlideToggleComponent,
@@ -64,7 +81,11 @@ const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'
     LucideX,
     LucidePlus,
     LucideEdit,
-    LucideTrash2
+    LucideTrash2,
+    LucideUser,
+    LucideLayers,
+    LucideCode2,
+    LucideInfo
   ],
   templateUrl: './modules.component.html',
   styleUrl: './modules.component.scss'

@@ -94,140 +94,190 @@
   }
 }
 
-.panel-error {
-  padding: 10px 14px;
-  background: var(--danger-glow);
-  border: 1px solid rgba(248, 113, 113, 0.2);
-  color: var(--danger);
-  font-size: 0.85rem;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-}
+.panel-tabs-container {
+  margin-bottom: 20px;
 
-// ─── Config Section ──────────────────────────────────────────────────────────
+  talos-button-group {
+    display: flex;
+    width: 100%;
 
-.config-section {
-  margin-top: 20px;
-  border: 1px solid var(--border-color);
-}
-
-.config-section-header {
-  padding: 8px 12px;
-  background: var(--bg-panel);
-  border-bottom: 1px solid var(--border-color);
-
-  .config-section-title {
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-muted);
+    button {
+      flex: 1;
+      justify-content: center;
+    }
   }
 }
 
-// ─── Main Config Tabs ────────────────────────────────────────────────────────
+talos-card {
+  overflow: visible !important;
 
-.config-tabs {
-  display: flex;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-main);
+  ::ng-deep {
+    .talos-card,
+    .talos-card-container,
+    .talos-card-body,
+    talos-card-body {
+      overflow: visible !important;
+    }
+  }
+
+  talos-card-body {
+    overflow: visible !important;
+    position: relative;
+  }
 }
 
-.config-tab {
+.settings-subcard {
+  margin-top: 18px;
+  margin-bottom: 8px;
+  overflow: visible !important;
+  position: relative;
+  z-index: 20;
+
+  &:has(talos-select-input:focus-within) {
+    z-index: 50;
+  }
+}
+
+.owners-container {
   display: flex;
-  align-items: center;
-  padding: 9px 16px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  font-family: var(--font-heading);
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-label-sm {
+  font-size: 0.75rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   color: var(--text-muted);
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  transition: var(--transition);
-  margin-bottom: -1px;
-
-  &:hover:not(.active) {
-    color: var(--text-main);
-    background: rgba(255,255,255,0.02);
-  }
-
-  &.active {
-    color: var(--primary);
-    border-bottom-color: var(--primary);
-    background: transparent;
-  }
 }
 
-.config-tab-error {
+.owners-list {
   display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  background: var(--danger-glow);
-  border-bottom: 1px solid rgba(248, 113, 113, 0.2);
-  color: var(--danger);
-  font-size: 0.78rem;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
 }
 
-// ─── Visual Editor ───────────────────────────────────────────────────────────
-
-.visual-editor {
-  background: var(--bg-card);
-}
-
-.visual-subtabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--border-color);
-  background: rgba(255,255,255,0.01);
-}
-
-.visual-subtab {
-  display: flex;
+.owner-pill {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 14px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-family: 'SFMono-Regular', Consolas, Menlo, monospace;
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  border-radius: 4px;
+}
+
+.onboard-action-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  align-items: flex-end;
+  position: relative;
+  z-index: 30;
+  overflow: visible !important;
+
+  talos-form-field {
+    overflow: visible !important;
+  }
+
+  talos-select-input {
+    overflow: visible !important;
+    position: relative;
+    z-index: 40;
+  }
+}
+
+.onboarded-apps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.onboarded-app-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
   transition: var(--transition);
-  margin-bottom: -1px;
 
-  &:hover:not(.active) {
-    color: var(--text-main);
+  &:hover {
+    border-color: var(--border-color-hover);
+    background: rgba(255, 255, 255, 0.035);
   }
+}
 
-  &.active {
-    color: var(--primary);
-    border-bottom-color: var(--primary);
-  }
+.app-code-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
-  .subtab-count {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 4px;
-    background: var(--primary-glow);
-    color: var(--primary);
-    border: 1px solid rgba(20, 184, 166, 0.3);
-    font-size: 0.68rem;
-    font-weight: 700;
-    border-radius: 99px;
+.app-code-text {
+  font-family: 'SFMono-Regular', Consolas, Menlo, monospace;
+  font-size: 0.85rem;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.mb-4 {
+  margin-bottom: 1rem;
+}
+
+// ─── Config Section & Card ───────────────────────────────────────────────────
+
+.config-card {
+  margin-top: 4px;
+}
+
+.visual-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.visual-subtabs-bar {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+
+  talos-button-group {
+    display: flex;
+    width: 100%;
+
+    button {
+      flex: 1;
+      justify-content: center;
+      gap: 6px;
+    }
   }
+}
+
+.subtab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: var(--primary-glow);
+  color: var(--primary);
+  border: 1px solid rgba(20, 184, 166, 0.3);
+  font-size: 0.68rem;
+  font-weight: 700;
+  border-radius: 99px;
 }
 
 .visual-subpanel {
-  padding: 14px 14px 8px;
+  padding: 4px 0 0;
 }
 
 .subpanel-hint {
@@ -239,36 +289,45 @@
   line-height: 1.5;
 }
 
-.required-star {
-  color: var(--danger);
-  margin-left: 2px;
-}
-
 // ─── Inline Form ─────────────────────────────────────────────────────────────
 
 .inline-form {
-  background: rgba(255,255,255,0.01);
+  background: rgba(255, 255, 255, 0.015);
   border: 1px solid var(--border-color);
-  padding: 12px;
-  margin-bottom: 14px;
+  border-radius: 6px;
+  padding: 14px;
+  margin-bottom: 16px;
+  overflow: visible !important;
+  position: relative;
+  z-index: 20;
+
+  &:has(talos-select-input:focus-within) {
+    z-index: 50;
+  }
 }
 
 .inline-form-row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: flex-start;
-}
-
-.mb-4 {
-  margin-bottom: 1rem;
+  overflow: visible !important;
+  position: relative;
 }
 
 .inline-form-field {
   margin-bottom: 8px !important;
+  overflow: visible !important;
 
   talos-form-field {
     width: 100%;
     display: block;
+    overflow: visible !important;
+  }
+
+  talos-select-input {
+    overflow: visible !important;
+    position: relative;
+    z-index: 40;
   }
 
   &.flex-1 { flex: 1; }
@@ -278,14 +337,9 @@
 
 .inline-form-actions {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   justify-content: flex-end;
-  margin-top: 4px;
-}
-
-.btn-sm {
-  padding: 5px 12px !important;
-  font-size: 0.75rem !important;
+  margin-top: 8px;
 }
 
 // ─── Permission Optional Metadata ────────────────────────────────────────────
@@ -294,7 +348,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 4px 0 8px;
+  margin: 6px 0 10px;
 
   &::before,
   &::after {
@@ -315,114 +369,33 @@
   }
 }
 
-.perm-optional-label {
-  color: var(--text-muted) !important;
-  opacity: 0.8;
-}
-
-.perm-optional-info {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: 4px;
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  opacity: 0.7;
-  cursor: help;
-  vertical-align: middle;
-  transition: opacity 0.15s, color 0.15s;
-
-  // Tooltip bubble
-  &::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    width: 220px;
-    padding: 7px 10px;
-    background: #1e293b;
-    color: #f1f5f9;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    font-size: 0.71rem;
-    font-weight: 400;
-    line-height: 1.45;
-    white-space: normal;
-    text-align: left;
-    pointer-events: none;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.15s, visibility 0.15s;
-    z-index: 100;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  }
-
-  // Arrow pointer
-  &::before {
-    content: '';
-    position: absolute;
-    bottom: calc(100% + 2px);
-    left: 50%;
-    transform: translateX(-50%);
-    border: 5px solid transparent;
-    border-top-color: #1e293b;
-    pointer-events: none;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.15s, visibility 0.15s;
-    z-index: 101;
-  }
-
-  &:hover,
-  &:focus {
-    opacity: 1;
-    color: var(--primary);
-    outline: none;
-
-    &::after,
-    &::before {
-      opacity: 1;
-      visibility: visible;
-    }
-  }
-}
-
-.perm-optional-input {
-  opacity: 0.75;
-  transition: opacity 0.15s;
-
-  &:focus {
-    opacity: 1;
-  }
-}
-
 // ─── Permissions Checklist ───────────────────────────────────────────────────
 
 .permissions-checklist {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  margin-top: 6px;
 }
 
 .perm-check-item {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  padding: 5px 10px;
   border: 1px solid var(--border-color);
-  background: rgba(255,255,255,0.01);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.015);
   cursor: pointer;
   transition: var(--transition);
 
   &:hover {
     border-color: var(--border-color-hover);
-    background: rgba(20,184,166,0.04);
+    background: rgba(20, 184, 166, 0.04);
   }
 
-  &:has(.form-checkbox:checked) {
-    border-color: rgba(20,184,166,0.35);
+  &:has(input:checked) {
+    border-color: rgba(20, 184, 166, 0.35);
     background: var(--primary-glow);
   }
 
@@ -440,7 +413,7 @@
 .entries-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   margin-bottom: 8px;
 }
 
@@ -449,14 +422,15 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 8px;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border: 1px solid var(--border-color);
-  background: rgba(255,255,255,0.015);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.015);
   transition: var(--transition);
 
   &:hover {
     border-color: var(--border-color-hover);
-    background: rgba(255,255,255,0.025);
+    background: rgba(255, 255, 255, 0.025);
   }
 
   &.is-editing {
@@ -510,11 +484,12 @@
 }
 
 .entries-empty {
-  padding: 12px;
+  padding: 14px;
   text-align: center;
   font-size: 0.8rem;
   color: var(--text-muted);
   border: 1px dashed var(--border-color);
+  border-radius: 4px;
   margin-bottom: 8px;
 }
 
@@ -559,7 +534,7 @@
 // ─── JSON Editor ─────────────────────────────────────────────────────────────
 
 .json-editor-panel {
-  padding: 12px 14px;
+  padding: 4px 0;
 }
 
 .json-textarea {
@@ -573,7 +548,7 @@
   resize: vertical;
   padding: 8px 12px;
   border: 1px solid var(--border-color);
-  border-radius: 0;
+  border-radius: 4px;
   transition: var(--transition);
 
   &:focus {
@@ -583,42 +558,59 @@
   }
 }
 
-// ─── Edit Panel Top-Level Tabs ───────────────────────────────────────────────
+// ─── Active Roles Tab ────────────────────────────────────────────────────────
 
-.panel-tabs {
+.active-roles-list {
   display: flex;
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-panel);
+  flex-direction: column;
+  gap: 8px;
 }
 
-.panel-tab {
-  flex: 1;
-  text-align: center;
-  padding: 10px 8px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  font-family: var(--font-heading);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
+.active-role-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
   transition: var(--transition);
-  margin-bottom: -1px;
 
-  &:hover:not(.active) {
-    color: var(--text-main);
-    background: rgba(255,255,255,0.02);
+  &:hover {
+    border-color: var(--border-color-hover);
+    background: rgba(255, 255, 255, 0.035);
   }
+}
 
-  &.active {
-    color: var(--primary);
-    border-bottom-color: var(--primary);
-    background: transparent;
-  }
+.active-role-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.active-role-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.active-role-name {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--primary);
+}
+
+.active-role-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.active-role-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
 }
 
 // ─── Animation ───────────────────────────────────────────────────────────────

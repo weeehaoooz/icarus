@@ -23,9 +23,6 @@ import {
   LucideRotateCcw,
   LucideZap,
   LucideBan,
-  LucideEye,
-  LucideUser,
-  LucideUsers,
   LucideArrowRight
 } from '@lucide/angular';
 
@@ -55,16 +52,10 @@ import {
     LucideRotateCcw,
     LucideZap,
     LucideBan,
-    LucideEye,
-    LucideUser,
-    LucideUsers,
     LucideArrowRight
   ],
   templateUrl: './my-requests.component.html',
-  styleUrl: './my-requests.component.scss',
-  host: {
-    '(document:keydown.escape)': 'onEscapeKey()'
-  }
+  styleUrl: './my-requests.component.scss'
 })
 export class MyRequestsComponent implements OnInit, OnDestroy {
   private readonly workflowService = inject(WorkflowService);
@@ -81,9 +72,6 @@ export class MyRequestsComponent implements OnInit, OnDestroy {
 
   // ── Expanded cards ───────────────────────────────────────────────────────────
   readonly expandedCartIds = signal<Set<string>>(new Set());
-
-  // ── Slide-over drawer ────────────────────────────────────────────────────────
-  readonly selectedRequest = signal<AccessCart | null>(null);
 
   // ── Actions state ─────────────────────────────────────────────────────────────
   readonly actioningCartId = signal<string | null>(null);
@@ -166,25 +154,6 @@ export class MyRequestsComponent implements OnInit, OnDestroy {
     return this.expandedCartIds().has(cartId);
   }
 
-  // ── Slide-over Drawer ─────────────────────────────────────────────────────────
-
-  selectRequest(cart: AccessCart): void {
-    this.workflowService.getCart(cart.id).subscribe({
-      next: (fullCart) => this.selectedRequest.set(fullCart),
-      error: () => this.selectedRequest.set(cart),
-    });
-  }
-
-  closeDetails(): void {
-    this.selectedRequest.set(null);
-  }
-
-  onEscapeKey(): void {
-    if (this.selectedRequest()) {
-      this.closeDetails();
-    }
-  }
-
   // ── Request Actions ───────────────────────────────────────────────────────────
 
   withdrawRequest(cartId: string): void {
@@ -197,15 +166,6 @@ export class MyRequestsComponent implements OnInit, OnDestroy {
         this.actionSuccess.set(res.message || 'Request withdrawn successfully.');
         this.actioningCartId.set(null);
         this.loadMyRequests();
-
-        // Refresh drawer if open
-        const sel = this.selectedRequest();
-        if (sel && sel.id === cartId) {
-          this.workflowService.getCart(cartId).subscribe({
-            next: (updated) => this.selectedRequest.set(updated),
-          });
-        }
-
         setTimeout(() => this.actionSuccess.set(null), 5000);
       },
       error: (err) => {
@@ -226,15 +186,6 @@ export class MyRequestsComponent implements OnInit, OnDestroy {
       next: (res) => {
         this.actionSuccess.set(res.message || 'Approvers notified successfully.');
         this.actioningCartId.set(null);
-
-        // Refresh drawer if open
-        const sel = this.selectedRequest();
-        if (sel && sel.id === cartId) {
-          this.workflowService.getCart(cartId).subscribe({
-            next: (updated) => this.selectedRequest.set(updated),
-          });
-        }
-
         setTimeout(() => this.actionSuccess.set(null), 5000);
       },
       error: (err) => {
@@ -268,8 +219,6 @@ export class MyRequestsComponent implements OnInit, OnDestroy {
   }
 
   resumeDraft(cart: AccessCart): void {
-    // Navigate to request-access; the state is passed via router state so the
-    // request-access component can pre-load the draft cart.
     this.router.navigate(['/dashboard/request-access'], {
       state: { resumeCartId: cart.id }
     });
