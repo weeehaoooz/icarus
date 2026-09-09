@@ -259,16 +259,16 @@
   align-items: flex-start;
 }
 
+.mb-4 {
+  margin-bottom: 1rem;
+}
+
 .inline-form-field {
   margin-bottom: 8px !important;
 
-  .form-label {
-    font-size: 0.68rem !important;
-  }
-
-  .form-input {
-    font-size: 0.82rem;
-    padding: 6px 10px;
+  talos-form-field {
+    width: 100%;
+    display: block;
   }
 
   &.flex-1 { flex: 1; }

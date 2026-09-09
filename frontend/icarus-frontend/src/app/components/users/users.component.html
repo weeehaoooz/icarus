@@ -63,8 +63,8 @@
     <ng-template #selectTmpl let-row="row">
       <div style="display: flex; align-items: center; justify-content: center;" (click)="$event.stopPropagation()">
         <input
+          talosCheckbox
           type="checkbox"
-          class="form-checkbox"
           [checked]="selectedIds().has(row.id)"
           (change)="toggleSelect(row.id, $event)"
           [attr.aria-label]="'Select user ' + row.username"
@@ -137,58 +137,108 @@
   <div class="detail-panel glass-panel animate-fade-in" role="region" aria-label="Operator Detail Configuration">
     <header class="panel-header">
       <h2 class="panel-title">
-        {{ panelType === 'edit' ? 'Operator Policy Configuration' : 'Create Operator Account' }}
+        {{ panelType === 'edit' ? 'User Configuration' : 'Create Operator Account' }}
       </h2>
-      <button (click)="closePanel()" class="close-btn" aria-label="Close configuration panel">✕</button>
+      <button
+        type="button"
+        talosButton
+        variant="ghost"
+        size="xs"
+        [iconOnly]="true"
+        (click)="closePanel()"
+        class="close-btn"
+        aria-label="Close configuration panel"
+      >
+        <svg lucideX [size]="16"></svg>
+      </button>
     </header>
 
     @if (panelError()) {
-    <div class="panel-error" role="alert">
-      {{ panelError() }}
-    </div>
+      <talos-alert severity="error" [dismissible]="true" (dismiss)="panelError.set(null)" class="mb-4">
+        {{ panelError() }}
+      </talos-alert>
     }
 
     <form (ngSubmit)="saveUser()">
       <div class="form-group">
-        <label class="form-label" for="username">Username</label>
-        <input type="text" id="username" [(ngModel)]="formData.username" name="username" class="form-input" required
-          [disabled]="panelType === 'edit'" />
+        <talos-form-field label="Username" for="username" size="md">
+          <input
+            talosInput
+            type="text"
+            id="username"
+            [(ngModel)]="formData.username"
+            name="username"
+            required
+            placeholder="e.g. john.doe"
+            [disabled]="panelType === 'edit'"
+          />
+        </talos-form-field>
       </div>
 
       <div class="form-group">
-        <label class="form-label" for="email">Email Address</label>
-        <input type="email" id="email" [(ngModel)]="formData.email" name="email" class="form-input" />
+        <talos-form-field label="Email Address" for="email" size="md">
+          <input
+            talosInput
+            type="email"
+            id="email"
+            [(ngModel)]="formData.email"
+            name="email"
+            placeholder="user@example.com"
+          />
+        </talos-form-field>
       </div>
 
       <div class="form-group">
-        <label class="form-label" for="firstName">First Name</label>
-        <input type="text" id="firstName" [(ngModel)]="formData.firstName" name="firstName" class="form-input" />
+        <talos-form-field label="First Name" for="firstName" size="md">
+          <input
+            talosInput
+            type="text"
+            id="firstName"
+            [(ngModel)]="formData.firstName"
+            name="firstName"
+            placeholder="Enter first name"
+          />
+        </talos-form-field>
       </div>
 
       <div class="form-group">
-        <label class="form-label" for="lastName">Last Name</label>
-        <input type="text" id="lastName" [(ngModel)]="formData.lastName" name="lastName" class="form-input" />
+        <talos-form-field label="Last Name" for="lastName" size="md">
+          <input
+            talosInput
+            type="text"
+            id="lastName"
+            [(ngModel)]="formData.lastName"
+            name="lastName"
+            placeholder="Enter last name"
+          />
+        </talos-form-field>
       </div>
 
       <div class="form-group">
         <label class="form-label" for="password">
           Password {{ panelType === 'edit' ? '(leave blank to retain current)' : '' }}
         </label>
-        <input type="password" id="password" [(ngModel)]="formData.password" name="password" class="form-input"
-          [required]="panelType === 'create'" autocomplete="new-password" />
+        <talos-password-input
+          id="password"
+          name="password"
+          [(ngModel)]="formData.password"
+          [required]="panelType === 'create'"
+          placeholder="Enter password"
+          [allowToggleMask]="true"
+          autocomplete="new-password"
+        />
       </div>
 
-      <div class="form-group">
-        <label class="form-label">Account Status</label>
-        <div class="toggle-status-container">
-          <label class="status-switch">
-            <input type="checkbox" id="isActive" [(ngModel)]="formData.isActive" name="isActive" />
-            <span class="slider round"></span>
-          </label>
-          <span class="status-label" [class.active]="formData.isActive" [class.disabled]="!formData.isActive">
+      <div class="form-group" style="margin-top: 16px; margin-bottom: 16px;">
+        <talos-slide-toggle
+          [(ngModel)]="formData.isActive"
+          name="isActive"
+          size="sm"
+        >
+          <span style="font-size: 0.85rem; font-weight: 500; color: var(--text-main);">
             {{ formData.isActive ? 'Active (Enabled)' : 'Disabled (Suspended)' }}
           </span>
-        </div>
+        </talos-slide-toggle>
       </div>
 
       <div class="form-group">
@@ -231,13 +281,19 @@
 
   <div class="bulk-actions">
     <!-- Role assign selector -->
-    <select #roleSelect (change)="bulkAssignRole(roleSelect.value); roleSelect.value = ''" class="form-input"
-      style="width: 180px; padding: 6px 10px; font-size: 0.8rem; background: #0c101d;">
-      <option value="">-- ASSIGN ROLE --</option>
+    <talos-select-input
+      #roleSelectInput
+      (ngModelChange)="bulkAssignRole($event); roleSelectInput.writeValue(null)"
+      [ngModel]="null"
+      placeholder="-- ASSIGN ROLE --"
+      size="sm"
+      [searchable]="true"
+      style="width: 180px;"
+    >
       @for (role of availableRoles(); track role.name) {
-      <option [value]="role.name">{{ role.name }}</option>
+        <talos-option [value]="role.name" [label]="role.name">{{ role.name }}</talos-option>
       }
-    </select>
+    </talos-select-input>
 
     <button talosButton variant="secondary" size="sm" (click)="bulkUpdateStatus(true)">
       Enable Selected

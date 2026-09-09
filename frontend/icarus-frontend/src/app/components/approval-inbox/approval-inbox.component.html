@@ -65,27 +65,27 @@
                   <button
                     talosButton
                     variant="primary"
-                    size="xs"
+                    size="md"
                     class="btn-approve"
                     (click)="approve(item.step_id)"
                     [loading]="actioningStepId() === item.step_id"
                     [disabled]="actioningStepId() === item.step_id"
                     [attr.aria-label]="'Approve ' + item.role_requested + ' request'"
                   >
-                    <svg lucideCheck [size]="13" style="margin-right: 4px;"></svg>
+                    <svg lucideCheck [size]="16" style="margin-right: 4px;"></svg>
                     Approve
                   </button>
                   <button
                     talosButton
                     variant="danger"
-                    size="xs"
+                    size="md"
                     class="btn-reject"
                     (click)="reject(item.step_id)"
                     [loading]="actioningStepId() === item.step_id"
                     [disabled]="actioningStepId() === item.step_id"
                     [attr.aria-label]="'Reject ' + item.role_requested + ' request'"
                   >
-                    <svg lucideX [size]="13" style="margin-right: 4px;"></svg>
+                    <svg lucideX [size]="16" style="margin-right: 4px;"></svg>
                     Reject
                   </button>
                 </div>
@@ -93,7 +93,7 @@
                 <details class="delegate-section">
                   <summary>Delegate to someone else</summary>
                   <div class="delegate-form">
-                    <talos-form-field label="Delegate to User ID" [forId]="'delegate-' + item.step_id" size="sm">
+                    <talos-form-field label="Delegate to User ID" [forId]="'delegate-' + item.step_id" size="sm" class="delegate-field">
                       <input
                         [id]="'delegate-' + item.step_id"
                         type="text"
@@ -107,13 +107,13 @@
                     <button
                       talosButton
                       variant="outline"
-                      size="xs"
+                      size="sm"
                       class="btn-delegate"
                       (click)="delegate(item.step_id)"
                       [loading]="actioningStepId() === item.step_id"
-                      [disabled]="actioningStepId() === item.step_id"
+                      [disabled]="actioningStepId() === item.step_id || !delegateTargets[item.step_id]"
                     >
-                      <svg lucideForward [size]="13" style="margin-right: 4px;"></svg>
+                      <svg lucideForward [size]="14" style="margin-right: 5px;"></svg>
                       Forward
                     </button>
                   </div>

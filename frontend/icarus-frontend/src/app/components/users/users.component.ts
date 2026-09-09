@@ -12,6 +12,11 @@ import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
 import { TalosPrefixDirective, TalosSuffixDirective } from '@weeehaoooz/talos-ui/form/affix';
 import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
 import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+import { TalosAlertComponent } from '@weeehaoooz/talos-ui/feedback/alert';
+import { TalosCheckboxDirective } from '@weeehaoooz/talos-ui/form/checkbox';
+import { TalosSlideToggleComponent } from '@weeehaoooz/talos-ui/form/slide-toggle';
+import { TalosPasswordInputComponent } from '@weeehaoooz/talos-ui/form/password-input';
+import { SelectInputComponent, OptionComponent } from '@weeehaoooz/talos-ui/form/select-input';
 
 // Lucide Icons
 import { LucideSearch, LucideX, LucidePlus, LucideLock, LucideUnlock, LucideTrash2 } from '@lucide/angular';
@@ -42,6 +47,12 @@ interface Role {
     TalosInputDirective,
     TalosButtonDirective,
     TalosStatusTagComponent,
+    TalosAlertComponent,
+    TalosCheckboxDirective,
+    TalosSlideToggleComponent,
+    TalosPasswordInputComponent,
+    SelectInputComponent,
+    OptionComponent,
     LucideSearch,
     LucideX,
     LucidePlus,

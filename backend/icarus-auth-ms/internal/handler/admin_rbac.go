@@ -597,14 +597,20 @@ func (s *HandlerServer) AdminUpdateClientHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	if req.PublicKey == "" {
-		s.respondWithError(w, http.StatusBadRequest, "public_key is required")
+	existing, err := s.Repo.GetClientByID(clientID)
+	if err != nil {
+		s.respondWithError(w, http.StatusNotFound, "client not found")
 		return
 	}
 
-	err := s.Repo.CreateClient(clientID, req.PublicKey)
-	if err != nil {
-		s.respondWithError(w, http.StatusInternalServerError, "failed to update client public key: "+err.Error())
+	if req.PublicKey != "" {
+		err := s.Repo.CreateClient(clientID, req.PublicKey)
+		if err != nil {
+			s.respondWithError(w, http.StatusInternalServerError, "failed to update client public key: "+err.Error())
+			return
+		}
+	} else if existing.PublicKey == "" {
+		s.respondWithError(w, http.StatusBadRequest, "public_key is required")
 		return
 	}
 

@@ -1,7 +1,7 @@
 <header class="clients-header">
   <div>
     <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.02em;">Clients Management</h1>
-    <p style="color: var(--text-muted); font-size: 0.9rem;">Register client keys and roles for remote microservices</p>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">Register and manage access roles and authentication credentials for remote microservices</p>
   </div>
   @if (activePanel() !== 'create') {
     <button talosButton variant="primary" (click)="openCreatePanel()">
@@ -18,7 +18,7 @@
       type="text"
       talosInput
       size="sm"
-      placeholder="Search clients by ID..."
+      placeholder="Search clients by ID or assigned roles..."
       [value]="searchQuery()"
       (input)="onSearchInput($event)"
       autocomplete="off"
@@ -63,6 +63,7 @@
     <ng-template #selectTmpl let-row="row">
       <div style="display: flex; align-items: center; justify-content: center;" (click)="$event.stopPropagation()">
         <input
+          talosCheckbox
           type="checkbox"
           class="form-checkbox"
           [checked]="selectedIds().has(row.client_id)"
@@ -76,24 +77,46 @@
       <span style="font-weight: 700; color: var(--primary);">{{ row.client_id }}</span>
     </ng-template>
 
-    <ng-template #publicKeyTmpl let-row="row">
-      <div class="pem-preview">
-        {{ row.public_key }}
-      </div>
-    </ng-template>
-
     <ng-template #rolesTmpl let-row="row">
       <div class="roles-container">
-        @for (role of row.roles; track role) {
-          <span class="badge badge-secondary">{{ role }}</span>
-        } @empty {
+        @for (role of (row.roles || []).slice(0, 3); track role) {
+          <span class="badge badge-primary">{{ role }}</span>
+        }
+        @if ((row.roles || []).length > 3) {
+          <span class="badge badge-secondary" [title]="(row.roles || []).slice(3).join(', ')">
+            +{{ (row.roles || []).length - 3 }} more
+          </span>
+        }
+        @if ((row.roles || []).length === 0) {
           <span style="color: var(--text-muted); font-size: 0.8rem; font-style: italic;">None</span>
         }
       </div>
     </ng-template>
 
     <ng-template #actionsTmpl let-row="row">
-      <div style="display: flex; justify-content: flex-end;" (click)="$event.stopPropagation()">
+      <div style="display: flex; justify-content: flex-end; gap: 4px;" (click)="$event.stopPropagation()">
+        <button
+          type="button"
+          talosButton
+          variant="ghost"
+          size="xs"
+          [iconOnly]="true"
+          (click)="openRoleModalForClient(row, $event)"
+          title="Manage Client Roles"
+        >
+          <svg lucideShield [size]="14" style="color: var(--primary, #3b82f6);"></svg>
+        </button>
+        <button
+          type="button"
+          talosButton
+          variant="ghost"
+          size="xs"
+          [iconOnly]="true"
+          (click)="openEditPanel(row, $event)"
+          title="Edit Client Configuration"
+        >
+          <svg lucidePencil [size]="14"></svg>
+        </button>
         <button
           type="button"
           talosButton
@@ -101,7 +124,7 @@
           size="xs"
           [iconOnly]="true"
           (click)="deleteClient(row.client_id, $event)"
-          title="Delete Credentials"
+          title="Delete Client"
         >
           <svg lucideTrash2 [size]="14" style="color: var(--danger, #ef4444);"></svg>
         </button>
@@ -114,42 +137,157 @@
   <div class="detail-panel glass-panel animate-fade-in" role="region" aria-label="Client Configuration Drawer">
     <header class="panel-header">
       <h2 class="panel-title">
-        {{ panelType === 'edit' ? 'Client Configurations' : 'Register New Client' }}
+        {{ panelType === 'edit' ? 'Client Configuration' : 'Register New Client' }}
       </h2>
-      <button (click)="closePanel()" class="close-btn" aria-label="Close client config panel">✕</button>
+      <button
+        type="button"
+        talosButton
+        variant="ghost"
+        size="xs"
+        [iconOnly]="true"
+        (click)="closePanel()"
+        class="close-btn"
+        aria-label="Close client config panel"
+      >
+        <svg lucideX [size]="16"></svg>
+      </button>
     </header>
 
     @if (panelError()) {
-    <div class="panel-error" role="alert">
-      {{ panelError() }}
-    </div>
+      <talos-alert severity="error" [dismissible]="true" (dismiss)="panelError.set(null)" class="mb-4">
+        {{ panelError() }}
+      </talos-alert>
+    }
+
+    @if (keyGenSuccess()) {
+      <talos-alert severity="success" [dismissible]="true" (dismiss)="keyGenSuccess.set(null)" class="mb-4">
+        {{ keyGenSuccess() }}
+      </talos-alert>
     }
 
     <form (ngSubmit)="saveClient()">
       <div class="form-group">
-        <label class="form-label" for="clientId">Client ID</label>
-        <input type="text" id="clientId" [(ngModel)]="formData.clientId" name="clientId" class="form-input" required
-          placeholder="e.g. storage-service-client" [disabled]="panelType === 'edit'" />
+        <talos-form-field label="Client ID" for="clientId" size="md">
+          <input
+            type="text"
+            id="clientId"
+            talosInput
+            [(ngModel)]="formData.clientId"
+            name="clientId"
+            required
+            placeholder="e.g. storage-service-client"
+            [disabled]="panelType === 'edit'"
+          />
+        </talos-form-field>
       </div>
 
+      <!-- Access Roles Assignment Section -->
       <div class="form-group">
-        <label class="form-label" for="publicKey">Public Key (RSA PEM format)</label>
-        <textarea id="publicKey" [(ngModel)]="formData.publicKey" name="publicKey" class="form-input" rows="8" required
-          placeholder="-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A...\n-----END PUBLIC KEY-----"
-          style="font-family: monospace; font-size: 0.8rem;"></textarea>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Assign Client Roles</label>
-        <div class="role-checkbox-grid">
-          @for (role of availableRoles(); track role.name) {
-          <label class="role-checkbox-item">
-            <input type="checkbox" [checked]="isRoleSelected(role.name)" (change)="toggleRole(role.name)"
-              class="form-checkbox" />
-            <span style="font-size: 0.85rem; font-weight: 500;">{{ role.name }}</span>
-          </label>
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+          <label class="form-label" style="margin-bottom: 0;">Access Roles ({{ formData.roles.length }} assigned)</label>
+          <button type="button" talosButton variant="outline" size="xs" (click)="openRoleModal()">
+            <svg lucideShield [size]="13" style="margin-right: 4px;"></svg>
+            Manage Roles
+          </button>
+        </div>
+        <div class="assigned-roles-preview-box">
+          @for (role of formData.roles; track role) {
+            <span class="badge badge-primary">{{ role }}</span>
+          } @empty {
+            <span style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">No roles assigned. Click "Manage Roles" or select below.</span>
           }
         </div>
+        <div class="role-checkbox-grid">
+          @for (role of availableRoles(); track role.name) {
+            <label class="role-checkbox-item" [class.is-selected]="isRoleSelected(role.name)">
+              <input
+                type="checkbox"
+                [checked]="isRoleSelected(role.name)"
+                (change)="toggleRole(role.name)"
+                class="form-checkbox"
+              />
+              <span class="role-name" [title]="role.description || role.name">{{ role.name }}</span>
+            </label>
+          } @empty {
+            <p style="color: var(--text-muted); font-size: 0.85rem; grid-column: 1 / -1;">No roles available.</p>
+          }
+        </div>
+      </div>
+
+      <!-- Public Key Section -->
+      <div class="form-group" style="margin-top: 20px;">
+        <div class="field-header-action">
+          <label class="form-label" for="publicKey" style="margin-bottom: 0;">Public Key (RSA PEM format)</label>
+          <button
+            type="button"
+            talosButton
+            variant="outline"
+            size="xs"
+            (click)="generateRsaKeyPair()"
+            [disabled]="isGeneratingKeys()"
+            title="Generate a new 2048-bit RSA key pair"
+          >
+            @if (isGeneratingKeys()) {
+              <svg lucideRefreshCw [size]="13" class="spin-icon" style="margin-right: 4px;"></svg>
+              Generating...
+            } @else {
+              <svg lucideKey [size]="13" style="margin-right: 4px;"></svg>
+              Generate Key Pair
+            }
+          </button>
+        </div>
+
+        <textarea
+          id="publicKey"
+          [(ngModel)]="formData.publicKey"
+          name="publicKey"
+          class="form-input pem-textarea"
+          rows="6"
+          [required]="panelType === 'create'"
+          placeholder="-----BEGIN PUBLIC KEY-----&#10;MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A...&#10;-----END PUBLIC KEY-----"
+        ></textarea>
+
+        @if (generatedPrivateKey()) {
+          <div class="private-key-callout animate-fade-in">
+            <div class="callout-header">
+              <span class="callout-title">
+                <svg lucideKey [size]="14"></svg>
+                Private Key Safe Keeping
+              </span>
+              <span class="badge badge-warning" style="font-size: 0.7rem;">Sensitive</span>
+            </div>
+            <p class="callout-text">
+              Store your private key securely. It cannot be recovered once you leave this page.
+            </p>
+            <div class="callout-actions">
+              <button
+                type="button"
+                talosButton
+                variant="secondary"
+                size="xs"
+                (click)="downloadPrivateKey()"
+              >
+                <svg lucideDownload [size]="13" style="margin-right: 4px;"></svg>
+                Download Key (.pem)
+              </button>
+              <button
+                type="button"
+                talosButton
+                variant="ghost"
+                size="xs"
+                (click)="copyPrivateKey()"
+              >
+                @if (keyCopied()) {
+                  <svg lucideCheck [size]="13" style="margin-right: 4px; color: var(--success);"></svg>
+                  Copied!
+                } @else {
+                  <svg lucideCopy [size]="13" style="margin-right: 4px;"></svg>
+                  Copy Private Key
+                }
+              </button>
+            </div>
+          </div>
+        }
       </div>
 
       <div
@@ -158,7 +296,7 @@
           Cancel
         </button>
         <button type="submit" talosButton variant="primary">
-          Save Credentials
+          {{ panelType === 'edit' ? 'Save Changes' : 'Register Client' }}
         </button>
       </div>
     </form>
@@ -175,13 +313,19 @@
 
   <div class="bulk-actions">
     <!-- Role assign selector -->
-    <select #roleSelect (change)="bulkAssignRole(roleSelect.value); roleSelect.value = ''" class="form-input"
-      style="width: 180px; padding: 6px 10px; font-size: 0.8rem; background: #0c101d;">
-      <option value="">-- ASSIGN ROLE --</option>
+    <talos-select-input
+      #roleSelectInput
+      (ngModelChange)="bulkAssignRole($event); roleSelectInput.writeValue(null)"
+      [ngModel]="null"
+      placeholder="-- ASSIGN ROLE --"
+      size="sm"
+      [searchable]="true"
+      style="width: 180px;"
+    >
       @for (role of availableRoles(); track role.name) {
-      <option [value]="role.name">{{ role.name }}</option>
+        <talos-option [value]="role.name" [label]="role.name">{{ role.name }}</talos-option>
       }
-    </select>
+    </talos-select-input>
 
     <button talosButton variant="danger" size="sm" (click)="bulkDelete()">
       Delete Selected

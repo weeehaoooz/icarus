@@ -9,6 +9,7 @@ import { TalosSlideToggleComponent } from '@weeehaoooz/talos-ui/form/slide-toggl
 import { TalosAlertComponent } from '@weeehaoooz/talos-ui/feedback/alert';
 import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
 import { TalosPasswordInputComponent } from '@weeehaoooz/talos-ui/form/password-input';
+import { TalosCardComponent, TalosCardBodyComponent } from '@weeehaoooz/talos-ui/layout';
 
 @Component({
   selector: 'app-ldap',
@@ -19,7 +20,9 @@ import { TalosPasswordInputComponent } from '@weeehaoooz/talos-ui/form/password-
     TalosSlideToggleComponent,
     TalosAlertComponent,
     TalosFormFieldComponent,
-    TalosPasswordInputComponent
+    TalosPasswordInputComponent,
+    TalosCardComponent,
+    TalosCardBodyComponent
   ],
   templateUrl: './ldap.component.html',
   styleUrl: './ldap.component.scss'

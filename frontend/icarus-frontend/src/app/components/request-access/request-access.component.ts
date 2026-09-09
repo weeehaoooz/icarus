@@ -8,7 +8,8 @@ import { WorkflowService, AccessCart, CartItem } from '../../services/workflow.s
 import { PlatformService } from '../../services/platform.service';
 
 // Talos UI
-import { TalosCardComponent, TalosCardBodyComponent } from '@weeehaoooz/talos-ui/layout';
+import { TalosCardComponent, TalosCardBodyComponent, TalosCardHeaderComponent } from '@weeehaoooz/talos-ui/layout';
+import { TalosStatusTagComponent } from '@weeehaoooz/talos-ui/data-display/status-tag';
 import { TalosAlertComponent } from '@weeehaoooz/talos-ui/feedback/alert';
 import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
 import { TalosPrefixDirective, TalosSuffixDirective } from '@weeehaoooz/talos-ui/form/affix';
@@ -23,10 +24,11 @@ import {
   LucideLayers,
   LucidePlus,
   LucideShoppingCart,
-  LucideFileText,
   LucideChevronDown,
   LucideSend,
-  LucideInbox
+  LucideInbox,
+  LucideTrash2,
+  LucideSave
 } from '@lucide/angular';
 
 interface Role {
@@ -53,6 +55,8 @@ interface TableRow {
     FormsModule,
     TalosCardComponent,
     TalosCardBodyComponent,
+    TalosCardHeaderComponent,
+    TalosStatusTagComponent,
     TalosAlertComponent,
     TalosFormFieldComponent,
     TalosPrefixDirective,
@@ -65,10 +69,11 @@ interface TableRow {
     LucideLayers,
     LucidePlus,
     LucideShoppingCart,
-    LucideFileText,
     LucideChevronDown,
     LucideSend,
-    LucideInbox
+    LucideInbox,
+    LucideTrash2,
+    LucideSave
   ],
   templateUrl: './request-access.component.html',
   styleUrl: './request-access.component.scss'

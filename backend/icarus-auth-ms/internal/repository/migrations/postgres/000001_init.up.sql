@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS client_tenant_module_roles (
     FOREIGN KEY(tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     FOREIGN KEY(module_id) REFERENCES modules(id) ON DELETE CASCADE,
     FOREIGN KEY(role_id) REFERENCES roles(id) ON DELETE CASCADE,
-    UNIQUE(client_id, tenant_id, module_id)
+    UNIQUE(client_id, tenant_id, module_id, role_id)
 );
 
 CREATE TABLE IF NOT EXISTS applications (

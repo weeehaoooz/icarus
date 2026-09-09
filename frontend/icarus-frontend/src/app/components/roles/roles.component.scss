@@ -88,11 +88,7 @@
     }
     
     .close-btn {
-      font-size: 1.25rem;
-      cursor: pointer;
       color: var(--text-muted);
-      background: transparent;
-      border: none;
       
       &:hover {
         color: var(--text-main);
@@ -138,12 +134,7 @@
   }
 }
 
-.panel-error {
-  padding: 10px 14px;
-  background: var(--danger-glow);
-  border: 1px solid rgba(248, 113, 113, 0.2);
-  color: var(--danger);
-  font-size: 0.85rem;
+.mb-4 {
   margin-bottom: 16px;
 }
 

@@ -351,6 +351,7 @@
                   @if (item.execution_id) {
                     <a
                       [routerLink]="['/dashboard/request-detail', item.execution_id]"
+                      [queryParams]="{ cartId: selected.id, from: 'my-requests' }"
                       (click)="closeDetails()"
                       class="history-trail-link"
                       [attr.aria-label]="'View audit trail for ' + item.role_name"

@@ -538,7 +538,10 @@
         }
 
         @if (cartItemCount() === 0) {
-          <p class="cart-empty">No roles added yet. Select a user and add missing roles to get started.</p>
+          <div class="cart-empty">
+            <svg lucideShoppingCart [size]="32" class="empty-cart-icon" aria-hidden="true"></svg>
+            <p>No roles added yet. Select a user and add missing roles to get started.</p>
+          </div>
         } @else if (currentCart()?.items?.length) {
           <ul class="cart-items" role="list">
             @for (item of currentCart()!.items; track item.id) {
@@ -548,6 +551,7 @@
                   talosButton
                   variant="ghost"
                   size="xs"
+                  [iconOnly]="true"
                   class="btn-remove-item"
                   (click)="removeFromCart(item)"
                   [attr.aria-label]="'Remove ' + item.role_name + ' from cart'"
@@ -566,6 +570,7 @@
                   talosButton
                   variant="ghost"
                   size="xs"
+                  [iconOnly]="true"
                   class="btn-remove-item"
                   (click)="removePendingRole(role)"
                   [attr.aria-label]="'Remove ' + role.name + ' from cart'"
@@ -581,7 +586,7 @@
           <talos-form-field label="Justification" for="justification" size="sm">
             <textarea
               id="justification"
-              rows="4"
+              rows="3"
               talosInput
               size="sm"
               placeholder="Explain why you need this access (min 10 characters)…"
@@ -590,7 +595,7 @@
             ></textarea>
           </talos-form-field>
           @if (hasSavedDraft()) {
-            <p class="justification-hint">Justification changes are applied when you submit.</p>
+            <p class="justification-hint">Justification changes are applied when you submit the request.</p>
           }
         </div>
 

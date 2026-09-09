@@ -1,209 +1,309 @@
 <header class="ldap-header">
   <div>
-    <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.02em;">LDAP Directory Integration</h1>
-    <p style="color: var(--text-muted); font-size: 0.9rem;">Integrate directory authentication services and manage user account synchronization policies</p>
+    <h1 class="page-title">LDAP Directory Integration</h1>
+    <p class="page-subtitle">Integrate directory authentication services and manage user account synchronization policies</p>
   </div>
 </header>
 
-<div class="ldap-layout">
-  <div class="settings-panel animate-fade-in">
+@if (message().type === 'success') {
+  <talos-alert severity="success" [dismissible]="true" (dismiss)="message.set({ text: '', type: null })" class="mb-4">
+    {{ message().text }}
+  </talos-alert>
+}
+@if (message().type === 'error') {
+  <talos-alert severity="error" [dismissible]="true" (dismiss)="message.set({ text: '', type: null })" class="mb-4">
+    {{ message().text }}
+  </talos-alert>
+}
 
-    @if (message().type === 'success') {
-      <talos-alert severity="success" [dismissible]="true" (dismiss)="message.set({ text: '', type: null })" class="mb-4">
-        {{ message().text }}
-      </talos-alert>
-    }
-    @if (message().type === 'error') {
-      <talos-alert severity="error" [dismissible]="true" (dismiss)="message.set({ text: '', type: null })" class="mb-4">
-        {{ message().text }}
-      </talos-alert>
-    }
-
-    <form (ngSubmit)="saveConfig()">
-      <!-- Toggle Enabled -->
-      <div class="form-group toggle-group">
-        <div class="toggle-info">
-          <label class="form-label" style="margin-bottom: 2px;">Enable LDAP Authentication</label>
-          <span style="font-size: 0.85rem; color: var(--text-muted);">Route authentication requests to the configured LDAP directory server.</span>
-        </div>
-        <talos-slide-toggle
-          [checked]="enabled()"
-          (checkedChange)="enabled.set($event)"
-          size="md"
-        >
-          {{ enabled() ? 'Enabled' : 'Disabled' }}
-        </talos-slide-toggle>
-      </div>
-
-      <div class="section-divider">Connection Settings</div>
-
-      <div class="form-grid">
-        <!-- Server URL -->
-        <div class="form-group full-width">
-          <talos-form-field label="LDAP Server URL" for="server_url" size="md">
-            <input
-              talosInput
-              type="url"
-              id="server_url"
-              [ngModel]="server_url()"
-              (ngModelChange)="server_url.set($event)"
-              name="server_url"
-              required
-              placeholder="ldap://ldap.forumsys.com:389 or ldaps://10.0.0.5:636"
-            />
-          </talos-form-field>
-          <span class="field-hint">Specify host URL including protocol (ldap:// or ldaps://) and port number</span>
+<div class="ldap-layout animate-fade-in">
+  <!-- Dedicated Row for Enable LDAP Authentication Toggle -->
+  <talos-card class="toggle-card" [class.is-enabled]="enabled()">
+    <talos-card-body>
+      <div class="toggle-row">
+        <div class="toggle-left">
+          <div class="toggle-icon-badge" [class.enabled]="enabled()">
+            <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              @if (enabled()) {
+                <path d="m9 12 2 2 4-4"/>
+              }
+            </svg>
+          </div>
+          <div class="toggle-text">
+            <div class="toggle-title-wrapper">
+              <h2 class="toggle-title">Enable LDAP Authentication</h2>
+              <span class="status-badge" [class.status-badge--active]="enabled()" [class.status-badge--inactive]="!enabled()">
+                {{ enabled() ? 'Active' : 'Disabled' }}
+              </span>
+            </div>
+            <p class="toggle-desc">Route authentication requests to the configured LDAP directory server.</p>
+          </div>
         </div>
 
-        <!-- Bind DN -->
-        <div class="form-group">
-          <talos-form-field label="Bind DN (Service Account)" for="bind_dn" size="md">
-            <input
-              talosInput
-              type="text"
-              id="bind_dn"
-              [ngModel]="bind_dn()"
-              (ngModelChange)="bind_dn.set($event)"
-              name="bind_dn"
-              placeholder="cn=read-only-admin,dc=example,dc=com"
-            />
-          </talos-form-field>
-          <span class="field-hint">Distinguished Name of the account used for directory searches</span>
-        </div>
-
-        <!-- Bind Password -->
-        <div class="form-group">
-          <label class="form-label" for="bind_password">Bind DN Password</label>
-          <talos-password-input
-            id="bind_password"
-            name="bind_password"
-            [ngModel]="bind_password()"
-            (ngModelChange)="bind_password.set($event)"
-            placeholder="••••••••••••"
-            [allowToggleMask]="true"
-            autocomplete="current-password"
-          />
-          <span class="field-hint">Password associated with the service account Bind DN</span>
+        <div class="toggle-control">
+          <talos-slide-toggle
+            [checked]="enabled()"
+            (checkedChange)="enabled.set($event)"
+            size="md"
+          >
+            <span class="toggle-label" [class.text-active]="enabled()">
+              {{ enabled() ? 'Enabled' : 'Disabled' }}
+            </span>
+          </talos-slide-toggle>
         </div>
       </div>
+    </talos-card-body>
+  </talos-card>
 
-      <div class="section-divider">User Search &amp; Mappings</div>
+  <!-- LDAP Configuration Form -->
+  <form (ngSubmit)="saveConfig()" class="ldap-form">
+    <fieldset [disabled]="!enabled()" class="form-fieldset" [class.disabled-fieldset]="!enabled()">
 
-      <div class="form-grid">
-        <!-- Search Base -->
-        <div class="form-group full-width">
-          <talos-form-field label="Search Base DN" for="search_base" size="md">
-            <input
-              talosInput
-              type="text"
-              id="search_base"
-              [ngModel]="search_base()"
-              (ngModelChange)="search_base.set($event)"
-              name="search_base"
-              required
-              placeholder="dc=example,dc=com"
-            />
-          </talos-form-field>
-          <span class="field-hint">The root distinguished name node where the directory search will commence</span>
+      @if (!enabled()) {
+        <div class="disabled-banner">
+          <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span>LDAP authentication is currently disabled. Turn on the toggle above to configure connection settings and user search mappings.</span>
         </div>
+      }
 
-        <!-- Username Attribute -->
-        <div class="form-group">
-          <talos-form-field label="Username Attribute" for="username_attribute" size="md">
-            <input
-              talosInput
-              type="text"
-              id="username_attribute"
-              [ngModel]="username_attribute()"
-              (ngModelChange)="username_attribute.set($event)"
-              name="username_attribute"
-              required
-              placeholder="uid"
-            />
-          </talos-form-field>
-          <span class="field-hint">e.g. uid, sAMAccountName, or cn</span>
-        </div>
+      <div class="sections-grid">
+        <!-- Section 1: Connection Settings -->
+        <talos-card class="section-card">
+          <talos-card-body>
+            <div class="section-header">
+              <div class="section-icon-container">
+                <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect width="20" height="8" x="2" y="2" rx="2" ry="2"/>
+                  <rect width="20" height="8" x="2" y="14" rx="2" ry="2"/>
+                  <line x1="6" x2="6.01" y1="6" y2="6"/>
+                  <line x1="6" x2="6.01" y1="18" y2="18"/>
+                </svg>
+              </div>
+              <div>
+                <h3 class="section-title">Connection Settings</h3>
+                <p class="section-subtitle">Configure directory server endpoint and service account credentials</p>
+              </div>
+            </div>
 
-        <!-- Email Attribute -->
-        <div class="form-group">
-          <talos-form-field label="Email Attribute" for="mail_attribute" size="md">
-            <input
-              talosInput
-              type="text"
-              id="mail_attribute"
-              [ngModel]="mail_attribute()"
-              (ngModelChange)="mail_attribute.set($event)"
-              name="mail_attribute"
-              required
-              placeholder="mail"
-            />
-          </talos-form-field>
-          <span class="field-hint">e.g. mail or userPrincipalName</span>
-        </div>
+            <div class="form-grid">
+              <!-- Server URL -->
+              <div class="form-group full-width">
+                <talos-form-field label="LDAP Server URL" for="server_url" size="md">
+                  <input
+                    talosInput
+                    type="url"
+                    id="server_url"
+                    [ngModel]="server_url()"
+                    (ngModelChange)="server_url.set($event)"
+                    name="server_url"
+                    [disabled]="!enabled()"
+                    [required]="enabled()"
+                    placeholder="ldap://ldap.forumsys.com:389 or ldaps://10.0.0.5:636"
+                  />
+                </talos-form-field>
+                <span class="field-hint">Specify host URL including protocol (ldap:// or ldaps://) and port number</span>
+              </div>
 
-        <!-- First Name Attribute -->
-        <div class="form-group">
-          <talos-form-field label="First Name Attribute" for="first_name_attribute" size="md">
-            <input
-              talosInput
-              type="text"
-              id="first_name_attribute"
-              [ngModel]="first_name_attribute()"
-              (ngModelChange)="first_name_attribute.set($event)"
-              name="first_name_attribute"
-              required
-              placeholder="givenName"
-            />
-          </talos-form-field>
-          <span class="field-hint">e.g. givenName</span>
-        </div>
+              <!-- Bind DN -->
+              <div class="form-group">
+                <talos-form-field label="Bind DN (Service Account)" for="bind_dn" size="md">
+                  <input
+                    talosInput
+                    type="text"
+                    id="bind_dn"
+                    [ngModel]="bind_dn()"
+                    (ngModelChange)="bind_dn.set($event)"
+                    name="bind_dn"
+                    [disabled]="!enabled()"
+                    placeholder="cn=read-only-admin,dc=example,dc=com"
+                  />
+                </talos-form-field>
+                <span class="field-hint">Distinguished Name of the account used for directory searches</span>
+              </div>
 
-        <!-- Last Name Attribute -->
-        <div class="form-group">
-          <talos-form-field label="Last Name Attribute" for="last_name_attribute" size="md">
-            <input
-              talosInput
-              type="text"
-              id="last_name_attribute"
-              [ngModel]="last_name_attribute()"
-              (ngModelChange)="last_name_attribute.set($event)"
-              name="last_name_attribute"
-              required
-              placeholder="sn"
-            />
-          </talos-form-field>
-          <span class="field-hint">e.g. sn (Surname)</span>
-        </div>
+              <!-- Bind Password -->
+              <div class="form-group">
+                <label class="form-label" for="bind_password">Bind DN Password</label>
+                <talos-password-input
+                  id="bind_password"
+                  name="bind_password"
+                  [ngModel]="bind_password()"
+                  (ngModelChange)="bind_password.set($event)"
+                  [disabled]="!enabled()"
+                  placeholder="••••••••••••"
+                  [allowToggleMask]="true"
+                  autocomplete="current-password"
+                />
+                <span class="field-hint">Password associated with the service account Bind DN</span>
+              </div>
+            </div>
+          </talos-card-body>
+        </talos-card>
+
+        <!-- Section 2: User Search & Mappings -->
+        <talos-card class="section-card">
+          <talos-card-body>
+            <div class="section-header">
+              <div class="section-icon-container">
+                <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </div>
+              <div>
+                <h3 class="section-title">User Search &amp; Mappings</h3>
+                <p class="section-subtitle">Define directory query base DN and map LDAP attributes to user identity records</p>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <!-- Search Base -->
+              <div class="form-group full-width">
+                <talos-form-field label="Search Base DN" for="search_base" size="md">
+                  <input
+                    talosInput
+                    type="text"
+                    id="search_base"
+                    [ngModel]="search_base()"
+                    (ngModelChange)="search_base.set($event)"
+                    name="search_base"
+                    [disabled]="!enabled()"
+                    [required]="enabled()"
+                    placeholder="dc=example,dc=com"
+                  />
+                </talos-form-field>
+                <span class="field-hint">The root distinguished name node where the directory search will commence</span>
+              </div>
+
+              <!-- Username Attribute -->
+              <div class="form-group">
+                <talos-form-field label="Username Attribute" for="username_attribute" size="md">
+                  <input
+                    talosInput
+                    type="text"
+                    id="username_attribute"
+                    [ngModel]="username_attribute()"
+                    (ngModelChange)="username_attribute.set($event)"
+                    name="username_attribute"
+                    [disabled]="!enabled()"
+                    [required]="enabled()"
+                    placeholder="uid"
+                  />
+                </talos-form-field>
+                <span class="field-hint">e.g. uid, sAMAccountName, or cn</span>
+              </div>
+
+              <!-- Email Attribute -->
+              <div class="form-group">
+                <talos-form-field label="Email Attribute" for="mail_attribute" size="md">
+                  <input
+                    talosInput
+                    type="text"
+                    id="mail_attribute"
+                    [ngModel]="mail_attribute()"
+                    (ngModelChange)="mail_attribute.set($event)"
+                    name="mail_attribute"
+                    [disabled]="!enabled()"
+                    [required]="enabled()"
+                    placeholder="mail"
+                  />
+                </talos-form-field>
+                <span class="field-hint">e.g. mail or userPrincipalName</span>
+              </div>
+
+              <!-- First Name Attribute -->
+              <div class="form-group">
+                <talos-form-field label="First Name Attribute" for="first_name_attribute" size="md">
+                  <input
+                    talosInput
+                    type="text"
+                    id="first_name_attribute"
+                    [ngModel]="first_name_attribute()"
+                    (ngModelChange)="first_name_attribute.set($event)"
+                    name="first_name_attribute"
+                    [disabled]="!enabled()"
+                    [required]="enabled()"
+                    placeholder="givenName"
+                  />
+                </talos-form-field>
+                <span class="field-hint">e.g. givenName</span>
+              </div>
+
+              <!-- Last Name Attribute -->
+              <div class="form-group">
+                <talos-form-field label="Last Name Attribute" for="last_name_attribute" size="md">
+                  <input
+                    talosInput
+                    type="text"
+                    id="last_name_attribute"
+                    [ngModel]="last_name_attribute()"
+                    (ngModelChange)="last_name_attribute.set($event)"
+                    name="last_name_attribute"
+                    [disabled]="!enabled()"
+                    [required]="enabled()"
+                    placeholder="sn"
+                  />
+                </talos-form-field>
+                <span class="field-hint">e.g. sn (Surname)</span>
+              </div>
+            </div>
+          </talos-card-body>
+        </talos-card>
       </div>
 
-      <!-- Action Buttons -->
-      <div class="form-actions">
-        <button
-          talosButton
-          type="button"
-          variant="secondary"
-          (click)="testConnection()"
-          [loading]="isTesting()"
-          [disabled]="isTesting() || !server_url() || !search_base()"
-        >
-          @if (!isTesting()) {
-            <svg class="lucide-icon" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5m-9 9 4 8 5-5"/><path d="M22 12c0 5.5-4.5 10-10 10S2 17.5 2 12 6.5 2 12 2"/></svg>
-          }
-          Test Connection
-        </button>
-        <button
-          talosButton
-          type="submit"
-          variant="primary"
-          [loading]="isSaving()"
-          [disabled]="isSaving() || !server_url() || !search_base()"
-        >
-          @if (!isSaving()) {
-            <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-          }
-          Save Settings
-        </button>
-      </div>
-    </form>
-  </div>
+    </fieldset>
+
+    <!-- Action Buttons Panel -->
+    <talos-card class="actions-card">
+      <talos-card-body>
+        <div class="form-actions">
+          <div class="actions-status">
+            @if (enabled()) {
+              <span class="status-indicator-dot active"></span>
+              <span class="actions-status-text">LDAP is enabled &amp; active</span>
+            } @else {
+              <span class="status-indicator-dot inactive"></span>
+              <span class="actions-status-text">LDAP is disabled</span>
+            }
+          </div>
+
+          <div class="actions-buttons">
+            <button
+              talosButton
+              type="button"
+              variant="secondary"
+              (click)="testConnection()"
+              [loading]="isTesting()"
+              [disabled]="!enabled() || isTesting() || !server_url() || !search_base()"
+            >
+              @if (!isTesting()) {
+                <svg class="lucide-icon" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5m-9 9 4 8 5-5"/><path d="M22 12c0 5.5-4.5 10-10 10S2 17.5 2 12 6.5 2 12 2"/></svg>
+              }
+              Test Connection
+            </button>
+            <button
+              talosButton
+              type="submit"
+              variant="primary"
+              [loading]="isSaving()"
+              [disabled]="isSaving() || (enabled() && (!server_url() || !search_base()))"
+            >
+              @if (!isSaving()) {
+                <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              }
+              Save Settings
+            </button>
+          </div>
+        </div>
+      </talos-card-body>
+    </talos-card>
+  </form>
 </div>
+

@@ -10,9 +10,13 @@
       <div>
         <h2 class="role-modal-title">Manage Access Roles</h2>
         <p class="role-modal-subtitle">
-          Operator: <strong class="username-highlight">{{ data.username }}</strong>
-          <span class="subtitle-sep">·</span>
-          {{ data.email }}
+          @if (data.email) {
+            Operator: <strong class="username-highlight">{{ data.username }}</strong>
+            <span class="subtitle-sep">·</span>
+            {{ data.email }}
+          } @else {
+            Client ID: <strong class="username-highlight">{{ data.username }}</strong>
+          }
         </p>
       </div>
     </div>

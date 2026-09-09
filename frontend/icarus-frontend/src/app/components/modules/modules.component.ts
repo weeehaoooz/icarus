@@ -12,6 +12,10 @@ import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
 import { TalosPrefixDirective, TalosSuffixDirective } from '@weeehaoooz/talos-ui/form/affix';
 import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
 import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+import { TalosAlertComponent } from '@weeehaoooz/talos-ui/feedback/alert';
+import { TalosSlideToggleComponent } from '@weeehaoooz/talos-ui/form/slide-toggle';
+import { SelectInputComponent, OptionComponent } from '@weeehaoooz/talos-ui/form/select-input';
+import { TalosCheckboxDirective } from '@weeehaoooz/talos-ui/form/checkbox';
 
 // Lucide Icons
 import { LucideSearch, LucideX, LucidePlus, LucideEdit, LucideTrash2 } from '@lucide/angular';
@@ -51,6 +55,11 @@ const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'
     TalosInputDirective,
     TalosButtonDirective,
     TalosStatusTagComponent,
+    TalosAlertComponent,
+    TalosSlideToggleComponent,
+    SelectInputComponent,
+    OptionComponent,
+    TalosCheckboxDirective,
     LucideSearch,
     LucideX,
     LucidePlus,

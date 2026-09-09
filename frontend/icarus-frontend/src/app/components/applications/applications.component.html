@@ -64,8 +64,8 @@
     <ng-template #selectTmpl let-row="row">
       <div style="display: flex; align-items: center; justify-content: center;" (click)="$event.stopPropagation()">
         <input
+          talosCheckbox
           type="checkbox"
-          class="form-checkbox"
           [checked]="selectedIds().has(row.id)"
           (change)="toggleSelect(row.id, $event)"
           [attr.aria-label]="'Select ' + row.name"
@@ -101,55 +101,69 @@
         <h2 class="panel-title">
           {{ panelType === 'edit' ? 'Modify Application' : 'Register Application' }}
         </h2>
-        <button (click)="closePanel()" class="close-btn" aria-label="Close panel">✕</button>
+        <button
+          type="button"
+          talosButton
+          variant="ghost"
+          size="xs"
+          [iconOnly]="true"
+          (click)="closePanel()"
+          class="close-btn"
+          aria-label="Close panel"
+        >
+          <svg lucideX [size]="16"></svg>
+        </button>
       </header>
 
       @if (panelError()) {
-        <div class="panel-error" role="alert">
+        <talos-alert severity="error" [dismissible]="true" (dismiss)="panelError.set(null)" class="mb-4">
           {{ panelError() }}
-        </div>
+        </talos-alert>
       }
 
       <form (ngSubmit)="saveApplication()">
         <div class="form-group">
-          <label class="form-label" for="appCode">Application Code</label>
-          <input
-            type="text"
-            id="appCode"
-            [(ngModel)]="formData.code"
-            name="code"
-            class="form-input"
-            required
-            placeholder="e.g. billing-service"
-            [disabled]="panelType === 'edit'"
-          />
+          <talos-form-field label="Application Code" for="appCode" size="md">
+            <input
+              talosInput
+              type="text"
+              id="appCode"
+              [(ngModel)]="formData.code"
+              name="code"
+              required
+              placeholder="e.g. billing-service"
+              [disabled]="panelType === 'edit'"
+            />
+          </talos-form-field>
           <span class="form-help">Unique string identifier used to map application-scoped policies.</span>
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="appName">Team Name</label>
-          <input
-            type="text"
-            id="appName"
-            [(ngModel)]="formData.name"
-            name="name"
-            class="form-input"
-            required
-            placeholder="e.g. Billing & Payment Team"
-          />
+          <talos-form-field label="Team Name" for="appName" size="md">
+            <input
+              talosInput
+              type="text"
+              id="appName"
+              [(ngModel)]="formData.name"
+              name="name"
+              required
+              placeholder="e.g. Billing &amp; Payment Team"
+            />
+          </talos-form-field>
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="appDescription">Description</label>
-          <textarea
-            id="appDescription"
-            [(ngModel)]="formData.description"
-            name="description"
-            class="form-input"
-            rows="4"
-            placeholder="Describe the application's domain and responsibilities..."
-            style="resize: none;"
-          ></textarea>
+          <talos-form-field label="Description" for="appDescription" size="md">
+            <textarea
+              talosInput
+              id="appDescription"
+              [(ngModel)]="formData.description"
+              name="description"
+              rows="4"
+              placeholder="Describe the application's domain and responsibilities..."
+              style="resize: none;"
+            ></textarea>
+          </talos-form-field>
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">

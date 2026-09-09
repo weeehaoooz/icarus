@@ -1,0 +1,2 @@
+ALTER TABLE client_tenant_module_roles DROP CONSTRAINT IF EXISTS client_tenant_module_roles_client_id_tenant_id_module_id_key;
+ALTER TABLE client_tenant_module_roles ADD CONSTRAINT client_tenant_module_roles_client_id_tenant_id_module_id_role_id_key UNIQUE (client_id, tenant_id, module_id, role_id);

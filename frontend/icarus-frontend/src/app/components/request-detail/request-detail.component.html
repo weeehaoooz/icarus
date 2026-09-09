@@ -1,39 +1,120 @@
-<section class="request-detail">
-  <div class="page-header">
-    <h1>Request Audit Trail</h1>
-    <p class="subtitle instance-id">Instance: <code>{{ instanceId() }}</code></p>
-  </div>
+<section class="request-detail animate-fade-in">
+  <header class="page-header">
+    <div class="header-nav">
+      <button
+        talosButton
+        variant="secondary"
+        size="sm"
+        class="btn-back"
+        (click)="goBack()"
+        aria-label="Return to the request"
+      >
+        <svg lucideArrowLeft [size]="15" aria-hidden="true"></svg>
+        <span>Back to Request</span>
+      </button>
+
+      @if (cartId()) {
+        <span class="nav-separator" aria-hidden="true">/</span>
+        <span class="nav-context">Request: <code>{{ cartId() }}</code></span>
+      }
+    </div>
+
+    <div class="header-main">
+      <div class="header-title-row">
+        <div class="title-with-icon">
+          <div class="header-icon-box" aria-hidden="true">
+            <svg lucideShieldCheck [size]="24"></svg>
+          </div>
+          <div>
+            <h1>Request Audit Trail</h1>
+            <p class="subtitle">
+              Detailed chronological execution log & compliance trail for instance
+              <code class="instance-code">{{ instanceId() }}</code>
+            </p>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <talos-status-tag status="NEW" variant="subtle" size="sm">
+            <svg lucideActivity [size]="12" style="margin-right: 4px;" aria-hidden="true"></svg>
+            {{ events().length }} {{ events().length === 1 ? 'Event' : 'Events' }}
+          </talos-status-tag>
+
+          <button
+            talosButton
+            variant="outline"
+            size="sm"
+            (click)="loadAuditTrail(instanceId())"
+            [disabled]="isLoading()"
+            aria-label="Refresh audit trail"
+          >
+            <svg lucideRotateCcw [size]="14" [class.spin]="isLoading()" aria-hidden="true"></svg>
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
 
   @if (isLoading()) {
-    <div class="loading-state" aria-busy="true">Loading audit trail…</div>
+    <div class="state-card">
+      <div class="loading-state" aria-busy="true">
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Loading audit trail timeline…</p>
+      </div>
+    </div>
   } @else if (error()) {
-    <div class="error-state" role="alert">{{ error() }}</div>
+    <talos-alert severity="error" [dismissible]="false" class="mb-4">
+      {{ error() }}
+    </talos-alert>
+    <div class="state-actions">
+      <button talosButton variant="secondary" size="sm" (click)="goBack()">
+        <svg lucideArrowLeft [size]="15" aria-hidden="true"></svg>
+        <span>Back to Request</span>
+      </button>
+    </div>
   } @else if (events().length === 0) {
-    <p class="empty-state">No events found for this instance.</p>
+    <div class="empty-card">
+      <div class="empty-state">
+        <div class="empty-icon-box" aria-hidden="true">
+          <svg lucideHistory [size]="36"></svg>
+        </div>
+        <h3>No Audit Events Found</h3>
+        <p>There are no audit log events recorded for workflow instance <code>{{ instanceId() }}</code>.</p>
+        <div class="empty-actions">
+          <button talosButton variant="secondary" size="sm" (click)="loadAuditTrail(instanceId())">
+            <svg lucideRotateCcw [size]="14" aria-hidden="true"></svg>
+            <span>Try Again</span>
+          </button>
+          <button talosButton variant="outline" size="sm" (click)="goBack()">
+            <svg lucideArrowLeft [size]="14" aria-hidden="true"></svg>
+            <span>Back to Request</span>
+          </button>
+        </div>
+      </div>
+    </div>
   } @else {
-    <ol class="timeline" aria-label="Approval event timeline">
-      @for (event of events(); track event.id) {
-        <li class="timeline-event" [class]="actionClass(event.action)">
-          <div class="event-dot" aria-hidden="true"></div>
-          <div class="event-content">
-            <div class="event-header">
-              <span class="event-action">{{ actionLabel(event.action) }}</span>
-              <time class="event-time" [dateTime]="event.occurred_at">
-                {{ event.occurred_at | date:'dd MMM yyyy, HH:mm:ss' }}
-              </time>
-            </div>
-            @if (event.actor_user_id) {
-              <p class="event-actor">by <strong>{{ event.actor_user_id }}</strong></p>
-            }
-            @if (event.after_state) {
-              <details class="event-details">
-                <summary>Details</summary>
-                <pre class="event-json">{{ event.after_state }}</pre>
-              </details>
-            }
-          </div>
-        </li>
-      }
-    </ol>
+    <div class="timeline-container">
+      <talos-timeline
+        [items]="timelineItems()"
+        mode="card"
+        align="left"
+      />
+
+      <div class="timeline-footer">
+        <button
+          talosButton
+          variant="secondary"
+          size="sm"
+          class="btn-footer-back"
+          (click)="goBack()"
+          aria-label="Return to the request"
+        >
+          <svg lucideArrowLeft [size]="15" aria-hidden="true"></svg>
+          <span>Back to Request</span>
+        </button>
+      </div>
+    </div>
   }
 </section>
+

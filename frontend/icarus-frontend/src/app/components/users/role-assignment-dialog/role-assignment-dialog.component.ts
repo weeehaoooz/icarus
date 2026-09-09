@@ -10,7 +10,7 @@ interface Role {
 
 interface DialogData {
   username: string;
-  email: string;
+  email?: string;
   assignedRoles: string[];
   availableRoles: Role[];
 }

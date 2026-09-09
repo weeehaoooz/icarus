@@ -270,21 +270,32 @@
     </talos-card>
 
     <!-- Cart Sidebar Card -->
-    <talos-card variant="elevated" [padding]="'none'" class="cart" aria-label="Access request cart">
-      <talos-card-body>
-        <div class="cart-header">
-          <h2>Your Cart</h2>
-          <span class="cart-badge" aria-label="{{ cartItemCount() }} items in cart">
-            {{ cartItemCount() }}
-          </span>
+    <talos-card variant="elevated" class="cart-card" aria-label="Access request cart">
+      <talos-card-header title="Your Cart" [bordered]="true">
+        <div talosCardAvatar>
+          <svg lucideShoppingCart [size]="18" class="text-primary"></svg>
         </div>
+        <div class="cart-header-badge">
+          <talos-status-tag
+            status="NEW"
+            [label]="cartItemCount().toString()"
+            size="sm"
+            shape="pill"
+            [showIcon]="false"
+          />
+        </div>
+      </talos-card-header>
 
+      <talos-card-body>
         @if (hasSavedDraft()) {
           <div class="draft-indicator">
-            <span class="draft-badge">
-              <svg lucideFileText [size]="14" style="margin-right: 4px;"></svg>
-              Draft saved
-            </span>
+            <talos-status-tag
+              status="PENDING"
+              label="Draft saved"
+              size="sm"
+              variant="subtle"
+              shape="rounded"
+            />
           </div>
         }
 
@@ -304,11 +315,11 @@
                   variant="ghost"
                   size="xs"
                   [iconOnly]="true"
-                  class="btn-remove"
+                  class="btn-remove-item"
                   (click)="removeFromCart(item)"
                   [attr.aria-label]="'Remove ' + item.role_name + ' from cart'"
                 >
-                  <svg lucideX [size]="14"></svg>
+                  <svg lucideTrash2 [size]="14" class="text-danger"></svg>
                 </button>
               </li>
             }
@@ -324,11 +335,11 @@
                   variant="ghost"
                   size="xs"
                   [iconOnly]="true"
-                  class="btn-remove"
+                  class="btn-remove-item"
                   (click)="removePendingRole(role)"
                   [attr.aria-label]="'Remove ' + role.name + ' from cart'"
                 >
-                  <svg lucideX [size]="14"></svg>
+                  <svg lucideTrash2 [size]="14" class="text-danger"></svg>
                 </button>
               </li>
             }
@@ -339,8 +350,9 @@
           <talos-form-field label="Justification" for="justification" size="sm">
             <textarea
               id="justification"
-              talosInput
               rows="3"
+              talosInput
+              size="sm"
               placeholder="Explain why you need this access (min 10 characters)…"
               [(ngModel)]="justification"
               aria-required="true"
@@ -355,18 +367,17 @@
           <button
             id="save-draft"
             talosButton
-            variant="outline"
-            class="btn-save-draft"
+            variant="secondary"
+            [fullWidth]="true"
             [loading]="isSavingDraft()"
-            [disabled]="cartItemCount() === 0"
+            [disabled]="isSavingDraft() || cartItemCount() === 0"
             (click)="saveDraft()"
             aria-live="polite"
           >
+            <svg lucideSave [size]="15" style="margin-right: 6px;"></svg>
             @if (hasSavedDraft()) {
-              <svg lucideCheck [size]="14" style="margin-right: 4px;"></svg>
               <span>Draft Saved</span>
             } @else {
-              <svg lucideFileText [size]="14" style="margin-right: 4px;"></svg>
               <span>Save Draft</span>
             }
           </button>
@@ -375,13 +386,13 @@
             id="submit-cart"
             talosButton
             variant="primary"
-            class="btn-submit"
+            [fullWidth]="true"
             [loading]="isSubmitting()"
-            [disabled]="cartItemCount() === 0"
+            [disabled]="isSubmitting() || cartItemCount() === 0"
             (click)="submitCart()"
             aria-live="polite"
           >
-            <svg lucideSend [size]="14" style="margin-right: 6px;"></svg>
+            <svg lucideSend [size]="15" style="margin-right: 6px;"></svg>
             <span>Submit Request ({{ cartItemCount() }})</span>
           </button>
         </div>

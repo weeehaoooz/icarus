@@ -66,7 +66,7 @@
       <div style="display: flex; align-items: center; justify-content: center;" (click)="$event.stopPropagation()">
         <input
           type="checkbox"
-          class="form-checkbox"
+          talosCheckbox
           [checked]="selectedIds().has(row.id)"
           (change)="toggleSelect(row.id, $event)"
         />
@@ -129,17 +129,24 @@
       <h2 class="panel-title">
         {{ panel === 'create' ? 'Register New Module' : 'Edit Module Settings' }}
       </h2>
-      <button (click)="closePanel()" class="close-btn" aria-label="Close panel">✕</button>
+      <button
+        type="button"
+        talosButton
+        variant="ghost"
+        size="xs"
+        [iconOnly]="true"
+        (click)="closePanel()"
+        class="close-btn"
+        aria-label="Close panel"
+      >
+        <svg lucideX [size]="16"></svg>
+      </button>
     </div>
 
     @if (panelError()) {
-    <div class="panel-error">
-      <svg class="lucide-icon" viewBox="0 0 24 24" style="margin-right: 6px; color: var(--danger);">
-        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-        <line x1="12" y1="9" x2="12" y2="13" />
-        <line x1="12" y1="17" x2="12.01" y2="17" />
-      </svg> {{ panelError() }}
-    </div>
+      <talos-alert severity="error" [dismissible]="true" (dismiss)="panelError.set(null)" class="mb-4">
+        {{ panelError() }}
+      </talos-alert>
     }
 
     @if (panel === 'edit') {
@@ -165,30 +172,56 @@
       @if (panel === 'create' || editPanelTab() === 'settings') {
       <div class="tab-content-group">
         <div class="form-group">
-          <label class="form-label" for="module-code">Module Code</label>
-          <input id="module-code" name="code" [(ngModel)]="formData.code" required [disabled]="panel === 'edit'"
-            placeholder="e.g. core-api" class="form-input" />
+          <talos-form-field label="Module Code" for="module-code" size="md">
+            <input
+              id="module-code"
+              name="code"
+              talosInput
+              [(ngModel)]="formData.code"
+              required
+              [disabled]="panel === 'edit'"
+              placeholder="e.g. core-api"
+            />
+          </talos-form-field>
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="module-name">Module Name</label>
-          <input id="module-name" name="name" [(ngModel)]="formData.name" required
-            [disabled]="panel === 'edit' && !isOwner($safeNavigationMigration(selectedModule()?.code))" placeholder="e.g. Core API Portal"
-            class="form-input" />
+          <talos-form-field label="Module Name" for="module-name" size="md">
+            <input
+              id="module-name"
+              name="name"
+              talosInput
+              [(ngModel)]="formData.name"
+              required
+              [disabled]="panel === 'edit' && !isOwner(selectedModule()?.code)"
+              placeholder="e.g. Core API Portal"
+            />
+          </talos-form-field>
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="module-baseUrl">Base URL</label>
-          <input id="module-baseUrl" name="baseUrl" [(ngModel)]="formData.baseUrl" required
-            [disabled]="panel === 'edit' && !isOwner($safeNavigationMigration(selectedModule()?.code))" placeholder="e.g. http://localhost:8082"
-            class="form-input" />
+          <talos-form-field label="Base URL" for="module-baseUrl" size="md">
+            <input
+              id="module-baseUrl"
+              name="baseUrl"
+              talosInput
+              [(ngModel)]="formData.baseUrl"
+              required
+              [disabled]="panel === 'edit' && !isOwner(selectedModule()?.code)"
+              placeholder="e.g. http://localhost:8082"
+            />
+          </talos-form-field>
         </div>
 
-        <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-top: 16px;">
-          <input type="checkbox" id="module-isActive" name="isActive" [(ngModel)]="formData.isActive"
-            [disabled]="panel === 'edit' && !isOwner($safeNavigationMigration(selectedModule()?.code))" class="form-checkbox" />
-          <label class="form-label" for="module-isActive" style="margin-bottom: 0; cursor: pointer;">Module is
-            Active</label>
+        <div class="form-group" style="margin-top: 16px; margin-bottom: 16px;">
+          <talos-slide-toggle
+            [(ngModel)]="formData.isActive"
+            name="isActive"
+            size="sm"
+            [disabled]="panel === 'edit' && !isOwner(selectedModule()?.code)"
+          >
+            <span style="font-size: 0.85rem; font-weight: 500; color: var(--text-main);">Module is Active</span>
+          </talos-slide-toggle>
         </div>
 
         @if (panel === 'edit') {
@@ -225,15 +258,23 @@
             Applications</h3>
           <div
             style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; background: rgba(255,255,255,0.01); border: 1px solid var(--border-color); border-radius: 0; padding: 12px;">
-            @if (availableAppsToOnboard().length > 0 && isOwner($safeNavigationMigration(selectedModule()?.code))) {
-            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-              <select [(ngModel)]="onboardAppCode" name="onboardAppCode" class="form-input"
-                style="flex: 1; padding: 6px 10px; font-size: 0.85rem;">
-                <option value="">Select App to Onboard...</option>
+            @if (availableAppsToOnboard().length > 0 && isOwner(selectedModule()?.code)) {
+            <div style="display: flex; gap: 8px; margin-bottom: 12px; align-items: center;">
+              <talos-select-input
+                id="onboardAppCode"
+                name="onboardAppCode"
+                [(ngModel)]="onboardAppCode"
+                [searchable]="true"
+                size="sm"
+                placeholder="Select App to Onboard..."
+                style="flex: 1;"
+              >
                 @for (app of availableAppsToOnboard(); track app.id) {
-                <option [value]="app.code">{{ app.name }} ({{ app.code }})</option>
+                <talos-option [value]="app.code" [label]="app.name + ' (' + app.code + ')'">
+                  {{ app.name }} ({{ app.code }})
+                </talos-option>
                 }
-              </select>
+              </talos-select-input>
               <button type="button" talosButton variant="primary" size="sm" (click)="onboardApplication()" [disabled]="!onboardAppCode">
                 Onboard
               </button>
@@ -246,7 +287,7 @@
                 style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 0; border: 1px solid rgba(255,255,255,0.05);">
                 <span style="font-family: monospace; font-size: 0.85rem; color: var(--primary); font-weight: 600;">{{
                   appCode }}</span>
-                @if (isOwner($safeNavigationMigration(selectedModule()?.code))) {
+                @if (isOwner(selectedModule()?.code)) {
                 <button type="button" talosButton variant="ghost" size="xs" [iconOnly]="true" (click)="offboardApplication(appCode)"
                   title="Offboard Application">
                   <svg lucideX [size]="14" style="color: var(--danger, #ef4444);"></svg>
@@ -297,14 +338,9 @@
           </div>
 
           @if (configTabError()) {
-          <div class="config-tab-error">
-            <svg class="lucide-icon" viewBox="0 0 24 24" style="width:13px;height:13px;margin-right:6px;flex-shrink:0;">
-              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-              <line x1="12" y1="9" x2="12" y2="13" />
-              <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
+          <talos-alert severity="error" [dismissible]="true" (dismiss)="configTabError.set(null)" class="mb-4">
             {{ configTabError() }}
-          </div>
+          </talos-alert>
           }
 
           <!-- Visual Editor Panel -->
@@ -341,19 +377,34 @@
                   by their <strong>action key</strong> — path and method are optional metadata for documentation.</span>
               </p>
 
-              @if (panel === 'create' || isOwner($safeNavigationMigration(selectedModule()?.code))) {
+              @if (panel === 'create' || isOwner(selectedModule()?.code)) {
               <div class="inline-form">
                 <!-- Primary fields: what this permission IS -->
                 <div class="inline-form-row">
                   <div class="form-group inline-form-field flex-2">
-                    <label class="form-label" for="perm-action">Action Key <span class="required-star">*</span></label>
-                    <input id="perm-action" name="perm-action-input" [(ngModel)]="newPermission.action"
-                      placeholder="e.g. read, create, calculate" class="form-input" />
+                    <talos-form-field label="Action Key" for="perm-action" size="sm">
+                      <input
+                        id="perm-action"
+                        name="perm-action-input"
+                        talosInput
+                        size="sm"
+                        [(ngModel)]="newPermission.action"
+                        placeholder="e.g. read, create, calculate"
+                        required
+                      />
+                    </talos-form-field>
                   </div>
                   <div class="form-group inline-form-field flex-3">
-                    <label class="form-label" for="perm-desc">Description</label>
-                    <input id="perm-desc" name="perm-desc-input" [(ngModel)]="newPermission.description"
-                      placeholder="What this permission allows" class="form-input" />
+                    <talos-form-field label="Description" for="perm-desc" size="sm">
+                      <input
+                        id="perm-desc"
+                        name="perm-desc-input"
+                        talosInput
+                        size="sm"
+                        [(ngModel)]="newPermission.description"
+                        placeholder="What this permission allows"
+                      />
+                    </talos-form-field>
                   </div>
                 </div>
 
@@ -365,29 +416,31 @@
                 <!-- Secondary fields: where this permission MAPS -->
                 <div class="inline-form-row">
                   <div class="form-group inline-form-field flex-3">
-                    <label class="form-label perm-optional-label" for="perm-path">
-                      Path Pattern
-                      <span class="perm-optional-info"
-                        data-tooltip="Maps this action to an API endpoint path (e.g. /api/v1/resource). Informational only — auth decisions use the action key, not the path."
-                        aria-label="Maps this action to an API endpoint path. Informational only." tabindex="0">ⓘ</span>
-                    </label>
-                    <input id="perm-path" name="perm-path-input" [(ngModel)]="newPermission.path_pattern"
-                      placeholder="e.g. /api/v1/resource/*" class="form-input perm-optional-input" />
+                    <talos-form-field label="Path Pattern (Optional)" for="perm-path" size="sm">
+                      <input
+                        id="perm-path"
+                        name="perm-path-input"
+                        talosInput
+                        size="sm"
+                        [(ngModel)]="newPermission.path_pattern"
+                        placeholder="e.g. /api/v1/resource/*"
+                      />
+                    </talos-form-field>
                   </div>
                   <div class="form-group inline-form-field flex-1">
-                    <label class="form-label perm-optional-label" for="perm-method">
-                      HTTP Method
-                      <span class="perm-optional-info"
-                        data-tooltip="The HTTP method this action corresponds to. Informational only — not used in auth enforcement."
-                        aria-label="The HTTP method this action corresponds to. Informational only."
-                        tabindex="0">ⓘ</span>
-                    </label>
-                    <select id="perm-method" name="perm-method-select" [(ngModel)]="newPermission.method"
-                      class="form-input perm-optional-input">
-                      @for (m of httpMethods; track m) {
-                      <option [value]="m">{{ m }}</option>
-                      }
-                    </select>
+                    <talos-form-field label="HTTP Method" for="perm-method" size="sm">
+                      <talos-select-input
+                        id="perm-method"
+                        name="perm-method-select"
+                        [(ngModel)]="newPermission.method"
+                        size="sm"
+                        [searchable]="false"
+                      >
+                        @for (m of httpMethods; track m) {
+                        <talos-option [value]="m" [label]="m">{{ m }}</talos-option>
+                        }
+                      </talos-select-input>
+                    </talos-form-field>
                   </div>
                 </div>
 
@@ -426,7 +479,7 @@
                       }
                     </div>
                   </div>
-                  @if (panel === 'create' || isOwner($safeNavigationMigration(selectedModule()?.code))) {
+                  @if (panel === 'create' || isOwner(selectedModule()?.code)) {
                   <div class="entry-actions">
                     <button type="button" talosButton variant="ghost" size="xs" [iconOnly]="true" title="Edit" (click)="startEditPermission(i)">
                       <svg lucideEdit [size]="14"></svg>
@@ -451,18 +504,33 @@
               <p class="subpanel-hint">System roles are module-wide and assigned directly to users. Select which
                 permissions each role grants.</p>
 
-              @if (panel === 'create' || isOwner($safeNavigationMigration(selectedModule()?.code))) {
+              @if (panel === 'create' || isOwner(selectedModule()?.code)) {
               <div class="inline-form">
                 <div class="inline-form-row">
                   <div class="form-group inline-form-field flex-2">
-                    <label class="form-label" for="dr-name">Role Name <span class="required-star">*</span></label>
-                    <input id="dr-name" name="dr-name-input" [(ngModel)]="newDefaultRole.name"
-                      placeholder="e.g. Viewer, Editor, Admin" class="form-input" />
+                    <talos-form-field label="Role Name" for="dr-name" size="sm">
+                      <input
+                        id="dr-name"
+                        name="dr-name-input"
+                        talosInput
+                        size="sm"
+                        [(ngModel)]="newDefaultRole.name"
+                        placeholder="e.g. Viewer, Editor, Admin"
+                        required
+                      />
+                    </talos-form-field>
                   </div>
                   <div class="form-group inline-form-field flex-3">
-                    <label class="form-label" for="dr-desc">Description</label>
-                    <input id="dr-desc" name="dr-desc-input" [(ngModel)]="newDefaultRole.description"
-                      placeholder="What this role allows" class="form-input" />
+                    <talos-form-field label="Description" for="dr-desc" size="sm">
+                      <input
+                        id="dr-desc"
+                        name="dr-desc-input"
+                        talosInput
+                        size="sm"
+                        [(ngModel)]="newDefaultRole.description"
+                        placeholder="What this role allows"
+                      />
+                    </talos-form-field>
                   </div>
                 </div>
                 @if (permissionActions().length > 0) {
@@ -471,9 +539,12 @@
                   <div class="permissions-checklist">
                     @for (action of permissionActions(); track action) {
                     <label class="perm-check-item">
-                      <input type="checkbox" class="form-checkbox"
+                      <input
+                        type="checkbox"
+                        talosCheckbox
                         [checked]="isPermissionChecked(newDefaultRole.permissions, action)"
-                        (change)="toggleRolePermission(newDefaultRole.permissions, action)" />
+                        (change)="toggleRolePermission(newDefaultRole.permissions, action)"
+                      />
                       <span class="perm-check-label">{{ action }}</span>
                     </label>
                     }
@@ -529,7 +600,7 @@
                       }
                     </div>
                   </div>
-                  @if (panel === 'create' || isOwner($safeNavigationMigration(selectedModule()?.code))) {
+                  @if (panel === 'create' || isOwner(selectedModule()?.code)) {
                   <div class="entry-actions">
                     <button type="button" talosButton variant="ghost" size="xs" [iconOnly]="true" title="Edit" (click)="startEditDefaultRole(i)">
                       <svg lucideEdit [size]="14"></svg>
@@ -554,18 +625,33 @@
               <p class="subpanel-hint">App roles are templates used when an application team is onboarded to this
                 module, creating scoped roles per application.</p>
 
-              @if (panel === 'create' || isOwner($safeNavigationMigration(selectedModule()?.code))) {
+              @if (panel === 'create' || isOwner(selectedModule()?.code)) {
               <div class="inline-form">
                 <div class="inline-form-row">
                   <div class="form-group inline-form-field flex-2">
-                    <label class="form-label" for="ar-name">Role Name <span class="required-star">*</span></label>
-                    <input id="ar-name" name="ar-name-input" [(ngModel)]="newAppCentricRole.name"
-                      placeholder="e.g. AppViewer, AppEditor" class="form-input" />
+                    <talos-form-field label="Role Name" for="ar-name" size="sm">
+                      <input
+                        id="ar-name"
+                        name="ar-name-input"
+                        talosInput
+                        size="sm"
+                        [(ngModel)]="newAppCentricRole.name"
+                        placeholder="e.g. AppViewer, AppEditor"
+                        required
+                      />
+                    </talos-form-field>
                   </div>
                   <div class="form-group inline-form-field flex-3">
-                    <label class="form-label" for="ar-desc">Description</label>
-                    <input id="ar-desc" name="ar-desc-input" [(ngModel)]="newAppCentricRole.description"
-                      placeholder="What this role allows within an app scope" class="form-input" />
+                    <talos-form-field label="Description" for="ar-desc" size="sm">
+                      <input
+                        id="ar-desc"
+                        name="ar-desc-input"
+                        talosInput
+                        size="sm"
+                        [(ngModel)]="newAppCentricRole.description"
+                        placeholder="What this role allows within an app scope"
+                      />
+                    </talos-form-field>
                   </div>
                 </div>
                 @if (permissionActions().length > 0) {
@@ -574,9 +660,12 @@
                   <div class="permissions-checklist">
                     @for (action of permissionActions(); track action) {
                     <label class="perm-check-item">
-                      <input type="checkbox" class="form-checkbox"
+                      <input
+                        type="checkbox"
+                        talosCheckbox
                         [checked]="isPermissionChecked(newAppCentricRole.permissions, action)"
-                        (change)="toggleRolePermission(newAppCentricRole.permissions, action)" />
+                        (change)="toggleRolePermission(newAppCentricRole.permissions, action)"
+                      />
                       <span class="perm-check-label">{{ action }}</span>
                     </label>
                     }
@@ -632,7 +721,7 @@
                       }
                     </div>
                   </div>
-                  @if (panel === 'create' || isOwner($safeNavigationMigration(selectedModule()?.code))) {
+                  @if (panel === 'create' || isOwner(selectedModule()?.code)) {
                   <div class="entry-actions">
                     <button type="button" talosButton variant="ghost" size="xs" [iconOnly]="true" title="Edit" (click)="startEditAppRole(i)">
                       <svg lucideEdit [size]="14"></svg>
@@ -665,10 +754,17 @@
               Advanced mode — edit the manifest JSON directly. Switching back to the Visual Editor will parse and load
               your changes.
             </p>
-            <textarea id="module-manifest" name="manifestJson" [(ngModel)]="manifestJson"
-              [disabled]="panel === 'edit' && !isOwner($safeNavigationMigration(selectedModule()?.code))" rows="14" required
-              class="form-input json-textarea"
-              placeholder='{ "permissions": [], "default_roles": [], "app_centric_roles": [] }'></textarea>
+            <textarea
+              id="module-manifest"
+              name="manifestJson"
+              talosInput
+              [(ngModel)]="manifestJson"
+              [disabled]="panel === 'edit' && !isOwner(selectedModule()?.code)"
+              rows="14"
+              required
+              class="json-textarea"
+              placeholder='{ "permissions": [], "default_roles": [], "app_centric_roles": [] }'
+            ></textarea>
           </div>
           }
         </div>
@@ -735,7 +831,7 @@
 
       <div class="panel-actions" style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
         <button type="button" talosButton variant="secondary" (click)="closePanel()">Cancel</button>
-        @if (panel === 'create' || isOwner($safeNavigationMigration(selectedModule()?.code))) {
+        @if (panel === 'create' || isOwner(selectedModule()?.code)) {
         <button type="submit" talosButton variant="primary" [disabled]="!moduleForm.form.valid">
           {{ panel === 'create' ? 'Register' : 'Save Changes' }}
         </button>

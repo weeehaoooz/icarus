@@ -1,7 +1,9 @@
-import { Component, signal, computed, inject, OnInit, viewChild, TemplateRef } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, ChangeDetectorRef, viewChild, TemplateRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../services/admin.service';
 import { forkJoin, of } from 'rxjs';
+import { Dialog } from '@angular/cdk/dialog';
+import { RoleAssignmentDialogComponent } from '../users/role-assignment-dialog/role-assignment-dialog.component';
 
 // Talos UI
 import { TalosDataGridComponent, type TalosGridColDef } from '@weeehaoooz/talos-ui/data-display/data-grid';
@@ -9,9 +11,25 @@ import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
 import { TalosPrefixDirective, TalosSuffixDirective } from '@weeehaoooz/talos-ui/form/affix';
 import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
 import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+import { TalosAlertComponent } from '@weeehaoooz/talos-ui/feedback/alert';
+import { TalosCheckboxDirective } from '@weeehaoooz/talos-ui/form/checkbox';
+import { SelectInputComponent, OptionComponent } from '@weeehaoooz/talos-ui/form/select-input';
 
 // Lucide Icons
-import { LucideSearch, LucideX, LucidePlus, LucideTrash2, LucideKey, LucideCopy, LucideCheck } from '@lucide/angular';
+import {
+  LucideSearch,
+  LucideX,
+  LucidePlus,
+  LucideTrash2,
+  LucideKey,
+  LucideDownload,
+  LucideCopy,
+  LucideCheck,
+  LucideRefreshCw,
+  LucideShield,
+  LucideSlidersHorizontal,
+  LucidePencil
+} from '@lucide/angular';
 
 interface Client {
   client_id: string;
@@ -35,21 +53,33 @@ interface Role {
     TalosSuffixDirective,
     TalosInputDirective,
     TalosButtonDirective,
+    TalosAlertComponent,
+    TalosCheckboxDirective,
+    SelectInputComponent,
+    OptionComponent,
     LucideSearch,
     LucideX,
     LucidePlus,
-    LucideTrash2
+    LucideTrash2,
+    LucideKey,
+    LucideDownload,
+    LucideCopy,
+    LucideCheck,
+    LucideRefreshCw,
+    LucideShield,
+    LucidePencil
   ],
   templateUrl: './clients.component.html',
   styleUrl: './clients.component.scss'
 })
 export class ClientsComponent implements OnInit {
   private readonly adminService = inject(AdminService);
+  private readonly dialog = inject(Dialog);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   // Template Refs
   readonly selectTmpl = viewChild<TemplateRef<any>>('selectTmpl');
   readonly clientIdTmpl = viewChild<TemplateRef<any>>('clientIdTmpl');
-  readonly publicKeyTmpl = viewChild<TemplateRef<any>>('publicKeyTmpl');
   readonly rolesTmpl = viewChild<TemplateRef<any>>('rolesTmpl');
   readonly actionsTmpl = viewChild<TemplateRef<any>>('actionsTmpl');
 
@@ -69,6 +99,12 @@ export class ClientsComponent implements OnInit {
   readonly panelError = signal<string | null>(null);
   readonly selectedClient = signal<Client | null>(null);
 
+  // Keypair Generation State
+  readonly isGeneratingKeys = signal(false);
+  readonly generatedPrivateKey = signal<string | null>(null);
+  readonly keyGenSuccess = signal<string | null>(null);
+  readonly keyCopied = signal(false);
+
   // Form State
   formData = {
     clientId: '',
@@ -82,18 +118,18 @@ export class ClientsComponent implements OnInit {
     const allClients = this.clients();
     if (!query) return allClients;
     return allClients.filter(c =>
-      c.client_id.toLowerCase().includes(query)
+      c.client_id.toLowerCase().includes(query) ||
+      (c.roles || []).some(r => r.toLowerCase().includes(query))
     );
   });
 
-  // Columns definition for talos-data-grid
+  // Columns definition for talos-data-grid (No public key preview)
   readonly columns = computed<TalosGridColDef<Client>[]>(() => [
     { field: 'select', header: '', width: '48px', minWidth: '48px', sortable: false, filterable: false, cellTemplate: this.selectTmpl() },
-    { field: 'client_id', header: 'Client ID', sortType: 'string', filterMode: 'set', minWidth: '180px', cellTemplate: this.clientIdTmpl() },
-    { field: 'public_key', header: 'Public Key Preview', minWidth: '240px', cellTemplate: this.publicKeyTmpl() },
-    { field: 'roles', header: 'Roles', minWidth: '180px', cellTemplate: this.rolesTmpl() },
-    { field: 'created_at', header: 'Created At', sortType: 'date', filterMode: 'condition', minWidth: '160px', formatter: (v) => v ? new Date(v).toLocaleString() : '-' },
-    { field: 'actions', header: 'Actions', width: '90px', minWidth: '90px', align: 'right', sortable: false, filterable: false, cellTemplate: this.actionsTmpl() }
+    { field: 'client_id', header: 'Client ID', sortType: 'string', filterMode: 'set', minWidth: '220px', cellTemplate: this.clientIdTmpl() },
+    { field: 'roles', header: 'Assigned Roles', minWidth: '260px', cellTemplate: this.rolesTmpl() },
+    { field: 'created_at', header: 'Created At', sortType: 'date', filterMode: 'condition', minWidth: '180px', formatter: (v) => v ? new Date(v).toLocaleString() : '-' },
+    { field: 'actions', header: 'Actions', width: '110px', minWidth: '110px', align: 'right', sortable: false, filterable: false, cellTemplate: this.actionsTmpl() }
   ]);
 
   // Is everything selected
@@ -182,6 +218,9 @@ export class ClientsComponent implements OnInit {
   openCreatePanel(): void {
     this.selectedClient.set(null);
     this.panelError.set(null);
+    this.generatedPrivateKey.set(null);
+    this.keyGenSuccess.set(null);
+    this.keyCopied.set(false);
     this.formData = {
       clientId: '',
       publicKey: '',
@@ -190,13 +229,17 @@ export class ClientsComponent implements OnInit {
     this.activePanel.set('create');
   }
 
-  openEditPanel(client: Client): void {
+  openEditPanel(client: Client, event?: Event): void {
+    event?.stopPropagation();
     this.selectedClient.set(client);
     this.panelError.set(null);
+    this.generatedPrivateKey.set(null);
+    this.keyGenSuccess.set(null);
+    this.keyCopied.set(false);
     this.formData = {
       clientId: client.client_id,
-      publicKey: client.public_key,
-      roles: [...client.roles]
+      publicKey: client.public_key || '',
+      roles: client.roles ? [...client.roles] : []
     };
     this.activePanel.set('edit');
   }
@@ -204,6 +247,9 @@ export class ClientsComponent implements OnInit {
   closePanel(): void {
     this.activePanel.set(null);
     this.selectedClient.set(null);
+    this.generatedPrivateKey.set(null);
+    this.keyGenSuccess.set(null);
+    this.keyCopied.set(false);
   }
 
   toggleRole(roleName: string): void {
@@ -217,6 +263,142 @@ export class ClientsComponent implements OnInit {
 
   isRoleSelected(roleName: string): boolean {
     return this.formData.roles.includes(roleName);
+  }
+
+  openRoleModal(): void {
+    const dialogRef = this.dialog.open<string[]>(RoleAssignmentDialogComponent, {
+      width: '900px',
+      maxWidth: '95vw',
+      height: '600px',
+      maxHeight: '85vh',
+      data: {
+        username: this.formData.clientId || 'New Client',
+        assignedRoles: [...this.formData.roles],
+        availableRoles: this.availableRoles()
+      }
+    });
+
+    dialogRef.closed.subscribe(result => {
+      if (result !== undefined) {
+        this.formData.roles = result;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  openRoleModalForClient(client: Client, event?: Event): void {
+    event?.stopPropagation();
+    const dialogRef = this.dialog.open<string[]>(RoleAssignmentDialogComponent, {
+      width: '900px',
+      maxWidth: '95vw',
+      height: '600px',
+      maxHeight: '85vh',
+      data: {
+        username: client.client_id,
+        assignedRoles: client.roles ? [...client.roles] : [],
+        availableRoles: this.availableRoles()
+      }
+    });
+
+    dialogRef.closed.subscribe(result => {
+      if (result !== undefined) {
+        this.adminService.updateClient(client.client_id, {
+          public_key: client.public_key,
+          roles: result
+        }).subscribe({
+          next: () => {
+            this.loadData();
+            if (this.selectedClient()?.client_id === client.client_id) {
+              this.formData.roles = result;
+            }
+          },
+          error: (err) => alert(err.error?.error || 'Failed to update client roles.')
+        });
+      }
+    });
+  }
+
+  // RSA Key Pair Generation
+  async generateRsaKeyPair(): Promise<void> {
+    try {
+      this.isGeneratingKeys.set(true);
+      this.panelError.set(null);
+      this.keyGenSuccess.set(null);
+
+      const keyPair = await window.crypto.subtle.generateKey(
+        {
+          name: 'RSASSA-PKCS1-v1_5',
+          modulusLength: 2048,
+          publicExponent: new Uint8Array([1, 0, 1]),
+          hash: 'SHA-256',
+        },
+        true,
+        ['sign', 'verify']
+      );
+
+      const spkiBuffer = await window.crypto.subtle.exportKey('spki', keyPair.publicKey);
+      const pkcs8Buffer = await window.crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
+
+      const publicKeyPem = this.formatAsPem(this.arrayBufferToBase64(spkiBuffer), 'PUBLIC KEY');
+      const privateKeyPem = this.formatAsPem(this.arrayBufferToBase64(pkcs8Buffer), 'RSA PRIVATE KEY');
+
+      this.formData.publicKey = publicKeyPem;
+      this.generatedPrivateKey.set(privateKeyPem);
+      this.keyGenSuccess.set('RSA 2048-bit key pair generated! Public key populated and private key downloaded.');
+
+      // Automatically trigger private key download
+      this.downloadPrivateKey();
+    } catch (err: any) {
+      console.error('Failed to generate RSA key pair:', err);
+      this.panelError.set('Failed to generate RSA key pair: ' + (err.message || err));
+    } finally {
+      this.isGeneratingKeys.set(false);
+    }
+  }
+
+  downloadPrivateKey(): void {
+    const privKey = this.generatedPrivateKey();
+    if (!privKey) return;
+
+    const baseName = this.formData.clientId.trim() ? this.formData.clientId.trim() : 'client';
+    const filename = `${baseName}_private_key.pem`;
+    const blob = new Blob([privKey], { type: 'application/x-pem-file;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  async copyPrivateKey(): Promise<void> {
+    const privKey = this.generatedPrivateKey();
+    if (!privKey) return;
+
+    try {
+      await navigator.clipboard.writeText(privKey);
+      this.keyCopied.set(true);
+      setTimeout(() => this.keyCopied.set(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy private key:', err);
+    }
+  }
+
+  private arrayBufferToBase64(buffer: ArrayBuffer): string {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
+  }
+
+  private formatAsPem(base64: string, label: string): string {
+    const lines = base64.match(/.{1,64}/g) || [];
+    return `-----BEGIN ${label}-----\n${lines.join('\n')}\n-----END ${label}-----`;
   }
 
   saveClient(): void {
@@ -313,4 +495,3 @@ export class ClientsComponent implements OnInit {
     }
   }
 }
-

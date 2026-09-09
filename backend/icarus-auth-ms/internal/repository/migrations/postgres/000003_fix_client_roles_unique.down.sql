@@ -1,0 +1,1 @@
+ALTER TABLE client_tenant_module_roles DROP CONSTRAINT IF EXISTS client_tenant_module_roles_client_id_tenant_id_module_id_role_id_key;

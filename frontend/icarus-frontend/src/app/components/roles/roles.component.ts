@@ -10,6 +10,10 @@ import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
 import { TalosPrefixDirective, TalosSuffixDirective } from '@weeehaoooz/talos-ui/form/affix';
 import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
 import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+import { TalosAlertComponent } from '@weeehaoooz/talos-ui/feedback/alert';
+import { SelectInputComponent, OptionComponent } from '@weeehaoooz/talos-ui/form/select-input';
+import { TalosSlideToggleComponent } from '@weeehaoooz/talos-ui/form/slide-toggle';
+import { TalosCheckboxDirective } from '@weeehaoooz/talos-ui/form/checkbox';
 
 // Lucide Icons
 import { LucideSearch, LucideX, LucidePlus, LucideGitBranch, LucideTrash2 } from '@lucide/angular';
@@ -44,6 +48,11 @@ interface Role {
     TalosSuffixDirective,
     TalosInputDirective,
     TalosButtonDirective,
+    TalosAlertComponent,
+    SelectInputComponent,
+    OptionComponent,
+    TalosSlideToggleComponent,
+    TalosCheckboxDirective,
     LucideSearch,
     LucideX,
     LucidePlus,
@@ -195,10 +204,15 @@ export class RolesComponent implements OnInit {
     this.openEditPanel(event.row);
   }
 
-  onModuleChange(event: Event): void {
-    const target = event.target as HTMLSelectElement;
-    this.selectedFormModuleId.set(target.value);
-    this.formData.permissions = [];
+  onModuleChange(eventOrValue: any): void {
+    const value = typeof eventOrValue === 'string' 
+      ? eventOrValue 
+      : (eventOrValue?.target ? (eventOrValue.target as HTMLSelectElement).value : eventOrValue);
+    if (value) {
+      this.selectedFormModuleId.set(value);
+      this.formData.module_id = value;
+      this.formData.permissions = [];
+    }
   }
 
   openCreatePanel(): void {

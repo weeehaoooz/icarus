@@ -11,6 +11,8 @@ import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
 import { TalosPrefixDirective, TalosSuffixDirective } from '@weeehaoooz/talos-ui/form/affix';
 import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
 import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+import { TalosAlertComponent } from '@weeehaoooz/talos-ui/feedback/alert';
+import { SelectInputComponent, OptionComponent } from '@weeehaoooz/talos-ui/form/select-input';
 
 // Lucide Icons
 import { LucideSearch, LucideX, LucidePlus, LucideTrash2 } from '@lucide/angular';
@@ -35,6 +37,9 @@ interface Tenant {
     TalosInputDirective,
     TalosButtonDirective,
     TalosStatusTagComponent,
+    TalosAlertComponent,
+    SelectInputComponent,
+    OptionComponent,
     LucideSearch,
     LucideX,
     LucidePlus,

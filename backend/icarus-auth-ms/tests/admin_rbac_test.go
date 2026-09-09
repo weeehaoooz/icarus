@@ -313,3 +313,93 @@ func TestModuleGovernanceRBAC(t *testing.T) {
 		t.Errorf("Expected token to contain owned_modules ['test-module'], got %v", claims.OwnedModules)
 	}
 }
+
+func TestAdminClientMultipleRoles(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "client_rbac_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	dbFile := filepath.Join(tempDir, "test_client_rbac.db")
+	defer os.Remove(dbFile)
+
+	privKey, pubKey, err := crypto.LoadOrGenerateKeys(tempDir)
+	if err != nil {
+		t.Fatalf("Failed to load/generate keys: %v", err)
+	}
+
+	dbConn, err := repository.InitDB("sqlite", dbFile)
+	if err != nil {
+		t.Fatalf("Failed to init DB: %v", err)
+	}
+	defer dbConn.Close()
+
+	repo := repository.NewSQLRepository(dbConn, "sqlite")
+	if err := repo.SeedDefaultRBAC(); err != nil {
+		t.Fatalf("Failed to seed default RBAC data: %v", err)
+	}
+
+	tokenMgr := crypto.NewTokenManager(privKey, pubKey, "icarus-auth-ms")
+	server := handler.NewHandlerServer(repo, tokenMgr)
+
+	mux := http.NewServeMux()
+	server.RegisterRoutes(mux)
+
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	// Authenticate as Admin
+	loginReq := handler.LoginRequest{
+		Username: "admin",
+		Password: "admin123",
+	}
+	loginBody, _ := json.Marshal(loginReq)
+	res, err := http.Post(ts.URL+"/api/v1/login", "application/json", bytes.NewBuffer(loginBody))
+	if err != nil {
+		t.Fatalf("Admin login failed: %v", err)
+	}
+	var loginRes map[string]string
+	_ = json.NewDecoder(res.Body).Decode(&loginRes)
+	adminToken := loginRes["access_token"]
+
+	// Create client with multiple roles
+	createClientReq := handler.AdminCreateClientRequest{
+		ClientID:  "test-client-1",
+		PublicKey: "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0...\n-----END PUBLIC KEY-----",
+		Roles:     []string{"admin", "user"},
+	}
+	body, _ := json.Marshal(createClientReq)
+	req, _ := http.NewRequest("POST", ts.URL+"/api/v1/admin/clients", bytes.NewBuffer(body))
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	res, err = client.Do(req)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	if res.StatusCode != http.StatusCreated {
+		t.Fatalf("Expected 201 Created for client creation with multiple roles, got %d", res.StatusCode)
+	}
+
+	// Verify client roles in GetClient
+	req, _ = http.NewRequest("GET", ts.URL+"/api/v1/admin/clients/test-client-1", nil)
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+	res, err = client.Do(req)
+	if err != nil {
+		t.Fatalf("Failed to get client: %v", err)
+	}
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("Expected 200 OK, got %d", res.StatusCode)
+	}
+	var clientData struct {
+		ClientID string   `json:"client_id"`
+		Roles    []string `json:"roles"`
+	}
+	_ = json.NewDecoder(res.Body).Decode(&clientData)
+	if len(clientData.Roles) != 2 {
+		t.Errorf("Expected 2 roles for client, got %d (%v)", len(clientData.Roles), clientData.Roles)
+	}
+}
+

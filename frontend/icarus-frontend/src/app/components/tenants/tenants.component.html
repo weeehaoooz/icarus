@@ -115,55 +115,68 @@
         <h2 class="panel-title">
           {{ panel === 'create' ? 'Add New Tenant' : 'Edit Tenant' }}
         </h2>
-        <button (click)="closePanel()" class="close-btn" aria-label="Close panel">✕</button>
+        <button
+          type="button"
+          talosButton
+          variant="ghost"
+          size="xs"
+          [iconOnly]="true"
+          (click)="closePanel()"
+          class="close-btn"
+          aria-label="Close panel"
+        >
+          <svg lucideX [size]="16"></svg>
+        </button>
       </header>
 
       @if (panelError()) {
-        <div class="panel-error" role="alert">
+        <talos-alert severity="error" [dismissible]="true" (dismiss)="panelError.set(null)" class="mb-4">
           {{ panelError() }}
-        </div>
+        </talos-alert>
       }
 
       <form (ngSubmit)="saveTenant()" #tenantForm="ngForm">
         <div class="form-group">
-          <label class="form-label" for="tenant-code">Tenant Code</label>
-          <input
-            id="tenant-code"
-            name="code"
-            [(ngModel)]="formData.code"
-            required
-            [disabled]="panel === 'edit'"
-            placeholder="e.g. AcmeCorp"
-            class="form-input"
-          />
+          <talos-form-field label="Tenant Code" for="tenant-code" size="md">
+            <input
+              id="tenant-code"
+              name="code"
+              talosInput
+              [(ngModel)]="formData.code"
+              required
+              [disabled]="panel === 'edit'"
+              placeholder="e.g. AcmeCorp"
+            />
+          </talos-form-field>
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="tenant-name">Tenant Name</label>
-          <input
-            id="tenant-name"
-            name="name"
-            [(ngModel)]="formData.name"
-            required
-            placeholder="e.g. Acme Corporation"
-            class="form-input"
-          />
+          <talos-form-field label="Tenant Name" for="tenant-name" size="md">
+            <input
+              id="tenant-name"
+              name="name"
+              talosInput
+              [(ngModel)]="formData.name"
+              required
+              placeholder="e.g. Acme Corporation"
+            />
+          </talos-form-field>
         </div>
 
         <div class="form-group">
           <label class="form-label" for="tenant-status">Status</label>
-          <select
+          <talos-select-input
             id="tenant-status"
             name="status"
             [(ngModel)]="formData.status"
-            required
-            class="form-input"
-            style="background: var(--bg-card); color: var(--text-main);"
+            [searchable]="false"
+            size="md"
+            placeholder="Select status"
           >
-            <option value="active">Active</option>
-            <option value="suspended">Suspended</option>
-            <option value="inactive">Inactive</option>
-          </select>
+            <talos-option value="active" label="Active">Active</talos-option>
+            <talos-option value="suspended" label="Suspended">Suspended</talos-option>
+            <talos-option value="inactive" label="Inactive">Inactive</talos-option>
+          </talos-select-input>
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">

@@ -520,9 +520,9 @@ func (r *SQLRepository) AssignClientRoles(clientID string, roles []string) error
 	defer tx.Rollback()
 
 	if r.driver == "postgres" {
-		_, err = tx.Exec("DELETE FROM client_tenant_module_roles WHERE client_id = $1 AND tenant_id = $2 AND module_id = $3", clientID, "system-tenant", "icarus-auth-ms")
+		_, err = tx.Exec("DELETE FROM client_tenant_module_roles WHERE client_id = $1", clientID)
 	} else {
-		_, err = tx.Exec("DELETE FROM client_tenant_module_roles WHERE client_id = ? AND tenant_id = ? AND module_id = ?", clientID, "system-tenant", "icarus-auth-ms")
+		_, err = tx.Exec("DELETE FROM client_tenant_module_roles WHERE client_id = ?", clientID)
 	}
 	if err != nil {
 		return err
@@ -533,14 +533,16 @@ func (r *SQLRepository) AssignClientRoles(clientID string, roles []string) error
 			continue
 		}
 		var roleID string
+		var moduleID string
 		var findErr error
 		if r.driver == "postgres" {
-			findErr = tx.QueryRow("SELECT id FROM roles WHERE name = $1 AND module_id = $2", roleName, "icarus-auth-ms").Scan(&roleID)
+			findErr = tx.QueryRow("SELECT id, module_id FROM roles WHERE name = $1 LIMIT 1", roleName).Scan(&roleID, &moduleID)
 		} else {
-			findErr = tx.QueryRow("SELECT id FROM roles WHERE name = ? AND module_id = ?", roleName, "icarus-auth-ms").Scan(&roleID)
+			findErr = tx.QueryRow("SELECT id, module_id FROM roles WHERE name = ? LIMIT 1", roleName).Scan(&roleID, &moduleID)
 		}
 		if findErr != nil {
 			roleID = "icarus-auth-ms:" + roleName
+			moduleID = "icarus-auth-ms"
 			if r.driver == "postgres" {
 				_, err = tx.Exec("INSERT INTO roles (id, module_id, name, description) VALUES ($1, $2, $3, $4)", roleID, "icarus-auth-ms", roleName, "Auto-created legacy role")
 			} else {
@@ -555,13 +557,15 @@ func (r *SQLRepository) AssignClientRoles(clientID string, roles []string) error
 		if r.driver == "postgres" {
 			_, err = tx.Exec(`
 				INSERT INTO client_tenant_module_roles (id, client_id, tenant_id, module_id, role_id) 
-				VALUES ($1, $2, $3, $4, $5)`,
-				id, clientID, "system-tenant", "icarus-auth-ms", roleID)
+				VALUES ($1, $2, $3, $4, $5)
+				ON CONFLICT (client_id, tenant_id, module_id, role_id) DO NOTHING`,
+				id, clientID, "system-tenant", moduleID, roleID)
 		} else {
 			_, err = tx.Exec(`
 				INSERT INTO client_tenant_module_roles (id, client_id, tenant_id, module_id, role_id) 
-				VALUES (?, ?, ?, ?, ?)`,
-				id, clientID, "system-tenant", "icarus-auth-ms", roleID)
+				VALUES (?, ?, ?, ?, ?)
+				ON CONFLICT (client_id, tenant_id, module_id, role_id) DO NOTHING`,
+				id, clientID, "system-tenant", moduleID, roleID)
 		}
 		if err != nil {
 			return err

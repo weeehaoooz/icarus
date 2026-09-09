@@ -276,7 +276,7 @@
                         <div class="item-meta">
                           <span>Role ID: <code>{{ item.role_id }}</code></span>
                           @if (item.execution_id) {
-                            <span>Execution ID: <a [routerLink]="['/dashboard/request-detail', item.execution_id]" class="audit-link"><code>{{ item.execution_id }}</code></a></span>
+                            <span>Execution ID: <a [routerLink]="['/dashboard/request-detail', item.execution_id]" [queryParams]="{ cartId: cart.id, from: 'management' }" class="audit-link"><code>{{ item.execution_id }}</code></a></span>
                           }
                         </div>
 

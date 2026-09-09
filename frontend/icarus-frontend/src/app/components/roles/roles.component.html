@@ -144,100 +144,118 @@
         <h2 class="panel-title">
           {{ panelType === 'edit' ? 'Modify Role Policy' : 'Create Access Role' }}
         </h2>
-        <button (click)="closePanel()" class="close-btn" aria-label="Close policy editor">✕</button>
+        <button
+          type="button"
+          talosButton
+          variant="ghost"
+          size="xs"
+          [iconOnly]="true"
+          (click)="closePanel()"
+          class="close-btn"
+          aria-label="Close policy editor"
+        >
+          <svg lucideX [size]="16"></svg>
+        </button>
       </header>
 
       @if (panelError()) {
-        <div class="panel-error" role="alert">
+        <talos-alert severity="error" [dismissible]="true" (dismiss)="panelError.set(null)" class="mb-4">
           {{ panelError() }}
-        </div>
+        </talos-alert>
       }
 
-      <form (ngSubmit)="saveRole()">
+      <form (ngSubmit)="saveRole()" #roleForm="ngForm">
         <div class="form-group">
-          <label class="form-label" for="roleName">Role Name</label>
-          <input 
-            type="text" 
-            id="roleName" 
-            [(ngModel)]="formData.name" 
-            name="name" 
-            class="form-input" 
-            required 
-            placeholder="e.g. support-technician"
-            [disabled]="panelType === 'edit'"
-          />
+          <talos-form-field label="Role Name" for="roleName" size="md">
+            <input 
+              type="text" 
+              id="roleName" 
+              [(ngModel)]="formData.name" 
+              name="name" 
+              talosInput
+              required 
+              placeholder="e.g. support-technician"
+              [disabled]="panelType === 'edit'"
+            />
+          </talos-form-field>
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="moduleSelect">Module</label>
-          <select 
-            id="moduleSelect" 
-            [(ngModel)]="formData.module_id" 
-            name="module_id" 
-            class="form-input"
-            required
-            (change)="onModuleChange($event)"
-            [disabled]="panelType === 'edit'"
-          >
-            <option value="auth-ms">System Identity (auth-ms)</option>
-            @for (mod of modules(); track mod.id) {
-              <option [value]="mod.code">{{ mod.name }} ({{ mod.code }})</option>
-            }
-          </select>
+          <talos-form-field label="Module" for="moduleSelect" size="md">
+            <talos-select-input
+              id="moduleSelect"
+              [(ngModel)]="formData.module_id"
+              name="module_id"
+              [disabled]="panelType === 'edit'"
+              (selectionChange)="onModuleChange($event)"
+              size="md"
+              [searchable]="true"
+              placeholder="Select module"
+            >
+              <talos-option value="auth-ms" label="System Identity (auth-ms)">System Identity (auth-ms)</talos-option>
+              @for (mod of modules(); track mod.id) {
+                <talos-option [value]="mod.code" [label]="mod.name + ' (' + mod.code + ')'">{{ mod.name }} ({{ mod.code }})</talos-option>
+              }
+            </talos-select-input>
+          </talos-form-field>
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="appScopeSelect">Application Scope (Optional)</label>
-          <select 
-            id="appScopeSelect" 
-            [(ngModel)]="formData.app_code" 
-            name="app_code" 
-            class="form-input"
-            [disabled]="panelType === 'edit'"
-          >
-            <option value="">Global Module Role (No App Scope)</option>
-            @for (app of applications(); track app.id) {
-              <option [value]="app.code">{{ app.name }} ({{ app.code }})</option>
-            }
-          </select>
+          <talos-form-field label="Application Scope" for="appScopeSelect" size="md">
+            <talos-select-input
+              id="appScopeSelect"
+              [(ngModel)]="formData.app_code"
+              name="app_code"
+              [disabled]="panelType === 'edit'"
+              size="md"
+              [searchable]="true"
+              placeholder="Global Module Role (No App Scope)"
+            >
+              <talos-option value="" label="Global Module Role (No App Scope)">Global Module Role (No App Scope)</talos-option>
+              @for (app of applications(); track app.id) {
+                <talos-option [value]="app.code" [label]="app.name + ' (' + app.code + ')'">{{ app.name }} ({{ app.code }})</talos-option>
+              }
+            </talos-select-input>
+          </talos-form-field>
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="description">Description</label>
-          <input 
-            type="text" 
-            id="description" 
-            [(ngModel)]="formData.description" 
-            name="description" 
-            class="form-input" 
-            placeholder="Describe role scope..."
-          />
+          <talos-form-field label="Description" for="description" size="md">
+            <input 
+              type="text" 
+              id="description" 
+              [(ngModel)]="formData.description" 
+              name="description" 
+              talosInput
+              placeholder="Describe role scope..."
+            />
+          </talos-form-field>
         </div>
 
-        <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-top: 16px; margin-bottom: 16px;">
-          <input
-            type="checkbox"
-            id="roleActive"
+        <div class="form-group" style="margin-top: 16px; margin-bottom: 16px;">
+          <talos-slide-toggle
             [(ngModel)]="formData.is_active"
             name="is_active"
-            class="form-checkbox"
-            style="cursor: pointer;"
-          />
-          <label class="form-label" for="roleActive" style="margin-bottom: 0; cursor: pointer;">Role is Active</label>
+            size="sm"
+          >
+            <span style="font-size: 0.85rem; font-weight: 500; color: var(--text-main);">Role is Active</span>
+          </talos-slide-toggle>
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="roleType">Role Type</label>
-          <select 
-            id="roleType" 
-            [(ngModel)]="formData.type" 
-            name="type" 
-            class="form-input"
-            required
-          >
-            <option value="Custom">Custom</option>
-            <option value="LDAP">LDAP</option>
-          </select>
+          <talos-form-field label="Role Type" for="roleType" size="md">
+            <talos-select-input
+              id="roleType"
+              [(ngModel)]="formData.type"
+              name="type"
+              size="md"
+              [searchable]="false"
+              placeholder="Select role type"
+            >
+              <talos-option value="Custom" label="Custom">Custom</talos-option>
+              <talos-option value="LDAP" label="LDAP">LDAP</talos-option>
+            </talos-select-input>
+          </talos-form-field>
         </div>
 
         @if (availableRolesToNest().length > 0) {
@@ -246,11 +264,11 @@
             <div class="permission-selection-grid">
               @for (otherRole of availableRolesToNest(); track otherRole.name) {
                 <label class="permission-selection-item">
-                  <input 
-                    type="checkbox" 
-                    [checked]="isRoleNestedSelected(otherRole.name)" 
-                    (change)="toggleNestedRole(otherRole.name)" 
-                    class="form-checkbox"
+                  <input
+                    talosCheckbox
+                    type="checkbox"
+                    [checked]="isRoleNestedSelected(otherRole.name)"
+                    (change)="toggleNestedRole(otherRole.name)"
                     style="margin-top: 2px;"
                   />
                   <div>
@@ -268,11 +286,11 @@
           <div class="permission-selection-grid">
             @for (perm of filteredPermissions(); track perm.id) {
               <label class="permission-selection-item">
-                <input 
-                  type="checkbox" 
-                  [checked]="isPermissionSelected(perm.action)" 
-                  (change)="togglePermission(perm.action)" 
-                  class="form-checkbox"
+                <input
+                  talosCheckbox
+                  type="checkbox"
+                  [checked]="isPermissionSelected(perm.action)"
+                  (change)="togglePermission(perm.action)"
                   style="margin-top: 2px;"
                 />
                 <div>
@@ -292,7 +310,7 @@
           <button type="button" talosButton variant="secondary" (click)="closePanel()">
             Cancel
           </button>
-          <button type="submit" talosButton variant="primary" [disabled]="formData.name === 'admin' && panelType === 'edit'">
+          <button type="submit" talosButton variant="primary" [disabled]="(formData.name === 'admin' && panelType === 'edit') || !roleForm.form.valid">
             Save Policy
           </button>
         </div>

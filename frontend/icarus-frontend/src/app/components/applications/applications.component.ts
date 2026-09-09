@@ -9,6 +9,8 @@ import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
 import { TalosPrefixDirective, TalosSuffixDirective } from '@weeehaoooz/talos-ui/form/affix';
 import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
 import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+import { TalosAlertComponent } from '@weeehaoooz/talos-ui/feedback/alert';
+import { TalosCheckboxDirective } from '@weeehaoooz/talos-ui/form/checkbox';
 
 // Lucide Icons
 import { LucideSearch, LucideX, LucidePlus, LucideTrash2 } from '@lucide/angular';
@@ -31,6 +33,8 @@ interface Application {
     TalosSuffixDirective,
     TalosInputDirective,
     TalosButtonDirective,
+    TalosAlertComponent,
+    TalosCheckboxDirective,
     LucideSearch,
     LucideX,
     LucidePlus,
