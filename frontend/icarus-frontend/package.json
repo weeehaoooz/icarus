@@ -8,6 +8,8 @@
     "build:helm": "ng build --configuration helm",
     "watch": "ng build --watch --configuration development",
     "watch:talos": "npm --prefix ../../../talos run ng -- build talos-ui --watch",
+    "talos:local": "npm i --no-save ../../../talos/dist/talos-ui",
+    "talos:remote": "npm i",
     "test": "ng test"
   },
   "prettier": {
@@ -34,7 +36,7 @@
     "@angular/router": "^22.1.5",
     "@lucide/angular": "^1.31.0",
     "@weeehaoooz/talos-calendar": "^0.1.1",
-    "@weeehaoooz/talos-ui": "file:../../../talos/dist/talos-ui",
+    "@weeehaoooz/talos-ui": "^0.1.1",
     "date-fns": "^4.1.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
