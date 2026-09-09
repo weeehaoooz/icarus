@@ -40,7 +40,7 @@ talos-main-layout,
 .sidenav-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   overflow: hidden;
   white-space: nowrap;
 
@@ -50,10 +50,14 @@ talos-main-layout,
     font-weight: 700;
     color: var(--text-main);
     letter-spacing: -0.02em;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
 
     span {
       color: var(--primary);
       font-weight: 800;
+      margin-left: 3px;
     }
   }
 }
@@ -82,20 +86,12 @@ talos-main-layout,
   }
 }
 
-/* ─── Brand Icon ─────────────────────────────────────────────── */
-.brand-icon {
+/* ─── Brand Logo ─────────────────────────────────────────────── */
+.brand-logo {
   width: 28px;
   height: 28px;
-  border-radius: 6px;
-  background: var(--primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  color: var(--text-inverse);
-  font-family: var(--font-heading);
-  font-size: 1.05rem;
   flex-shrink: 0;
+  display: block;
 }
 
 .top-nav-center-content {

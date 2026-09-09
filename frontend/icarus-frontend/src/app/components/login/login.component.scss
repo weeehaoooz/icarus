@@ -1,10 +1,55 @@
 .login-container {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
   background-color: var(--bg-main);
   padding: 20px;
+}
+
+.login-theme-toggle {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  z-index: 10;
+}
+
+.theme-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    color: var(--text-main);
+    border-color: var(--primary);
+    background-color: var(--talos-primary-subtle-bg, rgba(20, 184, 166, 0.12));
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  .theme-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
 }
 
 .login-card {
@@ -15,6 +60,16 @@
 .login-header {
   margin-bottom: 28px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  .login-brand-logo {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    margin-bottom: -5px;
+  }
 
   .brand-title {
     font-size: 2rem;

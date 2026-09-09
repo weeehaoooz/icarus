@@ -12,7 +12,28 @@
     (themeToggle)="themeService.toggle()">
     <!-- Brand slot in sidebar header -->
     <div side-nav-logo class="sidenav-brand">
-      <div class="brand-icon" aria-hidden="true">I</div>
+      <svg class="brand-logo" viewBox="0 0 32 32" width="28" height="28" fill="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="icarus-nav-primary" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#5eead4" />
+            <stop offset="100%" stop-color="#0d9488" />
+          </linearGradient>
+          <linearGradient id="icarus-nav-wing-top" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#2dd4bf" />
+            <stop offset="100%" stop-color="#0f766e" />
+          </linearGradient>
+          <linearGradient id="icarus-nav-wing-bottom" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#14b8a6" />
+            <stop offset="100%" stop-color="#094d47" />
+          </linearGradient>
+        </defs>
+        <path d="M13 6.5 L2 11.5 C1 17 4.5 21.5 13 20 L13 16 C6.5 17 4.5 14 4.5 12.5 L13 9 Z" fill="url(#icarus-nav-wing-top)" />
+        <path d="M13 18 L6 21 C8 25.5 11 27 13 27.5 L13 23.5 C10.5 23 9 21 9 20.5 L13 19 Z" fill="url(#icarus-nav-wing-bottom)" />
+        <path d="M19 6.5 L30 11.5 C31 17 27.5 21.5 19 20 L19 16 C25.5 17 27.5 14 27.5 12.5 L19 9 Z" fill="url(#icarus-nav-wing-top)" />
+        <path d="M19 18 L26 21 C24 25.5 21 27 19 27.5 L19 23.5 C21.5 23 23 21 23 20.5 L19 19 Z" fill="url(#icarus-nav-wing-bottom)" />
+        <path d="M16 2 L20 6.5 L16 11 L12 6.5 Z" fill="#5eead4" />
+        <path d="M14.5 12.5 L17.5 12.5 L17.5 27 L16 29.5 L14.5 27 Z" fill="url(#icarus-nav-primary)" />
+      </svg>
       <span class="brand-name">Icarus <span>IAM</span></span>
     </div>
   </talos-side-nav>

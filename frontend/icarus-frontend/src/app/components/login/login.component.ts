@@ -2,6 +2,7 @@ import { Component, signal, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
+import { ThemeService } from '../../services/theme.service';
 
 // Talos UI
 import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
@@ -23,6 +24,7 @@ import { TalosCardComponent, TalosCardBodyComponent } from '@weeehaoooz/talos-ui
   styleUrl: './login.component.scss'
 })
 export class LoginComponent {
+  readonly themeService = inject(ThemeService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
