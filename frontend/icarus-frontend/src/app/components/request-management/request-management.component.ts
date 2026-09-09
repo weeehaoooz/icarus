@@ -2,7 +2,7 @@ import { Component, signal, computed, inject, OnInit, OnDestroy } from '@angular
 import { Subscription } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { WorkflowService, AccessCart, CartItem } from '../../services/workflow.service';
 import { AuthService } from '../../services/auth.service';
 
@@ -29,7 +29,11 @@ import {
   LucideBan,
   LucideArchive,
   LucideTrash2,
-  LucideInbox
+  LucideInbox,
+  LucideCopy,
+  LucideClock,
+  LucideArrowRight,
+  LucideRotateCcw
 } from '@lucide/angular';
 
 @Component({
@@ -60,7 +64,11 @@ import {
     LucideBan,
     LucideArchive,
     LucideTrash2,
-    LucideInbox
+    LucideInbox,
+    LucideCopy,
+    LucideClock,
+    LucideArrowRight,
+    LucideRotateCcw
   ],
   templateUrl: './request-management.component.html',
   styleUrl: './request-management.component.scss'
@@ -68,6 +76,7 @@ import {
 export class RequestManagementComponent implements OnInit, OnDestroy {
   private readonly workflowService = inject(WorkflowService);
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   readonly allRequests = signal<AccessCart[]>([]);
   readonly isLoading = signal(true);
@@ -113,7 +122,22 @@ export class RequestManagementComponent implements OnInit, OnDestroy {
   readonly actioningStepId = signal<string | null>(null);
   readonly actionSuccess = signal<string | null>(null);
   readonly actionError = signal<string | null>(null);
+  readonly copiedCartId = signal<string | null>(null);
   readonly activeComments: Record<string, string> = {};
+
+  copyId(id: string, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    navigator.clipboard.writeText(id).then(() => {
+      this.copiedCartId.set(id);
+      setTimeout(() => {
+        if (this.copiedCartId() === id) {
+          this.copiedCartId.set(null);
+        }
+      }, 2000);
+    });
+  }
 
   // Expanded carts tracking
   readonly expandedCartIds = signal<Set<string>>(new Set());
@@ -211,6 +235,33 @@ export class RequestManagementComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.actionError.set(err.error?.error ?? 'Failed to bump request.');
+        this.actioningStepId.set(null);
+        setTimeout(() => this.actionError.set(null), 5000);
+      }
+    });
+    this.subs.push(sub);
+  }
+
+  resumeDraft(cart: AccessCart): void {
+    this.router.navigate(['/dashboard/request-access'], {
+      state: { resumeCartId: cart.id }
+    });
+  }
+
+  deleteRequest(cartId: string): void {
+    this.actioningStepId.set(cartId);
+    this.actionSuccess.set(null);
+    this.actionError.set(null);
+
+    const sub = this.workflowService.deleteUserCart(cartId).subscribe({
+      next: () => {
+        this.actionSuccess.set('Request deleted successfully.');
+        this.actioningStepId.set(null);
+        this.loadAllRequests();
+        setTimeout(() => this.actionSuccess.set(null), 4000);
+      },
+      error: (err) => {
+        this.actionError.set(err.error?.error || 'Failed to delete request.');
         this.actioningStepId.set(null);
         setTimeout(() => this.actionError.set(null), 5000);
       }
@@ -440,6 +491,26 @@ export class RequestManagementComponent implements OnInit, OnDestroy {
       case 'CANCELLED': return 'status-cancelled';
       case 'ARCHIVED': return 'status-archived';
       default: return 'status-pending';
+    }
+  }
+
+  mapStatus(status: string | undefined): 'success' | 'warning' | 'danger' | 'info' | 'neutral' {
+    switch (status?.toUpperCase()) {
+      case 'APPROVED':
+      case 'COMPLETED':
+        return 'success';
+      case 'REJECTED':
+      case 'CANCELLED':
+        return 'danger';
+      case 'IN_PROGRESS':
+      case 'SUBMITTED':
+      case 'PENDING':
+        return 'warning';
+      case 'DRAFT':
+      case 'ARCHIVED':
+        return 'info';
+      default:
+        return 'neutral';
     }
   }
 

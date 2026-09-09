@@ -23,7 +23,9 @@ import {
   LucideRotateCcw,
   LucideZap,
   LucideBan,
-  LucideArrowRight
+  LucideArrowRight,
+  LucideCopy,
+  LucideCheck
 } from '@lucide/angular';
 
 @Component({
@@ -52,7 +54,9 @@ import {
     LucideRotateCcw,
     LucideZap,
     LucideBan,
-    LucideArrowRight
+    LucideArrowRight,
+    LucideCopy,
+    LucideCheck
   ],
   templateUrl: './my-requests.component.html',
   styleUrl: './my-requests.component.scss'
@@ -77,6 +81,21 @@ export class MyRequestsComponent implements OnInit, OnDestroy {
   readonly actioningCartId = signal<string | null>(null);
   readonly actionSuccess = signal<string | null>(null);
   readonly actionError = signal<string | null>(null);
+  readonly copiedCartId = signal<string | null>(null);
+
+  copyId(id: string, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    navigator.clipboard.writeText(id).then(() => {
+      this.copiedCartId.set(id);
+      setTimeout(() => {
+        if (this.copiedCartId() === id) {
+          this.copiedCartId.set(null);
+        }
+      }, 2000);
+    });
+  }
 
   // ── Derived: filtered requests ────────────────────────────────────────────────
   readonly filteredRequests = computed(() => {

@@ -575,6 +575,24 @@ func (r *SQLRepository) ListCarts(requesterID string, includeArchived bool) ([]m
 			t, _ := parseTime(submittedAt.String)
 			c.SubmittedAt = &t
 		}
+		if completedAt.Valid {
+			t, _ := parseTime(completedAt.String)
+			c.CompletedAt = &t
+		}
+
+		items, err := r.GetCartItems(c.ID)
+		if err != nil {
+			return nil, err
+		}
+		c.Items = items
+
+		if c.Status == "SUBMITTED" || c.Status == "IN_PROGRESS" {
+			steps, err := r.GetPendingStepsForCart(c.ID)
+			if err == nil {
+				c.PendingSteps = steps
+			}
+		}
+
 		list = append(list, c)
 	}
 	return list, nil

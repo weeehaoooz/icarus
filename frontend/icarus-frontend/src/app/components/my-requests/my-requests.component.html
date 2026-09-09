@@ -129,57 +129,93 @@
               [attr.aria-expanded]="isCartExpanded(cart.id)"
               [attr.aria-label]="'Request ' + cart.id + ' — ' + cart.status"
             >
-              <div class="summary-left">
-                <talos-status-tag [status]="mapStatus(cart.status)">
-                  {{ cart.status }}
-                </talos-status-tag>
+              <div class="summary-header-main">
+                <!-- Top Row: Status + Primary ID Layer + Timestamp & Expand -->
+                <div class="summary-top-row">
+                  <div class="request-identity-group">
+                    <talos-status-tag [status]="mapStatus(cart.status)" size="sm">
+                      {{ cart.status }}
+                    </talos-status-tag>
 
-                <div class="request-id-block">
-                  <span class="request-id-label">Request ID</span>
-                  <code class="request-id">{{ cart.id.slice(0, 8) }}…</code>
+                    <div class="request-id-layer">
+                      <span class="request-id-prefix">Request</span>
+                      <a
+                        [routerLink]="['/dashboard/request-detail', cart.id]"
+                        [queryParams]="{ from: 'my-requests' }"
+                        class="request-id-link"
+                        (click)="$event.stopPropagation()"
+                        title="View full Request Details"
+                      >
+                        <code class="request-id-code">{{ cart.id.slice(0, 8) }}…</code>
+                      </a>
+                      <button
+                        type="button"
+                        class="btn-copy-id-inline"
+                        (click)="copyId(cart.id, $event)"
+                        [attr.aria-label]="copiedCartId() === cart.id ? 'Copied ID' : 'Copy request ID'"
+                        title="Copy full Request ID"
+                      >
+                        @if (copiedCartId() === cart.id) {
+                          <svg lucideCheck [size]="12" class="text-success" aria-hidden="true"></svg>
+                        } @else {
+                          <svg lucideCopy [size]="12" aria-hidden="true"></svg>
+                        }
+                      </button>
+
+                      @if (cart.items && cart.items.length > 0) {
+                        <span class="item-count-badge" aria-label="{{ cart.items.length }} roles">
+                          {{ cart.items.length }} {{ cart.items.length === 1 ? 'role' : 'roles' }}
+                        </span>
+                      }
+                    </div>
+                  </div>
+
+                  <div class="summary-actions-group">
+                    <span class="date-label">
+                      @if (cart.status === 'DRAFT') {
+                        Created {{ cart.created_at | date:'dd MMM yyyy' }}
+                      } @else {
+                        Submitted {{ cart.submitted_at | date:'dd MMM yyyy, HH:mm' }}
+                      }
+                    </span>
+
+                    <span class="chevron-icon" [class.rotated]="isCartExpanded(cart.id)">
+                      <svg lucideChevronDown [size]="18" aria-hidden="true"></svg>
+                    </span>
+                  </div>
                 </div>
 
-                @if (cart.items && cart.items.length > 0) {
-                  <span class="item-count-badge" aria-label="{{ cart.items.length }} roles">
-                    {{ cart.items.length }} role{{ cart.items.length === 1 ? '' : 's' }}
-                  </span>
+                <!-- Sub-Layers: Execution / Role Sub-IDs and Context Justification -->
+                @if ((cart.items && cart.items.length > 0) || cart.justification) {
+                  <div class="request-sub-layers">
+                    @if (cart.items && cart.items.length > 0) {
+                      <div class="request-sub-id-layer">
+                        <span class="sub-layer-label">Roles:</span>
+                        <div class="sub-id-tags">
+                          @for (item of cart.items.slice(0, 3); track item.id) {
+                            <span class="sub-id-pill" [title]="item.execution_id ? 'Execution: ' + item.execution_id : item.role_name">
+                              <span class="pill-name">{{ item.role_name }}</span>
+                              @if (item.execution_id) {
+                                <code class="pill-exec-id">{{ item.execution_id.slice(0, 6) }}</code>
+                              }
+                            </span>
+                          }
+                          @if (cart.items.length > 3) {
+                            <span class="sub-id-more">+{{ cart.items.length - 3 }} more</span>
+                          }
+                        </div>
+                      </div>
+                    }
+
+                    @if (cart.justification) {
+                      <div class="request-meta-layer">
+                        <span class="justification-snippet" title="{{ cart.justification }}">
+                          "{{ cart.justification }}"
+                        </span>
+                      </div>
+                    }
+                  </div>
                 }
-
-                @if (cart.justification) {
-                  <span class="justification-snippet" title="{{ cart.justification }}">
-                    "{{ cart.justification }}"
-                  </span>
-                }
-              </div>
-
-              <div class="summary-right">
-                <span class="date-label">
-                  @if (cart.status === 'DRAFT') {
-                    Created {{ cart.created_at | date:'dd MMM yyyy' }}
-                  } @else {
-                    Submitted {{ cart.submitted_at | date:'dd MMM yyyy, HH:mm' }}
-                  }
-                </span>
-
-                <div class="quick-summary-actions" (click)="$event.stopPropagation()">
-                  <a
-                    [routerLink]="['/dashboard/request-detail', cart.id]"
-                    [queryParams]="{ from: 'my-requests' }"
-                    talosButton
-                    variant="outline"
-                    size="sm"
-                    class="btn-full-details"
-                    title="View Full Request Details Page"
-                    aria-label="View full details"
-                  >
-                    <span>Details</span>
-                    <svg lucideArrowRight [size]="14" style="margin-left: 4px;"></svg>
-                  </a>
-                </div>
-
-                <span class="chevron-icon" [class.rotated]="isCartExpanded(cart.id)">
-                  <svg lucideChevronDown [size]="18" aria-hidden="true"></svg>
-                </span>
               </div>
             </header>
 
@@ -189,7 +225,9 @@
                 <!-- Justification -->
                 <div class="detail-section">
                   <h3 class="section-title">Justification</h3>
-                  <p class="justification-text">{{ cart.justification || 'No justification provided.' }}</p>
+                  <div class="justification-box">
+                    <p class="justification-text">{{ cart.justification || 'No justification provided.' }}</p>
+                  </div>
                 </div>
 
                 <!-- Requested Roles -->
@@ -207,24 +245,13 @@
                               {{ item.status }}
                             </talos-status-tag>
                           </div>
-                          @if (item.execution_id) {
-                            <a
-                              [routerLink]="['/dashboard/request-detail', item.execution_id]"
-                              [queryParams]="{ cartId: cart.id, from: 'my-requests' }"
-                              class="audit-trail-link"
-                              aria-label="View audit trail for {{ item.role_name }}"
-                            >
-                              <span>View Audit Trail</span>
-                              <svg lucideArrowRight [size]="13" style="margin-left: 4px;"></svg>
-                            </a>
-                          }
                         </div>
                       }
                     </div>
                   }
                 </div>
 
-                <!-- Actions: Left actions and Right Full Details button -->
+                <!-- Actions Bar: Context actions on Left, single View More button on Right -->
                 <div class="card-actions">
                   <div class="actions-left">
                     @if (cart.status === 'DRAFT') {
@@ -298,6 +325,7 @@
                     }
                   </div>
 
+                  <!-- Single View More button floated to the right -->
                   <div class="actions-right">
                     <a
                       [routerLink]="['/dashboard/request-detail', cart.id]"
@@ -305,11 +333,11 @@
                       talosButton
                       variant="primary"
                       size="sm"
-                      class="btn-full-details-main"
+                      class="btn-view-more"
                       (click)="$event.stopPropagation()"
-                      aria-label="View full details for this request"
+                      aria-label="View more details for this request"
                     >
-                      <span>Full Details Page</span>
+                      <span>View More</span>
                       <svg lucideArrowRight [size]="14" style="margin-left: 5px;"></svg>
                     </a>
                   </div>
