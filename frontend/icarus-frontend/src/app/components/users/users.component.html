@@ -1,135 +1,135 @@
 <header class="users-header">
   <div>
     <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.02em;">Users Management</h1>
-    <p style="color: var(--text-muted); font-size: 0.9rem;">View, register, and assign access roles to system operators
-    </p>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">View, register, and assign access roles to system operators</p>
   </div>
   @if (activePanel() !== 'create') {
-  <button (click)="openCreatePanel()" class="btn btn-primary">
-    <svg class="lucide-icon" viewBox="0 0 24 24" style="margin-right: 6px;">
-      <path d="M5 12h14" />
-      <path d="M12 5v14" />
-    </svg> Add User
-  </button>
+    <button talosButton variant="primary" (click)="openCreatePanel()">
+      <svg lucidePlus [size]="16" style="margin-right: 6px;"></svg>
+      Add User
+    </button>
   }
 </header>
 
 <div class="search-bar">
-  <div class="search-wrapper" [class.is-searching]="isSearching()">
-    <!-- Search Icon -->
-    <span class="search-icon" aria-hidden="true">
-      <svg class="lucide-icon" viewBox="0 0 24 24" style="width:15px;height:15px;">
-        <circle cx="11" cy="11" r="8" />
-        <path d="m21 21-4.3-4.3" />
-      </svg>
-    </span>
-
-    <!-- Input -->
-    <input type="search" id="users-search" class="search-input"
-      placeholder="Search users by name, email, or username..." [value]="searchQuery()" (input)="onSearchInput($event)"
-      autocomplete="off" aria-label="Search users" />
-
-    <!-- Suffix: spinner when searching, clear × when text present -->
-    <span class="search-suffix">
-      @if (isSearching()) {
-      <span class="search-spinner" aria-label="Searching…" role="status"></span>
-      } @else if (searchQuery()) {
-      <button class="search-clear-btn" type="button" (click)="clearSearch()" aria-label="Clear search">✕</button>
-      }
-    </span>
-  </div>
+  <talos-form-field label="Search users" [floating]="true" size="sm">
+    <svg talosPrefix lucideSearch [size]="16"></svg>
+    <input
+      type="text"
+      talosInput
+      size="sm"
+      placeholder="Search users by name, email, or username..."
+      [value]="searchQuery()"
+      (input)="onSearchInput($event)"
+      autocomplete="off"
+      aria-label="Search users"
+    />
+    @if (searchQuery()) {
+      <button
+        type="button"
+        talosSuffix
+        talosButton
+        variant="ghost"
+        size="xs"
+        class="affix-interactive"
+        (click)="clearSearch()"
+        aria-label="Clear search"
+      >
+        <svg lucideX [size]="14"></svg>
+      </button>
+    }
+  </talos-form-field>
 </div>
 
-
 <div class="split-layout" [class.has-active-panel]="activePanel() !== null">
-  <!-- Left Side: High Density Table -->
-  <div class="table-panel glass-panel animate-fade-in">
-    <div class="table-container">
-      <table class="custom-table" aria-label="Users high-density data table">
-        <thead>
-          <tr>
-            <th style="width: 40px; text-align: center;">
-              <input type="checkbox" class="form-checkbox" [checked]="isAllSelected()"
-                (change)="toggleSelectAll($event)" aria-label="Select all users on this page" />
-            </th>
-            <th style="width: 80px;">ID</th>
-            <th>Username</th>
-            <th>Full Name</th>
-            <th>Email</th>
-            <th style="width: 100px;">Status</th>
-            <th>Roles</th>
-            <th style="width: 120px; text-align: right;">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (user of filteredUsers(); track user.id) {
-          <tr [class.selected]="selectedUser()?.id === user.id" (click)="openEditPanel(user)" style="cursor: pointer;">
-            <td style="text-align: center;" (click)="$event.stopPropagation()">
-              <input type="checkbox" class="form-checkbox" [checked]="selectedIds().has(user.id)"
-                (change)="toggleSelect(user.id, $event)" [aria-label]="'Select user ' + user.username" />
-            </td>
-            <td>{{ user.id }}</td>
-            <td style="font-weight: 700; color: var(--primary);">{{ user.username }}</td>
-            <td>{{ user.first_name }} {{ user.last_name }}</td>
-            <td>{{ user.email || '-' }}</td>
-            <td>
-              @if (user.is_active !== false) {
-              <span class="badge badge-status-active">Active</span>
-              } @else {
-              <span class="badge badge-status-disabled">Disabled</span>
-              }
-            </td>
-            <td>
-              <div class="roles-container">
-                @for (role of (user.roles || []).slice(0, 3); track role) {
-                <span class="badge badge-primary">{{ role }}</span>
-                }
-                @if ((user.roles || []).length > 3) {
-                <span class="badge badge-secondary" [title]="(user.roles || []).slice(3).join(', ')">+{{ (user.roles ||
-                  []).length - 3
-                  }} more</span>
-                }
-                @if ((user.roles || []).length === 0) {
-                <span style="color: var(--text-muted); font-size: 0.8rem; font-style: italic;">None</span>
-                }
-              </div>
-            </td>
-            <td style="text-align: right;" (click)="$event.stopPropagation()">
-              <button (click)="toggleUserStatus(user, $event)" class="icon-btn"
-                [title]="user.is_active !== false ? 'Disable Operator Account' : 'Enable Operator Account'">
-                @if (user.is_active !== false) {
-                <svg class="lucide-icon text-warning" viewBox="0 0 24 24">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg>
-                } @else {
-                <svg class="lucide-icon text-success" viewBox="0 0 24 24">
-                  <path d="M7 11V7a5 5 0 0 1 9.9-1" />
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                </svg>
-                }
-              </button>
-              <button (click)="deleteUser(user.id, $event)" class="icon-btn delete" title="Delete Operator Account">
-                <svg class="lucide-icon" viewBox="0 0 24 24">
-                  <path d="M3 6h18" />
-                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                  <line x1="10" x2="10" y1="11" y2="17" />
-                  <line x1="14" x2="14" y1="11" y2="17" />
-                </svg>
-              </button>
-            </td>
-          </tr>
-          } @empty {
-          <tr>
-            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 48px;">
-              No system operators match the filter criteria.
-            </td>
-          </tr>
+  <!-- Left Side: Data Grid -->
+  <div class="table-panel animate-fade-in">
+    <talos-data-grid
+      [data]="filteredUsers()"
+      [columns]="columns()"
+      [loading]="isLoading()"
+      [pagination]="true"
+      [pageSize]="10"
+      [pageSizeOptions]="[5, 10, 20, 50]"
+      [filterable]="true"
+      [resizable]="true"
+      [hoverable]="true"
+      [bordered]="true"
+      [emptyMessage]="searchQuery() ? 'No system operators match the filter criteria.' : 'No users registered in the system.'"
+      (rowClick)="onRowClick($event)"
+    />
+
+    <!-- Cell Templates -->
+    <ng-template #selectTmpl let-row="row">
+      <div style="display: flex; align-items: center; justify-content: center;" (click)="$event.stopPropagation()">
+        <input
+          type="checkbox"
+          class="form-checkbox"
+          [checked]="selectedIds().has(row.id)"
+          (change)="toggleSelect(row.id, $event)"
+          [attr.aria-label]="'Select user ' + row.username"
+        />
+      </div>
+    </ng-template>
+
+    <ng-template #usernameTmpl let-row="row">
+      <span style="font-weight: 700; color: var(--primary);">{{ row.username }}</span>
+    </ng-template>
+
+    <ng-template #statusTmpl let-row="row">
+      @if (row.is_active !== false) {
+        <talos-status-tag status="SUCCESS" label="Active" size="sm" variant="subtle" shape="rounded" />
+      } @else {
+        <talos-status-tag status="TERMINATED" label="Disabled" size="sm" variant="subtle" shape="rounded" />
+      }
+    </ng-template>
+
+    <ng-template #rolesTmpl let-row="row">
+      <div class="roles-container">
+        @for (role of (row.roles || []).slice(0, 3); track role) {
+          <span class="badge badge-primary">{{ role }}</span>
+        }
+        @if ((row.roles || []).length > 3) {
+          <span class="badge badge-secondary" [title]="(row.roles || []).slice(3).join(', ')">
+            +{{ (row.roles || []).length - 3 }} more
+          </span>
+        }
+        @if ((row.roles || []).length === 0) {
+          <span style="color: var(--text-muted); font-size: 0.8rem; font-style: italic;">None</span>
+        }
+      </div>
+    </ng-template>
+
+    <ng-template #actionsTmpl let-row="row">
+      <div style="display: flex; justify-content: flex-end; gap: 4px;" (click)="$event.stopPropagation()">
+        <button
+          type="button"
+          talosButton
+          variant="ghost"
+          size="xs"
+          [iconOnly]="true"
+          (click)="toggleUserStatus(row, $event)"
+          [title]="row.is_active !== false ? 'Disable Operator Account' : 'Enable Operator Account'"
+        >
+          @if (row.is_active !== false) {
+            <svg lucideLock [size]="14" style="color: var(--warning, #f59e0b);"></svg>
+          } @else {
+            <svg lucideUnlock [size]="14" style="color: var(--success, #10b981);"></svg>
           }
-        </tbody>
-      </table>
-    </div>
+        </button>
+        <button
+          type="button"
+          talosButton
+          variant="ghost"
+          size="xs"
+          [iconOnly]="true"
+          (click)="deleteUser(row.id, $event)"
+          title="Delete Operator Account"
+        >
+          <svg lucideTrash2 [size]="14" style="color: var(--danger, #ef4444);"></svg>
+        </button>
+      </div>
+    </ng-template>
   </div>
 
   <!-- Right Side: Split-screen Detail/Edit Panel -->
@@ -194,7 +194,7 @@
       <div class="form-group">
         <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
           <label class="form-label" style="margin-bottom: 0;">Access Roles ({{ formData.roles.length }})</label>
-          <button type="button" (click)="openRoleModal()" class="manage-roles-btn">
+          <button type="button" talosButton variant="outline" size="xs" (click)="openRoleModal()">
             Manage Roles
           </button>
         </div>
@@ -208,13 +208,12 @@
         </div>
       </div>
 
-
       <div
         style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">
-        <button type="button" (click)="closePanel()" class="btn btn-secondary">
+        <button type="button" talosButton variant="secondary" (click)="closePanel()">
           Cancel
         </button>
-        <button type="submit" class="btn btn-primary">
+        <button type="submit" talosButton variant="primary">
           Save Changes
         </button>
       </div>
@@ -240,19 +239,19 @@
       }
     </select>
 
-    <button (click)="bulkUpdateStatus(true)" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;">
+    <button talosButton variant="secondary" size="sm" (click)="bulkUpdateStatus(true)">
       Enable Selected
     </button>
 
-    <button (click)="bulkUpdateStatus(false)" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;">
+    <button talosButton variant="secondary" size="sm" (click)="bulkUpdateStatus(false)">
       Disable Selected
     </button>
 
-    <button (click)="bulkDelete()" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;">
+    <button talosButton variant="danger" size="sm" (click)="bulkDelete()">
       Delete Selected
     </button>
 
-    <button (click)="clearSelection()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;">
+    <button talosButton variant="secondary" size="sm" (click)="clearSelection()">
       Clear
     </button>
   </div>

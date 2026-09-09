@@ -1,255 +1,391 @@
-<section class="request-access">
+<section class="request-access animate-fade-in">
   <div class="page-header">
     <h1>Request Access</h1>
     <p class="subtitle">Browse available roles and add them to your cart for approval.</p>
   </div>
 
   @if (submitMessage()) {
-  <div class="alert alert-success" role="alert">
-    <span class="alert-icon">✓</span> {{ submitMessage() }}
-  </div>
+    <talos-alert severity="success" [dismissible]="true" (dismiss)="submitMessage.set(null)" class="mb-4">
+      {{ submitMessage() }}
+    </talos-alert>
   }
   @if (submitError()) {
-  <div class="alert alert-error" role="alert">
-    <span class="alert-icon">✕</span> {{ submitError() }}
-  </div>
+    <talos-alert severity="error" [dismissible]="true" (dismiss)="submitError.set(null)" class="mb-4">
+      {{ submitError() }}
+    </talos-alert>
   }
   @if (draftMessage()) {
-  <div class="alert alert-success" role="alert">
-    <span class="alert-icon">✓</span> {{ draftMessage() }}
-  </div>
+    <talos-alert severity="success" [dismissible]="true" (dismiss)="draftMessage.set(null)" class="mb-4">
+      {{ draftMessage() }}
+    </talos-alert>
   }
   @if (draftError()) {
-  <div class="alert alert-error" role="alert">
-    <span class="alert-icon">✕</span> {{ draftError() }}
-  </div>
+    <talos-alert severity="error" [dismissible]="true" (dismiss)="draftError.set(null)" class="mb-4">
+      {{ draftError() }}
+    </talos-alert>
   }
 
-
   <div class="layout">
-    <!-- Role Catalogue -->
-    <div class="catalogue">
-      <div class="catalogue-header">
-        <h2>Available Roles</h2>
-        <div class="search-bar">
-          <input id="role-search" type="search" placeholder="Search roles…" [ngModel]="roleSearch()"
-            (input)="onSearchChange($event)" aria-label="Search roles" />
-        </div>
-      </div>
-
-      <!-- Quick Grouping & Filters Panel -->
-      <div class="catalogue-controls">
-        <div class="control-group flex-wrap">
-          <div class="group-master-row">
-            <span class="control-label">Grouping</span>
-            <button class="btn-group-toggle" [class.active]="isGroupingEnabled()" (click)="toggleGrouping()">
-              @if (isGroupingEnabled()) {
-              <span>✓ Grouped</span>
-              } @else {
-              <span>Group Roles</span>
-              }
-            </button>
-          </div>
-          @if (isGroupingEnabled()) {
-          <div class="group-sub-options">
-            <div class="btn-group option-group">
-              <button class="btn-toggle" [class.active]="groupByMode() === 'module'"
-                (click)="groupByMode.set('module')">By Module</button>
-              <button class="btn-toggle" [class.active]="groupByMode() === 'app'" (click)="groupByMode.set('app')">By
-                Application</button>
-            </div>
-
-            <div class="btn-group tree-actions">
-              <button class="btn-toggle text-btn" (click)="expandAll()">Expand All</button>
-              <button class="btn-toggle text-btn" (click)="collapseAll()">Collapse All</button>
-            </div>
-          </div>
-          }
-        </div>
-
-        <div class="control-group">
-          <span class="control-label">Module</span>
-          <div class="filter-chips">
-            <button class="chip" [class.active]="selectedModuleFilter() === 'all'"
-              (click)="selectedModuleFilter.set('all')">All</button>
-            @for (mod of modules(); track mod.code) {
-            <button class="chip" [class.active]="selectedModuleFilter() === mod.code"
-              (click)="selectedModuleFilter.set(mod.code)">
-              {{ mod.name }}
-            </button>
-            }
-          </div>
-        </div>
-
-        <div class="control-group">
-          <span class="control-label">Application</span>
-          <div class="filter-chips">
-            <button class="chip" [class.active]="selectedAppFilter() === 'all'"
-              (click)="selectedAppFilter.set('all')">All</button>
-            @for (app of applications(); track app.code) {
-            <button class="chip" [class.active]="selectedAppFilter() === app.code"
-              (click)="selectedAppFilter.set(app.code)">
-              {{ app.name }}
-            </button>
-            }
-          </div>
-        </div>
-      </div>
-
-      <!-- Roles Grid Table -->
-      @if (isLoadingRoles() && filteredRoles().length === 0) {
-      <div class="skeleton-table">
-        <div class="skeleton-header"></div>
-        <div class="skeleton-row"></div>
-        <div class="skeleton-row"></div>
-        <div class="skeleton-row"></div>
-      </div>
-      } @else if (filteredRoles().length === 0) {
-      <div class="empty-state">No roles match your search or filter criteria.</div>
-      } @else {
-      <div class="roles-grid-container">
-        <table class="roles-table tree-grid">
-          <thead>
-            <tr>
-              @if (groupBy() !== 'none') {
-              <th class="col-group">Group</th>
-              }
-              <th class="col-name">Role Name</th>
-              <th class="col-module">Module</th>
-              <th class="col-app">Application</th>
-              <th class="col-desc">Description</th>
-              <th class="col-action">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (row of visibleRows(); track row.key) {
-            @if (row.type === 'group') {
-            <tr class="grid-group-row level-{{ row.level }}" (click)="toggleGroup(row.key)">
-              <td [attr.colspan]="groupBy() !== 'none' ? 6 : 5">
-                <div class="group-cell-content" [style.padding-left.px]="row.level * 20">
-                  <span class="chevron-icon" [class.collapsed]="isGroupCollapsed(row.key)">
-                    <svg viewBox="0 0 24 24" width="16" height="16">
-                      <path d="M7 10l5 5 5-5H7z" fill="currentColor" />
-                    </svg>
-                  </span>
-                  <span class="group-name">{{ row.name }}</span>
-                  <span class="group-count">({{ row.count }})</span>
-                </div>
-              </td>
-            </tr>
-            } @else {
-            <tr [class.in-cart]="cartRoleIds().has(row.role?.id ?? '')" class="grid-leaf-row">
-              @if (groupBy() !== 'none') {
-              <td class="col-group empty-cell"></td>
-              }
-              <td class="col-name font-semibold">{{ row.role?.name }}</td>
-              <td class="col-module">
-                <span class="badge badge-module">{{ row.role?.module_id }}</span>
-              </td>
-              <td class="col-app">
-                @if (row.role?.app_code) {
-                <span class="badge badge-app">{{ row.role!.app_code }}</span>
-                } @else {
-                <span class="text-muted small">-</span>
-                }
-              </td>
-              <td class="col-desc">{{ row.role?.description || 'No description available.' }}</td>
-              <td class="col-action">
-                @if (row.role) {
-                <button class="btn-add-grid" [disabled]="cartRoleIds().has(row.role.id ?? '')"
-                  (click)="addToCart(row.role)" [attr.aria-label]="'Add ' + row.role.name + ' to cart'">
-                  @if (cartRoleIds().has(row.role.id ?? '')) {
-                  <span>In Cart</span>
-                  } @else {
-                  <span>+ Add</span>
-                  }
+    <!-- Role Catalogue Card -->
+    <talos-card variant="elevated" [padding]="'none'" class="catalogue">
+      <talos-card-body>
+        <div class="catalogue-header">
+          <h2>Available Roles</h2>
+          <div class="search-bar">
+            <talos-form-field label="Search roles" [floating]="true" size="sm">
+              <svg talosPrefix lucideSearch [size]="16"></svg>
+              <input
+                id="role-search"
+                type="text"
+                talosInput
+                size="sm"
+                placeholder="Search roles…"
+                [ngModel]="roleSearch()"
+                (input)="onSearchChange($event)"
+                aria-label="Search roles"
+                autocomplete="off"
+              />
+              @if (roleSearch()) {
+                <button
+                  type="button"
+                  talosSuffix
+                  talosButton
+                  variant="ghost"
+                  size="xs"
+                  class="affix-interactive"
+                  (click)="roleSearch.set(''); searchSubject.next('')"
+                  aria-label="Clear search"
+                >
+                  <svg lucideX [size]="14"></svg>
                 </button>
+              }
+            </talos-form-field>
+          </div>
+        </div>
+
+        <!-- Quick Grouping & Filters Panel -->
+        <div class="catalogue-controls">
+          <div class="control-group flex-wrap">
+            <div class="group-master-row">
+              <span class="control-label">Grouping</span>
+              <button
+                talosButton
+                [variant]="isGroupingEnabled() ? 'primary' : 'outline'"
+                size="sm"
+                class="btn-group-toggle"
+                [class.active]="isGroupingEnabled()"
+                (click)="toggleGrouping()"
+              >
+                @if (isGroupingEnabled()) {
+                  <svg lucideCheck [size]="14" style="margin-right: 4px;"></svg>
+                  <span>Grouped</span>
+                } @else {
+                  <svg lucideLayers [size]="14" style="margin-right: 4px;"></svg>
+                  <span>Group Roles</span>
                 }
-              </td>
-            </tr>
+              </button>
+            </div>
+            @if (isGroupingEnabled()) {
+              <div class="group-sub-options">
+                <div class="btn-group option-group">
+                  <button
+                    talosButton
+                    [variant]="groupByMode() === 'module' ? 'primary' : 'secondary'"
+                    size="xs"
+                    class="btn-toggle"
+                    [class.active]="groupByMode() === 'module'"
+                    (click)="groupByMode.set('module')"
+                  >
+                    By Module
+                  </button>
+                  <button
+                    talosButton
+                    [variant]="groupByMode() === 'app' ? 'primary' : 'secondary'"
+                    size="xs"
+                    class="btn-toggle"
+                    [class.active]="groupByMode() === 'app'"
+                    (click)="groupByMode.set('app')"
+                  >
+                    By Application
+                  </button>
+                </div>
+
+                <div class="btn-group tree-actions">
+                  <button
+                    talosButton
+                    variant="ghost"
+                    size="xs"
+                    class="btn-toggle text-btn"
+                    (click)="expandAll()"
+                  >
+                    Expand All
+                  </button>
+                  <button
+                    talosButton
+                    variant="ghost"
+                    size="xs"
+                    class="btn-toggle text-btn"
+                    (click)="collapseAll()"
+                  >
+                    Collapse All
+                  </button>
+                </div>
+              </div>
             }
-            }
-          </tbody>
-        </table>
-      </div>
-      }
-    </div>
+          </div>
 
-    <!-- Cart Sidebar -->
-    <aside class="cart" aria-label="Access request cart">
-      <div class="cart-header">
-        <h2>Your Cart</h2>
-        <span class="cart-badge" aria-label="{{ cartItemCount() }} items in cart">
-          {{ cartItemCount() }}
-        </span>
-      </div>
+          <div class="control-group">
+            <span class="control-label">Module</span>
+            <div class="filter-chips">
+              <button
+                class="chip"
+                [class.active]="selectedModuleFilter() === 'all'"
+                (click)="selectedModuleFilter.set('all')"
+              >
+                All
+              </button>
+              @for (mod of modules(); track mod.code) {
+                <button
+                  class="chip"
+                  [class.active]="selectedModuleFilter() === mod.code"
+                  (click)="selectedModuleFilter.set(mod.code)"
+                >
+                  {{ mod.name }}
+                </button>
+              }
+            </div>
+          </div>
 
-      @if (hasSavedDraft()) {
-      <div class="draft-indicator">
-        <span class="draft-badge">📝 Draft saved</span>
-      </div>
-      }
+          <div class="control-group">
+            <span class="control-label">Application</span>
+            <div class="filter-chips">
+              <button
+                class="chip"
+                [class.active]="selectedAppFilter() === 'all'"
+                (click)="selectedAppFilter.set('all')"
+              >
+                All
+              </button>
+              @for (app of applications(); track app.code) {
+                <button
+                  class="chip"
+                  [class.active]="selectedAppFilter() === app.code"
+                  (click)="selectedAppFilter.set(app.code)"
+                >
+                  {{ app.name }}
+                </button>
+              }
+            </div>
+          </div>
+        </div>
 
-      @if (cartItemCount() === 0) {
-      <p class="cart-empty">No roles added yet. Browse the catalogue to get started.</p>
-      } @else if (currentCart()?.items?.length) {
-      <!-- Persisted items (saved draft) -->
-      <ul class="cart-items" role="list">
-        @for (item of currentCart()!.items; track item.id) {
-        <li class="cart-item">
-          <span class="cart-role-name">{{ item.role_name }}</span>
-          <button class="btn-remove" (click)="removeFromCart(item)"
-            [attr.aria-label]="'Remove ' + item.role_name + ' from cart'">
-            ✕
-          </button>
-        </li>
+        <!-- Roles Grid Table -->
+        @if (isLoadingRoles() && filteredRoles().length === 0) {
+          <div class="skeleton-table">
+            <div class="skeleton-header"></div>
+            <div class="skeleton-row"></div>
+            <div class="skeleton-row"></div>
+            <div class="skeleton-row"></div>
+          </div>
+        } @else if (filteredRoles().length === 0) {
+          <div class="empty-state">
+            <svg lucideInbox [size]="44" class="empty-icon" aria-hidden="true"></svg>
+            <p>No roles match your search or filter criteria.</p>
+          </div>
+        } @else {
+          <div class="roles-grid-container">
+            <table class="roles-table tree-grid">
+              <thead>
+                <tr>
+                  @if (groupBy() !== 'none') {
+                    <th class="col-group">Group</th>
+                  }
+                  <th class="col-name">Role Name</th>
+                  <th class="col-module">Module</th>
+                  <th class="col-app">Application</th>
+                  <th class="col-desc">Description</th>
+                  <th class="col-action">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of visibleRows(); track row.key) {
+                  @if (row.type === 'group') {
+                    <tr class="grid-group-row level-{{ row.level }}" (click)="toggleGroup(row.key)">
+                      <td [attr.colspan]="groupBy() !== 'none' ? 6 : 5">
+                        <div class="group-cell-content" [style.padding-left.px]="row.level * 20">
+                          <span class="chevron-icon" [class.collapsed]="isGroupCollapsed(row.key)">
+                            <svg lucideChevronDown [size]="16" class="tree-chevron"></svg>
+                          </span>
+                          <span class="group-name">{{ row.name }}</span>
+                          <span class="group-count">({{ row.count }})</span>
+                        </div>
+                      </td>
+                    </tr>
+                  } @else {
+                    <tr [class.in-cart]="cartRoleIds().has(row.role?.id ?? '')" class="grid-leaf-row">
+                      @if (groupBy() !== 'none') {
+                        <td class="col-group empty-cell"></td>
+                      }
+                      <td class="col-name font-semibold">{{ row.role?.name }}</td>
+                      <td class="col-module">
+                        <span class="badge badge-module">{{ row.role?.module_id }}</span>
+                      </td>
+                      <td class="col-app">
+                        @if (row.role?.app_code) {
+                          <span class="badge badge-app">{{ row.role!.app_code }}</span>
+                        } @else {
+                          <span class="text-muted small">-</span>
+                        }
+                      </td>
+                      <td class="col-desc">{{ row.role?.description || 'No description available.' }}</td>
+                      <td class="col-action">
+                        @if (row.role) {
+                          <button
+                            talosButton
+                            variant="primary"
+                            size="xs"
+                            class="btn-add-grid"
+                            [disabled]="cartRoleIds().has(row.role.id ?? '')"
+                            (click)="addToCart(row.role)"
+                            [attr.aria-label]="'Add ' + row.role.name + ' to cart'"
+                          >
+                            @if (cartRoleIds().has(row.role.id ?? '')) {
+                              <svg lucideCheck [size]="12" style="margin-right: 2px;"></svg>
+                              <span>In Cart</span>
+                            } @else {
+                              <svg lucidePlus [size]="12" style="margin-right: 2px;"></svg>
+                              <span>Add</span>
+                            }
+                          </button>
+                        }
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
         }
-      </ul>
-      } @else {
-      <!-- Local pending roles (not yet saved) -->
-      <ul class="cart-items" role="list">
-        @for (role of pendingRoles(); track role.id) {
-        <li class="cart-item">
-          <span class="cart-role-name">{{ role.name }}</span>
-          <button class="btn-remove" (click)="removePendingRole(role)"
-            [attr.aria-label]="'Remove ' + role.name + ' from cart'">
-            ✕
-          </button>
-        </li>
-        }
-      </ul>
-      }
+      </talos-card-body>
+    </talos-card>
 
-      <div class="justification-field">
-        <label for="justification">Justification <span class="required">*</span></label>
-        <textarea id="justification" rows="4" placeholder="Explain why you need this access (min 10 characters)…"
-          [(ngModel)]="justification" aria-required="true"></textarea>
+    <!-- Cart Sidebar Card -->
+    <talos-card variant="elevated" [padding]="'none'" class="cart" aria-label="Access request cart">
+      <talos-card-body>
+        <div class="cart-header">
+          <h2>Your Cart</h2>
+          <span class="cart-badge" aria-label="{{ cartItemCount() }} items in cart">
+            {{ cartItemCount() }}
+          </span>
+        </div>
+
         @if (hasSavedDraft()) {
-        <p class="justification-hint">Justification changes are applied when you submit the request.</p>
+          <div class="draft-indicator">
+            <span class="draft-badge">
+              <svg lucideFileText [size]="14" style="margin-right: 4px;"></svg>
+              Draft saved
+            </span>
+          </div>
         }
-      </div>
 
-      <div class="cart-actions">
-        <button id="save-draft" class="btn-save-draft" [disabled]="isSavingDraft() || cartItemCount() === 0"
-          (click)="saveDraft()" aria-live="polite">
-          @if (isSavingDraft()) {
-          <span>Saving…</span>
-          } @else if (hasSavedDraft()) {
-          <span>✓ Draft Saved</span>
-          } @else {
-          <span>Save Draft</span>
-          }
-        </button>
+        @if (cartItemCount() === 0) {
+          <div class="cart-empty">
+            <svg lucideShoppingCart [size]="32" class="empty-cart-icon" aria-hidden="true"></svg>
+            <p>No roles added yet. Browse the catalogue to get started.</p>
+          </div>
+        } @else if (currentCart()?.items?.length) {
+          <!-- Persisted items (saved draft) -->
+          <ul class="cart-items" role="list">
+            @for (item of currentCart()!.items; track item.id) {
+              <li class="cart-item">
+                <span class="cart-role-name">{{ item.role_name }}</span>
+                <button
+                  talosButton
+                  variant="ghost"
+                  size="xs"
+                  [iconOnly]="true"
+                  class="btn-remove"
+                  (click)="removeFromCart(item)"
+                  [attr.aria-label]="'Remove ' + item.role_name + ' from cart'"
+                >
+                  <svg lucideX [size]="14"></svg>
+                </button>
+              </li>
+            }
+          </ul>
+        } @else {
+          <!-- Local pending roles (not yet saved) -->
+          <ul class="cart-items" role="list">
+            @for (role of pendingRoles(); track role.id) {
+              <li class="cart-item">
+                <span class="cart-role-name">{{ role.name }}</span>
+                <button
+                  talosButton
+                  variant="ghost"
+                  size="xs"
+                  [iconOnly]="true"
+                  class="btn-remove"
+                  (click)="removePendingRole(role)"
+                  [attr.aria-label]="'Remove ' + role.name + ' from cart'"
+                >
+                  <svg lucideX [size]="14"></svg>
+                </button>
+              </li>
+            }
+          </ul>
+        }
 
-        <button id="submit-cart" class="btn-submit" [disabled]="isSubmitting() || cartItemCount() === 0"
-          (click)="submitCart()" aria-live="polite">
-          @if (isSubmitting()) {
-          <span>Submitting…</span>
-          } @else {
-          <span>Submit Request ({{ cartItemCount() }})</span>
+        <div class="justification-field">
+          <talos-form-field label="Justification" for="justification" size="sm">
+            <textarea
+              id="justification"
+              talosInput
+              rows="3"
+              placeholder="Explain why you need this access (min 10 characters)…"
+              [(ngModel)]="justification"
+              aria-required="true"
+            ></textarea>
+          </talos-form-field>
+          @if (hasSavedDraft()) {
+            <p class="justification-hint">Justification changes are applied when you submit the request.</p>
           }
-        </button>
-      </div>
-    </aside>
+        </div>
+
+        <div class="cart-actions">
+          <button
+            id="save-draft"
+            talosButton
+            variant="outline"
+            class="btn-save-draft"
+            [loading]="isSavingDraft()"
+            [disabled]="cartItemCount() === 0"
+            (click)="saveDraft()"
+            aria-live="polite"
+          >
+            @if (hasSavedDraft()) {
+              <svg lucideCheck [size]="14" style="margin-right: 4px;"></svg>
+              <span>Draft Saved</span>
+            } @else {
+              <svg lucideFileText [size]="14" style="margin-right: 4px;"></svg>
+              <span>Save Draft</span>
+            }
+          </button>
+
+          <button
+            id="submit-cart"
+            talosButton
+            variant="primary"
+            class="btn-submit"
+            [loading]="isSubmitting()"
+            [disabled]="cartItemCount() === 0"
+            (click)="submitCart()"
+            aria-live="polite"
+          >
+            <svg lucideSend [size]="14" style="margin-right: 6px;"></svg>
+            <span>Submit Request ({{ cartItemCount() }})</span>
+          </button>
+        </div>
+      </talos-card-body>
+    </talos-card>
   </div>
 </section>

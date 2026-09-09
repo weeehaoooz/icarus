@@ -7,6 +7,14 @@ import { AdminService } from '../../services/admin.service';
 import { DagPreviewComponent } from './dag-preview/dag-preview.component';
 import type { FormNode } from './dag-preview/dag-preview.component';
 
+// Talos UI
+import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
+import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+import { SelectInputComponent, OptionComponent } from '@weeehaoooz/talos-ui/form/select-input';
+import { TalosCheckboxDirective } from '@weeehaoooz/talos-ui/form/checkbox';
+import { TalosAlertComponent } from '@weeehaoooz/talos-ui/feedback/alert';
+import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
+
 // Re-export so template can use the type indirectly.
 export type { FormNode };
 
@@ -18,7 +26,18 @@ interface BuilderRole {
 
 @Component({
   selector: 'app-workflow-builder',
-  imports: [FormsModule, RouterLink, DagPreviewComponent],
+  imports: [
+    FormsModule,
+    RouterLink,
+    DagPreviewComponent,
+    TalosInputDirective,
+    TalosButtonDirective,
+    SelectInputComponent,
+    OptionComponent,
+    TalosCheckboxDirective,
+    TalosAlertComponent,
+    TalosFormFieldComponent
+  ],
   templateUrl: './workflow-builder.component.html',
   styleUrl: './workflow-builder.component.scss'
 })

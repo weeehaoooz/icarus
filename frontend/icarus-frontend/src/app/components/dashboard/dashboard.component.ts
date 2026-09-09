@@ -1,4 +1,4 @@
-import { Component, inject, computed, signal, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, computed, signal, OnInit, OnDestroy, effect, viewChild } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
@@ -7,12 +7,14 @@ import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
 import { WorkflowService } from '../../services/workflow.service';
 
-// Talos UI — Layout & Nav
+// Talos UI
 import { MainLayoutComponent } from '@weeehaoooz/talos-ui/layout';
-import { SideNavComponent, TopNavComponent } from '@weeehaoooz/talos-ui/nav';
-import type { SideNavGroup, SideNavUserProfile } from '@weeehaoooz/talos-ui/nav';
-
-// Talos UI — Snackbar
+import {
+  SideNavComponent,
+  TopNavComponent,
+  type SideNavGroup,
+  type SideNavUserProfile
+} from '@weeehaoooz/talos-ui/nav';
 import { TalosSnackbarService } from '@weeehaoooz/talos-ui/feedback/snackbar';
 
 // Lucide icons for nav items
@@ -49,6 +51,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly workflowService = inject(WorkflowService);
   private readonly snackbar = inject(TalosSnackbarService);
 
+  readonly sideNav = viewChild(SideNavComponent);
+  readonly currentUrl = signal<string>(this.router.url);
   readonly isSettingsExpanded = signal(false);
   readonly inboxCount = signal(0);
   readonly currentSpace = signal<'user' | 'admin'>('user');
@@ -62,16 +66,27 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (this.router.url.includes('/dashboard/settings')) {
       this.isSettingsExpanded.set(true);
     }
+
+    effect(() => {
+      const activeId = this.activeNavItemId();
+      const nav = this.sideNav();
+      if (nav && activeId) {
+        nav.activeItemId.set(activeId);
+      }
+    });
   }
 
   ngOnInit(): void {
+    this.currentUrl.set(this.router.url);
     this.refreshInboxCount();
     this.setupSSESubscription();
     this.syncSpaceWithUrl(this.router.url);
     this.routerSub = this.router.events.pipe(
       filter((event): event is NavigationEnd => event instanceof NavigationEnd)
     ).subscribe((event) => {
-      this.syncSpaceWithUrl(event.urlAfterRedirects || event.url);
+      const url = event.urlAfterRedirects || event.url;
+      this.currentUrl.set(url);
+      this.syncSpaceWithUrl(url);
     });
   }
 
@@ -132,23 +147,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   /** Active nav item id derived from the current URL */
   readonly activeNavItemId = computed(() => {
-    const url = this.router.url;
+    const url = this.currentUrl();
     if (url.includes('/dashboard/overview')) return 'overview';
     if (url.includes('/dashboard/users')) return 'users';
     if (url.includes('/dashboard/clients')) return 'clients';
     if (url.includes('/dashboard/roles')) return 'roles';
     if (url.includes('/dashboard/workflows')) return 'workflows';
+    if (url.includes('/dashboard/workflow-builder')) return 'workflows';
     if (url.includes('/dashboard/request-management')) return 'request-management';
     if (url.includes('/dashboard/applications')) return 'applications';
     if (url.includes('/dashboard/tenants')) return 'tenants';
     if (url.includes('/dashboard/settings')) return 'settings-integrations';
     if (url.includes('/dashboard/modules')) return 'modules';
+    if (url.includes('/dashboard/profile-settings')) return 'profile-settings';
     if (url.includes('/dashboard/my-policies')) return 'my-policies';
     if (url.includes('/dashboard/request-access')) return 'request-access';
     if (url.includes('/dashboard/my-requests')) return 'my-requests';
     if (url.includes('/dashboard/approval-inbox')) return 'approval-inbox';
     if (url.includes('/dashboard/compare-access')) return 'compare-access';
-    if (url.includes('/dashboard/profile-settings')) return 'profile-settings';
     return '';
   });
 

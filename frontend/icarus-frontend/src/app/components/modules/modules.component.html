@@ -1,108 +1,126 @@
 <header class="clients-header">
   <div>
-    <h1>Module Governance</h1>
-    <p style="color: var(--text-muted); font-size: 0.875rem; margin-top: 4px;">
-      Register backend services and API portals for route routing, permission mapping, and access policies.
+    <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.02em;">Module Governance</h1>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">
+      Register backend services and API portals for route routing, permission mapping, and access policies
     </p>
   </div>
   @if (isAdmin()) {
-  <button (click)="openCreatePanel()" class="btn btn-primary">
-    <svg class="lucide-icon" viewBox="0 0 24 24" style="margin-right: 6px;">
-      <path d="M5 12h14" />
-      <path d="M12 5v14" />
-    </svg> Register Module
+  <button talosButton variant="primary" (click)="openCreatePanel()">
+    <svg lucidePlus [size]="16" style="margin-right: 6px;"></svg>
+    Register Module
   </button>
   }
 </header>
 
 <div class="search-bar">
-  <div class="search-wrapper" [class.is-searching]="isSearching()">
-    <span class="search-icon" aria-hidden="true">
-      <svg class="lucide-icon" viewBox="0 0 24 24" style="width:15px;height:15px;">
-        <circle cx="11" cy="11" r="8" />
-        <path d="m21 21-4.3-4.3" />
-      </svg>
-    </span>
-    <input type="search" id="modules-search" class="search-input" placeholder="Search by name, code, base URL..."
-      [value]="searchQuery()" (input)="onSearchInput($event)" autocomplete="off" aria-label="Search modules" />
-    <span class="search-suffix">
-      @if (isSearching()) {
-      <span class="search-spinner" aria-label="Searching…" role="status"></span>
-      } @else if (searchQuery()) {
-      <button class="search-clear-btn" type="button" (click)="clearSearch()" aria-label="Clear search">✕</button>
-      }
-    </span>
-  </div>
+  <talos-form-field label="Search modules" [floating]="true" size="sm">
+    <svg talosPrefix lucideSearch [size]="16"></svg>
+    <input
+      type="search"
+      id="modules-search"
+      talosInput
+      size="sm"
+      placeholder="Search by name, code, base URL..."
+      [value]="searchQuery()"
+      (input)="onSearchInput($event)"
+      autocomplete="off"
+      aria-label="Search modules"
+    />
+    @if (searchQuery()) {
+      <button
+        type="button"
+        talosSuffix
+        talosButton
+        variant="ghost"
+        size="xs"
+        class="affix-interactive"
+        (click)="clearSearch()"
+        aria-label="Clear search"
+      >
+        <svg lucideX [size]="14"></svg>
+      </button>
+    }
+  </talos-form-field>
 </div>
 
 <div class="split-layout" [class.has-active-panel]="activePanel() !== null">
-  <div class="table-panel glass-panel table-container">
-    <table class="custom-table">
-      <thead>
-        <tr>
-          <th style="width: 40px; text-align: center;">
-            <input type="checkbox" [checked]="isAllSelected()" (change)="toggleSelectAll($event)"
-              class="form-checkbox" />
-          </th>
-          <th>Name</th>
-          <th>Module Code</th>
-          <th>Base URL</th>
-          <th>Status</th>
-          <th>Onboarded At</th>
-          <th style="width: 100px; text-align: right;">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (module of filteredModules(); track module.id) {
-        <tr (click)="openEditPanel(module)" style="cursor: pointer;" [class.selected]="selectedIds().has(module.id)">
-          <td style="text-align: center;" (click)="$event.stopPropagation()">
-            <input type="checkbox" [checked]="selectedIds().has(module.id)" (change)="toggleSelect(module.id, $event)"
-              class="form-checkbox" />
-          </td>
-          <td>
-            <strong style="color: var(--primary);">{{ module.name }}</strong>
-          </td>
-          <td>
-            <code style="color: var(--text-muted);">{{ module.code }}</code>
-          </td>
-          <td>
-            <code style="color: var(--text-muted);">{{ module.base_url }}</code>
-          </td>
-          <td>
-            <span class="badge" [class.badge-primary]="module.is_active" [class.badge-secondary]="!module.is_active">
-              {{ module.is_active ? 'Active' : 'Inactive' }}
-            </span>
-          </td>
-          <td>{{ module.created_at | date:'short' }}</td>
-          <td style="text-align: right;" (click)="$event.stopPropagation()">
-            <button (click)="openEditPanel(module)" class="icon-btn" title="Edit Module">
-              <svg class="lucide-icon" viewBox="0 0 24 24">
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-              </svg>
-            </button>
-            @if (isOwner(module.code)) {
-            <button (click)="deleteModule(module.id, $event)" class="icon-btn delete" title="Delete Module">
-              <svg class="lucide-icon" viewBox="0 0 24 24">
-                <path d="M3 6h18" />
-                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                <line x1="10" x2="10" y1="11" y2="17" />
-                <line x1="14" x2="14" y1="11" y2="17" />
-              </svg>
-            </button>
-            }
-          </td>
-        </tr>
-        } @empty {
-        <tr>
-          <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
-            No modules registered yet. Click "Register Module" to get started.
-          </td>
-        </tr>
+  <div class="table-panel animate-fade-in">
+    <talos-data-grid
+      [data]="filteredModules()"
+      [columns]="columns()"
+      [loading]="isLoading()"
+      [pagination]="true"
+      [pageSize]="10"
+      [pageSizeOptions]="[5, 10, 20, 50]"
+      [filterable]="true"
+      [resizable]="true"
+      [hoverable]="true"
+      [bordered]="true"
+      [emptyMessage]="searchQuery() ? 'No matching modules found.' : 'No modules registered yet. Click \'Register Module\' to get started.'"
+      (rowClick)="onRowClick($event)"
+    />
+
+    <!-- Cell Templates -->
+    <ng-template #selectTmpl let-row="row">
+      <div style="display: flex; align-items: center; justify-content: center;" (click)="$event.stopPropagation()">
+        <input
+          type="checkbox"
+          class="form-checkbox"
+          [checked]="selectedIds().has(row.id)"
+          (change)="toggleSelect(row.id, $event)"
+        />
+      </div>
+    </ng-template>
+
+    <ng-template #nameTmpl let-row="row">
+      <strong style="color: var(--primary);">{{ row.name }}</strong>
+    </ng-template>
+
+    <ng-template #codeTmpl let-row="row">
+      <code style="color: var(--text-muted);">{{ row.code }}</code>
+    </ng-template>
+
+    <ng-template #baseUrlTmpl let-row="row">
+      <code style="color: var(--text-muted);">{{ row.base_url }}</code>
+    </ng-template>
+
+    <ng-template #statusTmpl let-row="row">
+      @if (row.is_active) {
+        <talos-status-tag status="SUCCESS" label="Active" size="sm" variant="subtle" shape="rounded" />
+      } @else {
+        <talos-status-tag status="TERMINATED" label="Inactive" size="sm" variant="subtle" shape="rounded" />
+      }
+    </ng-template>
+
+    <ng-template #actionsTmpl let-row="row">
+      <div style="display: flex; justify-content: flex-end; gap: 4px;" (click)="$event.stopPropagation()">
+        <button
+          type="button"
+          talosButton
+          variant="ghost"
+          size="xs"
+          [iconOnly]="true"
+          (click)="openEditPanel(row)"
+          title="Edit Module"
+        >
+          <svg lucideEdit [size]="14" style="color: var(--primary);"></svg>
+        </button>
+        @if (isOwner(row.code)) {
+          <button
+            type="button"
+            talosButton
+            variant="ghost"
+            size="xs"
+            [iconOnly]="true"
+            (click)="deleteModule(row.id, $event)"
+            title="Delete Module"
+          >
+            <svg lucideTrash2 [size]="14" style="color: var(--danger, #ef4444);"></svg>
+          </button>
         }
-      </tbody>
-    </table>
+      </div>
+    </ng-template>
   </div>
 
   @if (activePanel(); as panel) {
@@ -216,8 +234,7 @@
                 <option [value]="app.code">{{ app.name }} ({{ app.code }})</option>
                 }
               </select>
-              <button type="button" (click)="onboardApplication()" [disabled]="!onboardAppCode" class="btn btn-primary"
-                style="padding: 6px 12px; font-size: 0.85rem;">
+              <button type="button" talosButton variant="primary" size="sm" (click)="onboardApplication()" [disabled]="!onboardAppCode">
                 Onboard
               </button>
             </div>
@@ -230,12 +247,9 @@
                 <span style="font-family: monospace; font-size: 0.85rem; color: var(--primary); font-weight: 600;">{{
                   appCode }}</span>
                 @if (isOwner($safeNavigationMigration(selectedModule()?.code))) {
-                <button type="button" (click)="offboardApplication(appCode)" class="icon-btn delete"
-                  title="Offboard Application" style="padding: 2px;">
-                  <svg class="lucide-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px;">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
+                <button type="button" talosButton variant="ghost" size="xs" [iconOnly]="true" (click)="offboardApplication(appCode)"
+                  title="Offboard Application">
+                  <svg lucideX [size]="14" style="color: var(--danger, #ef4444);"></svg>
                 </button>
                 }
               </div>
@@ -379,17 +393,14 @@
 
                 <div class="inline-form-actions">
                   @if (editingPermIndex() !== null) {
-                  <button type="button" class="btn btn-primary btn-sm" (click)="saveEditPermission()"
+                  <button type="button" talosButton variant="primary" size="sm" (click)="saveEditPermission()"
                     [disabled]="!newPermission.action.trim()">Save</button>
-                  <button type="button" class="btn btn-secondary btn-sm"
+                  <button type="button" talosButton variant="secondary" size="sm"
                     (click)="cancelEditPermission()">Cancel</button>
                   } @else {
-                  <button type="button" class="btn btn-primary btn-sm" (click)="addPermission()"
+                  <button type="button" talosButton variant="primary" size="sm" (click)="addPermission()"
                     [disabled]="!newPermission.action.trim()">
-                    <svg class="lucide-icon" viewBox="0 0 24 24" style="width:12px;height:12px;">
-                      <path d="M5 12h14" />
-                      <path d="M12 5v14" />
-                    </svg>
+                    <svg lucidePlus [size]="14" style="margin-right: 4px;"></svg>
                     Add Permission
                   </button>
                   }
@@ -417,18 +428,11 @@
                   </div>
                   @if (panel === 'create' || isOwner($safeNavigationMigration(selectedModule()?.code))) {
                   <div class="entry-actions">
-                    <button type="button" class="icon-btn" title="Edit" (click)="startEditPermission(i)">
-                      <svg class="lucide-icon" viewBox="0 0 24 24">
-                        <path d="M12 20h9" />
-                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                      </svg>
+                    <button type="button" talosButton variant="ghost" size="xs" [iconOnly]="true" title="Edit" (click)="startEditPermission(i)">
+                      <svg lucideEdit [size]="14"></svg>
                     </button>
-                    <button type="button" class="icon-btn delete" title="Remove" (click)="removePermission(i)">
-                      <svg class="lucide-icon" viewBox="0 0 24 24">
-                        <path d="M3 6h18" />
-                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                      </svg>
+                    <button type="button" talosButton variant="ghost" size="xs" [iconOnly]="true" title="Remove" (click)="removePermission(i)">
+                      <svg lucideTrash2 [size]="14" style="color: var(--danger, #ef4444);"></svg>
                     </button>
                   </div>
                   }
@@ -487,17 +491,14 @@
                 }
                 <div class="inline-form-actions">
                   @if (editingDefaultRoleIndex() !== null) {
-                  <button type="button" class="btn btn-primary btn-sm" (click)="saveEditDefaultRole()"
+                  <button type="button" talosButton variant="primary" size="sm" (click)="saveEditDefaultRole()"
                     [disabled]="!newDefaultRole.name.trim()">Save</button>
-                  <button type="button" class="btn btn-secondary btn-sm"
+                  <button type="button" talosButton variant="secondary" size="sm"
                     (click)="cancelEditDefaultRole()">Cancel</button>
                   } @else {
-                  <button type="button" class="btn btn-primary btn-sm" (click)="addDefaultRole()"
+                  <button type="button" talosButton variant="primary" size="sm" (click)="addDefaultRole()"
                     [disabled]="!newDefaultRole.name.trim()">
-                    <svg class="lucide-icon" viewBox="0 0 24 24" style="width:12px;height:12px;">
-                      <path d="M5 12h14" />
-                      <path d="M12 5v14" />
-                    </svg>
+                    <svg lucidePlus [size]="14" style="margin-right: 4px;"></svg>
                     Add Role
                   </button>
                   }
@@ -530,18 +531,11 @@
                   </div>
                   @if (panel === 'create' || isOwner($safeNavigationMigration(selectedModule()?.code))) {
                   <div class="entry-actions">
-                    <button type="button" class="icon-btn" title="Edit" (click)="startEditDefaultRole(i)">
-                      <svg class="lucide-icon" viewBox="0 0 24 24">
-                        <path d="M12 20h9" />
-                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                      </svg>
+                    <button type="button" talosButton variant="ghost" size="xs" [iconOnly]="true" title="Edit" (click)="startEditDefaultRole(i)">
+                      <svg lucideEdit [size]="14"></svg>
                     </button>
-                    <button type="button" class="icon-btn delete" title="Remove" (click)="removeDefaultRole(i)">
-                      <svg class="lucide-icon" viewBox="0 0 24 24">
-                        <path d="M3 6h18" />
-                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                      </svg>
+                    <button type="button" talosButton variant="ghost" size="xs" [iconOnly]="true" title="Remove" (click)="removeDefaultRole(i)">
+                      <svg lucideTrash2 [size]="14" style="color: var(--danger, #ef4444);"></svg>
                     </button>
                   </div>
                   }
@@ -600,16 +594,13 @@
                 }
                 <div class="inline-form-actions">
                   @if (editingAppRoleIndex() !== null) {
-                  <button type="button" class="btn btn-primary btn-sm" (click)="saveEditAppRole()"
+                  <button type="button" talosButton variant="primary" size="sm" (click)="saveEditAppRole()"
                     [disabled]="!newAppCentricRole.name.trim()">Save</button>
-                  <button type="button" class="btn btn-secondary btn-sm" (click)="cancelEditAppRole()">Cancel</button>
+                  <button type="button" talosButton variant="secondary" size="sm" (click)="cancelEditAppRole()">Cancel</button>
                   } @else {
-                  <button type="button" class="btn btn-primary btn-sm" (click)="addAppCentricRole()"
+                  <button type="button" talosButton variant="primary" size="sm" (click)="addAppCentricRole()"
                     [disabled]="!newAppCentricRole.name.trim()">
-                    <svg class="lucide-icon" viewBox="0 0 24 24" style="width:12px;height:12px;">
-                      <path d="M5 12h14" />
-                      <path d="M12 5v14" />
-                    </svg>
+                    <svg lucidePlus [size]="14" style="margin-right: 4px;"></svg>
                     Add Role
                   </button>
                   }
@@ -643,18 +634,11 @@
                   </div>
                   @if (panel === 'create' || isOwner($safeNavigationMigration(selectedModule()?.code))) {
                   <div class="entry-actions">
-                    <button type="button" class="icon-btn" title="Edit" (click)="startEditAppRole(i)">
-                      <svg class="lucide-icon" viewBox="0 0 24 24">
-                        <path d="M12 20h9" />
-                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                      </svg>
+                    <button type="button" talosButton variant="ghost" size="xs" [iconOnly]="true" title="Edit" (click)="startEditAppRole(i)">
+                      <svg lucideEdit [size]="14"></svg>
                     </button>
-                    <button type="button" class="icon-btn delete" title="Remove" (click)="removeAppCentricRole(i)">
-                      <svg class="lucide-icon" viewBox="0 0 24 24">
-                        <path d="M3 6h18" />
-                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                      </svg>
+                    <button type="button" talosButton variant="ghost" size="xs" [iconOnly]="true" title="Remove" (click)="removeAppCentricRole(i)">
+                      <svg lucideTrash2 [size]="14" style="color: var(--danger, #ef4444);"></svg>
                     </button>
                   </div>
                   }
@@ -750,9 +734,9 @@
       }
 
       <div class="panel-actions" style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
-        <button type="button" (click)="closePanel()" class="btn btn-secondary">Cancel</button>
+        <button type="button" talosButton variant="secondary" (click)="closePanel()">Cancel</button>
         @if (panel === 'create' || isOwner($safeNavigationMigration(selectedModule()?.code))) {
-        <button type="submit" [disabled]="!moduleForm.form.valid" class="btn btn-primary">
+        <button type="submit" talosButton variant="primary" [disabled]="!moduleForm.form.valid">
           {{ panel === 'create' ? 'Register' : 'Save Changes' }}
         </button>
         }

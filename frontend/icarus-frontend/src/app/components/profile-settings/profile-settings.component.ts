@@ -8,6 +8,7 @@ import { TalosPasswordInputComponent } from '@weeehaoooz/talos-ui/form/password-
 import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
 import { TalosAlertComponent } from '@weeehaoooz/talos-ui/feedback/alert';
 import { TalosCardComponent, TalosCardBodyComponent } from '@weeehaoooz/talos-ui/layout';
+import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
 
 interface UserProfile {
   id: number;
@@ -27,7 +28,8 @@ interface UserProfile {
     TalosButtonDirective,
     TalosAlertComponent,
     TalosCardComponent,
-    TalosCardBodyComponent
+    TalosCardBodyComponent,
+    TalosFormFieldComponent
   ],
   templateUrl: './profile-settings.component.html',
   styleUrl: './profile-settings.component.scss'

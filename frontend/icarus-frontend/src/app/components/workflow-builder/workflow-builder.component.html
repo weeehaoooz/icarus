@@ -30,10 +30,10 @@
   </header>
 
   @if (success()) {
-    <div class="alert alert-success" role="status">✓ {{ success() }}</div>
+    <talos-alert severity="success" [dismissible]="true" (dismiss)="success.set(null)" class="mb-4">{{ success() }}</talos-alert>
   }
   @if (error()) {
-    <div class="alert alert-error" role="alert">✕ {{ error() }}</div>
+    <talos-alert severity="error" [dismissible]="true" (dismiss)="error.set(null)" class="mb-4">{{ error() }}</talos-alert>
   }
 
   @if (isLoading()) {
@@ -69,14 +69,18 @@
           @if (workflowSource() === 'existing') {
             <div class="existing-select-wrapper animate-fade-in">
               <label for="existing-wf-select">Select Workflow Template to Copy</label>
-              <div class="select-container">
-                <select id="existing-wf-select" [ngModel]="selectedWorkflowId()" (ngModelChange)="loadSelectedWorkflowStructure($event)" class="premium-select">
-                  <option value="">-- Choose a workflow to copy --</option>
-                  @for (wf of existingWorkflows(); track wf.id) {
-                    <option [value]="wf.id">{{ wf.name }} (v{{ wf.version }})</option>
-                  }
-                </select>
-              </div>
+              <talos-select-input
+                id="existing-wf-select"
+                [ngModel]="selectedWorkflowId()"
+                (ngModelChange)="loadSelectedWorkflowStructure($event)"
+                placeholder="-- Choose a workflow to copy --"
+                size="sm"
+                [searchable]="true"
+              >
+                @for (wf of existingWorkflows(); track wf.id) {
+                  <talos-option [value]="wf.id" [label]="wf.name + ' (v' + wf.version + ')'">{{ wf.name }} (v{{ wf.version }})</talos-option>
+                }
+              </talos-select-input>
               @if (existingWorkflows().length === 0) {
                 <p class="no-templates-msg">No other workflow templates found in the system.</p>
               }
@@ -97,12 +101,15 @@
           <div class="meta-section animate-fade-in">
             <div class="meta-grid">
               <div class="form-group">
-                <label for="workflow-name">Workflow Name</label>
-                <input id="workflow-name" type="text" placeholder="e.g. Finance Double-Sign Approval" [(ngModel)]="workflowName" aria-required="true" />
+                <talos-form-field label="Workflow Name" for="workflow-name" size="sm">
+                  <input talosInput id="workflow-name" type="text" placeholder="e.g. Finance Double-Sign Approval" [(ngModel)]="workflowName" aria-required="true" />
+                </talos-form-field>
               </div>
               <div class="form-group">
-                <label for="workflow-desc">Description <span class="optional-tag">optional</span></label>
-                <input id="workflow-desc" type="text" placeholder="What does this workflow govern?" [(ngModel)]="workflowDescription" />
+                <talos-form-field for="workflow-desc" size="sm">
+                  <label>Description <span class="optional-tag">optional</span></label>
+                  <input talosInput id="workflow-desc" type="text" placeholder="What does this workflow govern?" [(ngModel)]="workflowDescription" />
+                </talos-form-field>
               </div>
             </div>
           </div>
@@ -115,24 +122,29 @@
                   <div class="step-badge">Node {{ nIdx + 1 }}</div>
                   <div class="node-title-inputs">
                     <div class="form-group inline-group name-only-group">
-                      <label [for]="'node-name-input-' + nIdx">Name</label>
-                      <input [id]="'node-name-input-' + nIdx" type="text" placeholder="e.g. Manager Approval"
-                        [ngModel]="node.name" (ngModelChange)="onNodeNameChange(nIdx, $event)" aria-required="true" />
+                      <talos-form-field label="Name" [forId]="'node-name-input-' + nIdx" size="sm">
+                        <input talosInput [id]="'node-name-input-' + nIdx" type="text" placeholder="e.g. Manager Approval"
+                          [ngModel]="node.name" (ngModelChange)="onNodeNameChange(nIdx, $event)" aria-required="true" />
+                      </talos-form-field>
                     </div>
                   </div>
-                  <button class="btn-delete-node" (click)="removeNode(nIdx)" [disabled]="nodes().length <= 1" aria-label="Remove node">✕ Remove</button>
+                  <button talosButton variant="danger" size="xs" type="button" (click)="removeNode(nIdx)" [disabled]="nodes().length <= 1" aria-label="Remove node">✕ Remove</button>
                 </header>
 
                 <div class="node-body">
                   <div class="node-meta-grid">
                     <div class="form-group">
                       <label [for]="'node-type-' + nIdx">Node Type</label>
-                      <div class="select-container">
-                        <select [id]="'node-type-' + nIdx" [ngModel]="node.type" (ngModelChange)="onNodeTypeChange(nIdx, $event)">
-                          <option value="APPROVAL">Human Approval</option>
-                          <option value="OPERATION">Automated Operation</option>
-                        </select>
-                      </div>
+                      <talos-select-input
+                        [id]="'node-type-' + nIdx"
+                        [ngModel]="node.type"
+                        (ngModelChange)="onNodeTypeChange(nIdx, $event)"
+                        size="sm"
+                        [searchable]="false"
+                      >
+                        <talos-option value="APPROVAL" label="Human Approval">Human Approval</talos-option>
+                        <talos-option value="OPERATION" label="Automated Operation">Automated Operation</talos-option>
+                      </talos-select-input>
                     </div>
 
                     <div class="form-group">
@@ -140,10 +152,12 @@
                       <div class="dependencies-list">
                         @for (otherNode of nodes(); track otherNode.id) {
                           @if (otherNode.id !== node.id) {
-                            <label class="checkbox-label" 
+                            <label class="checkbox-label"
                               [class.checked]="node.depends_on.includes(otherNode.id)"
                               [class.disabled]="isDependencyDisabled(nIdx, otherNode.id)">
-                              <input type="checkbox" 
+                              <input
+                                talosCheckbox
+                                type="checkbox"
                                 [checked]="node.depends_on.includes(otherNode.id)"
                                 [disabled]="isDependencyDisabled(nIdx, otherNode.id)"
                                 (change)="toggleDependency(nIdx, otherNode.id)" />
@@ -163,18 +177,22 @@
                       <div class="config-grid">
                         <div class="form-group">
                           <label [for]="'policy-' + nIdx">Approval Policy</label>
-                          <div class="select-container">
-                            <select [id]="'policy-' + nIdx" [(ngModel)]="node.policy">
-                              <option value="ANY">ANY (Any candidate approves)</option>
-                              <option value="ALL">ALL (All candidates approve)</option>
-                              <option value="QUORUM">QUORUM (Min approvals met)</option>
-                            </select>
-                          </div>
+                          <talos-select-input
+                            [id]="'policy-' + nIdx"
+                            [(ngModel)]="node.policy"
+                            size="sm"
+                            [searchable]="false"
+                          >
+                            <talos-option value="ANY" label="ANY (Any candidate approves)">ANY (Any candidate approves)</talos-option>
+                            <talos-option value="ALL" label="ALL (All candidates approve)">ALL (All candidates approve)</talos-option>
+                            <talos-option value="QUORUM" label="QUORUM (Min approvals met)">QUORUM (Min approvals met)</talos-option>
+                          </talos-select-input>
                         </div>
                         @if (node.policy === 'QUORUM') {
                           <div class="form-group animate-fade-in">
-                            <label [for]="'min-approvals-' + nIdx">Min Approvals</label>
-                            <input [id]="'min-approvals-' + nIdx" type="number" min="1" [max]="node.candidates.length" [(ngModel)]="node.min_approvals" />
+                            <talos-form-field label="Min Approvals" [forId]="'min-approvals-' + nIdx" size="sm">
+                              <input talosInput [id]="'min-approvals-' + nIdx" type="number" min="1" [max]="node.candidates.length" [(ngModel)]="node.min_approvals" />
+                            </talos-form-field>
                           </div>
                         }
                       </div>
@@ -184,28 +202,40 @@
                         <ul class="candidate-list">
                           @for (c of node.candidates; track $index; let cIdx = $index) {
                             <li class="candidate-row">
-                              <div class="select-container compact-select">
-                                <select [id]="'c-type-' + nIdx + '-' + cIdx" [(ngModel)]="c.type" class="c-type-select">
-                                  <option value="ROLE">Role Queue</option>
-                                  <option value="USER">Direct User</option>
-                                </select>
-                              </div>
+                              <talos-select-input
+                                [id]="'c-type-' + nIdx + '-' + cIdx"
+                                [(ngModel)]="c.type"
+                                class="c-type-select"
+                                size="sm"
+                                [searchable]="false"
+                              >
+                                <talos-option value="ROLE" label="Role Queue">Role Queue</talos-option>
+                                <talos-option value="USER" label="Direct User">Direct User</talos-option>
+                              </talos-select-input>
                               @if (c.type === 'ROLE') {
                                 <div class="select-container value-select">
-                                  <select [id]="'c-val-' + nIdx + '-' + cIdx" [(ngModel)]="c.value" class="c-val-input">
-                                    <option value="">-- Select Role Queue --</option>
+                                  <talos-select-input
+                                    [id]="'c-val-' + nIdx + '-' + cIdx"
+                                    [(ngModel)]="c.value"
+                                    class="c-val-input"
+                                    size="sm"
+                                    placeholder="-- Select Role Queue --"
+                                    [searchable]="true"
+                                  >
                                     @for (role of roles(); track role.id || role.name) {
-                                      <option [value]="role.name">{{ role.name }}</option>
+                                      <talos-option [value]="role.name" [label]="role.name">{{ role.name }}</talos-option>
                                     }
-                                  </select>
+                                  </talos-select-input>
                                 </div>
                               } @else {
                                 <div class="user-search-container">
-                                  <input 
-                                    [id]="'c-val-' + nIdx + '-' + cIdx" 
-                                    type="text" 
-                                    placeholder="Search user by name or username..." 
-                                    [(ngModel)]="c.value" 
+                                  <input
+                                    talosInput
+                                    size="sm"
+                                    [id]="'c-val-' + nIdx + '-' + cIdx"
+                                    type="text"
+                                    placeholder="Search user by name or username..."
+                                    [(ngModel)]="c.value"
                                     class="c-val-input"
                                     (focus)="setActiveDropdown(nIdx, cIdx)"
                                     (blur)="clearActiveDropdown()"
@@ -225,11 +255,11 @@
                                   }
                                 </div>
                               }
-                              <button class="btn-remove-c" (click)="removeCandidate(nIdx, cIdx)" [disabled]="node.candidates.length <= 1" aria-label="Remove candidate">✕</button>
+                              <button talosButton variant="ghost" size="xs" type="button" class="btn-remove-c" (click)="removeCandidate(nIdx, cIdx)" [disabled]="node.candidates.length <= 1" aria-label="Remove candidate">✕</button>
                             </li>
                           }
                         </ul>
-                        <button class="btn-add-c" (click)="addCandidate(nIdx)">+ Add Candidate</button>
+                        <button talosButton variant="outline" size="xs" type="button" (click)="addCandidate(nIdx)">+ Add Candidate</button>
                       </div>
                     </div>
                   }
@@ -239,12 +269,14 @@
                       <h3>Resilience / Retry Options</h3>
                       <div class="retry-grid">
                         <div class="form-group">
-                          <label [for]="'max-retries-' + nIdx">Max Retries</label>
-                          <input [id]="'max-retries-' + nIdx" type="number" min="0" max="10" [(ngModel)]="node.max_retries" />
+                          <talos-form-field label="Max Retries" [forId]="'max-retries-' + nIdx" size="sm">
+                            <input talosInput [id]="'max-retries-' + nIdx" type="number" min="0" max="10" [(ngModel)]="node.max_retries" />
+                          </talos-form-field>
                         </div>
                         <div class="form-group">
-                          <label [for]="'retry-interval-' + nIdx">Retry Interval (s)</label>
-                          <input [id]="'retry-interval-' + nIdx" type="number" min="0" max="3600" [(ngModel)]="node.retry_interval" />
+                          <talos-form-field label="Retry Interval (s)" [forId]="'retry-interval-' + nIdx" size="sm">
+                            <input talosInput [id]="'retry-interval-' + nIdx" type="number" min="0" max="3600" [(ngModel)]="node.retry_interval" />
+                          </talos-form-field>
                         </div>
                       </div>
                     </div>
@@ -255,11 +287,12 @@
           </div>
 
           <div class="builder-actions animate-fade-in">
-            <button class="btn-add-node" (click)="addNode()">+ Add Graph Node</button>
-            <button class="btn-save" (click)="saveWorkflow()" [disabled]="isSaving()">
-              @if (isSaving()) { Saving… }
-              @else if (builderMode() === 'template') { Save Template }
-              @else { Save Workflow Configuration }
+            <button talosButton variant="outline" type="button" (click)="addNode()">+ Add Graph Node</button>
+            <button talosButton variant="primary" type="button" [loading]="isSaving()" [disabled]="isSaving()" (click)="saveWorkflow()">
+              @if (!isSaving()) {
+                @if (builderMode() === 'template') { Save Template }
+                @else { Save Workflow Configuration }
+              }
             </button>
           </div>
         }

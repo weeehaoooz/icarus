@@ -1,11 +1,26 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../services/admin.service';
 
+// Talos UI
+import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
+import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+import { TalosSlideToggleComponent } from '@weeehaoooz/talos-ui/form/slide-toggle';
+import { TalosAlertComponent } from '@weeehaoooz/talos-ui/feedback/alert';
+import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
+import { TalosPasswordInputComponent } from '@weeehaoooz/talos-ui/form/password-input';
+
 @Component({
   selector: 'app-ldap',
-  imports: [CommonModule, FormsModule],
+  imports: [
+    FormsModule,
+    TalosInputDirective,
+    TalosButtonDirective,
+    TalosSlideToggleComponent,
+    TalosAlertComponent,
+    TalosFormFieldComponent,
+    TalosPasswordInputComponent
+  ],
   templateUrl: './ldap.component.html',
   styleUrl: './ldap.component.scss'
 })

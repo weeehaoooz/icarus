@@ -2,39 +2,28 @@ import { Component, signal, inject, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AdminService } from '../../services/admin.service';
 
-// Talos UI — Layout
+// Talos UI
 import { TalosCardComponent, TalosCardHeaderComponent, TalosCardBodyComponent } from '@weeehaoooz/talos-ui/layout';
-// Talos UI — Button
 import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
-// Talos UI — Feedback
 import { TalosAlertComponent } from '@weeehaoooz/talos-ui/feedback/alert';
 import { TalosTooltipDirective } from '@weeehaoooz/talos-ui/feedback/tooltip';
-// Talos UI — Data Display
 import { TalosStatusTagComponent } from '@weeehaoooz/talos-ui/data-display/status-tag';
-import { TalosBadgeDirective } from '@weeehaoooz/talos-ui/data-display/badge';
 import { TalosTrendIndicatorComponent } from '@weeehaoooz/talos-ui/data-display/trend-indicator';
-// Talos UI — Visualization
 import { TalosSparklineComponent } from '@weeehaoooz/talos-ui/data-viz/sparkline';
 
 @Component({
   selector: 'app-overview',
   imports: [
     RouterLink,
-    // Layout
     TalosCardComponent,
     TalosCardHeaderComponent,
     TalosCardBodyComponent,
-    // Button
     TalosButtonDirective,
-    // Feedback
     TalosAlertComponent,
     TalosTooltipDirective,
-    // Data Display
     TalosStatusTagComponent,
-    TalosBadgeDirective,
     TalosTrendIndicatorComponent,
-    // Visualization
-    TalosSparklineComponent,
+    TalosSparklineComponent
   ],
   templateUrl: './overview.component.html',
   styleUrl: './overview.component.scss'

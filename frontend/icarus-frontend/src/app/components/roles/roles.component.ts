@@ -1,8 +1,18 @@
-import { Component, signal, computed, inject, OnInit } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, viewChild, TemplateRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AdminService } from '../../services/admin.service';
 import { PlatformService } from '../../services/platform.service';
+
+// Talos UI
+import { TalosDataGridComponent, type TalosGridColDef } from '@weeehaoooz/talos-ui/data-display/data-grid';
+import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
+import { TalosPrefixDirective, TalosSuffixDirective } from '@weeehaoooz/talos-ui/form/affix';
+import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
+import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+
+// Lucide Icons
+import { LucideSearch, LucideX, LucidePlus, LucideGitBranch, LucideTrash2 } from '@lucide/angular';
 
 interface Permission {
   id: string;
@@ -25,7 +35,21 @@ interface Role {
 
 @Component({
   selector: 'app-roles',
-  imports: [FormsModule, RouterLink],
+  imports: [
+    FormsModule,
+    RouterLink,
+    TalosDataGridComponent,
+    TalosFormFieldComponent,
+    TalosPrefixDirective,
+    TalosSuffixDirective,
+    TalosInputDirective,
+    TalosButtonDirective,
+    LucideSearch,
+    LucideX,
+    LucidePlus,
+    LucideGitBranch,
+    LucideTrash2
+  ],
   templateUrl: './roles.component.html',
   styleUrl: './roles.component.scss'
 })
@@ -33,11 +57,22 @@ export class RolesComponent implements OnInit {
   private readonly adminService = inject(AdminService);
   private readonly platformService = inject(PlatformService);
 
+  // Template Refs
+  readonly nameTmpl = viewChild<TemplateRef<any>>('nameTmpl');
+  readonly moduleTmpl = viewChild<TemplateRef<any>>('moduleTmpl');
+  readonly appScopeTmpl = viewChild<TemplateRef<any>>('appScopeTmpl');
+  readonly typeTmpl = viewChild<TemplateRef<any>>('typeTmpl');
+  readonly nestedRolesTmpl = viewChild<TemplateRef<any>>('nestedRolesTmpl');
+  readonly permissionsTmpl = viewChild<TemplateRef<any>>('permissionsTmpl');
+  readonly actionsTmpl = viewChild<TemplateRef<any>>('actionsTmpl');
+
   // Data Signals
   readonly roles = signal<Role[]>([]);
   readonly availablePermissions = signal<Permission[]>([]);
   readonly modules = signal<any[]>([]);
   readonly applications = signal<any[]>([]);
+  readonly searchQuery = signal('');
+  readonly isLoading = signal(false);
 
   // Selected module in form (drives filtered permissions)
   readonly selectedFormModuleId = signal<string>('auth-ms');
@@ -47,6 +82,32 @@ export class RolesComponent implements OnInit {
     const modId = this.selectedFormModuleId();
     return this.availablePermissions().filter(p => p.module_id === modId);
   });
+
+  // Filtered Roles list
+  readonly filteredRoles = computed(() => {
+    const query = this.searchQuery().toLowerCase().trim();
+    const allRoles = this.roles();
+    if (!query) return allRoles;
+    return allRoles.filter(r =>
+      r.name.toLowerCase().includes(query) ||
+      (r.module_id && r.module_id.toLowerCase().includes(query)) ||
+      (r.app_code && r.app_code.toLowerCase().includes(query)) ||
+      (r.description && r.description.toLowerCase().includes(query)) ||
+      (r.type && r.type.toLowerCase().includes(query))
+    );
+  });
+
+  // Columns definition for talos-data-grid
+  readonly columns = computed<TalosGridColDef<Role>[]>(() => [
+    { field: 'name', header: 'Role Name', sortType: 'string', filterMode: 'set', minWidth: '180px', cellTemplate: this.nameTmpl() },
+    { field: 'module_id', header: 'Module', sortType: 'string', filterMode: 'set', width: '140px', cellTemplate: this.moduleTmpl() },
+    { field: 'app_code', header: 'App Scope', sortType: 'string', filterMode: 'set', width: '130px', cellTemplate: this.appScopeTmpl() },
+    { field: 'type', header: 'Type', sortType: 'string', filterMode: 'set', width: '110px', cellTemplate: this.typeTmpl() },
+    { field: 'description', header: 'Description', sortType: 'string', filterMode: 'set', minWidth: '200px', formatter: (v: any) => v || 'No description provided.' },
+    { field: 'nested_roles', header: 'Nested Roles', minWidth: '160px', cellTemplate: this.nestedRolesTmpl() },
+    { field: 'permissions', header: 'Permissions Assigned', width: '160px', cellTemplate: this.permissionsTmpl() },
+    { field: 'actions', header: 'Actions', width: '100px', minWidth: '100px', align: 'right', sortable: false, filterable: false, cellTemplate: this.actionsTmpl() }
+  ]);
 
   // Panel Signals (replaces modal)
   readonly activePanel = signal<'create' | 'edit' | null>(null);
@@ -102,9 +163,16 @@ export class RolesComponent implements OnInit {
   }
 
   loadData(): void {
+    this.isLoading.set(true);
     this.adminService.listRoles().subscribe({
-      next: (data) => this.roles.set(data as Role[]),
-      error: (err) => console.error('Failed to load roles:', err)
+      next: (data) => {
+        this.roles.set(data as Role[]);
+        this.isLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to load roles:', err);
+        this.isLoading.set(false);
+      }
     });
 
     this.adminService.listPermissions().subscribe({
@@ -123,10 +191,14 @@ export class RolesComponent implements OnInit {
     });
   }
 
+  onRowClick(event: { row: Role; index: number }): void {
+    this.openEditPanel(event.row);
+  }
+
   onModuleChange(event: Event): void {
     const target = event.target as HTMLSelectElement;
     this.selectedFormModuleId.set(target.value);
-    this.formData.permissions = []; // Reset permissions on module change
+    this.formData.permissions = [];
   }
 
   openCreatePanel(): void {
@@ -262,3 +334,4 @@ export class RolesComponent implements OnInit {
     }
   }
 }
+

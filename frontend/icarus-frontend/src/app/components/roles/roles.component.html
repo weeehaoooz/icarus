@@ -4,98 +4,137 @@
     <p style="color: var(--text-muted); font-size: 0.9rem;">Define access levels, map atomic permissions, and enforce RBAC rules</p>
   </div>
   @if (activePanel() !== 'create') {
-    <button (click)="openCreatePanel()" class="btn btn-primary">
-      <svg class="lucide-icon" viewBox="0 0 24 24" style="margin-right: 6px;"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Create Role
+    <button talosButton variant="primary" (click)="openCreatePanel()">
+      <svg lucidePlus [size]="16" style="margin-right: 6px;"></svg>
+      Create Role
     </button>
   }
 </header>
 
+<div class="search-bar">
+  <talos-form-field label="Search access policies" [floating]="true" size="sm">
+    <svg talosPrefix lucideSearch [size]="16"></svg>
+    <input
+      type="text"
+      talosInput
+      size="sm"
+      placeholder="Search roles by name, module, app code, or description..."
+      [value]="searchQuery()"
+      (input)="searchQuery.set($any($event.target).value)"
+      autocomplete="off"
+      aria-label="Search access policies"
+    />
+    @if (searchQuery()) {
+      <button
+        type="button"
+        talosSuffix
+        talosButton
+        variant="ghost"
+        size="xs"
+        class="affix-interactive"
+        (click)="searchQuery.set('')"
+        aria-label="Clear search"
+      >
+        <svg lucideX [size]="14"></svg>
+      </button>
+    }
+  </talos-form-field>
+</div>
+
 <div class="split-layout" [class.has-active-panel]="activePanel() !== null">
-  <!-- Left Side: Roles Table -->
-  <div class="table-panel glass-panel animate-fade-in">
-    <div class="table-container">
-      <table class="custom-table" aria-label="Roles list table">
-        <thead>
-          <tr>
-            <th>Role Name</th>
-            <th>Module</th>
-            <th>App Scope</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Nested Roles</th>
-            <th>Permissions Assigned</th>
-            <th style="width: 100px; text-align: right;">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (role of roles(); track role.id || role.name) {
-            <tr 
-              [class.selected]="selectedRole()?.id === role.id"
-              (click)="openEditPanel(role)"
-              style="cursor: pointer;"
-            >
-              <td style="font-weight: 700; color: var(--primary);">
-                {{ role.name }}
-                @if (role.name === 'admin' && role.module_id === 'auth-ms') {
-                  <span class="badge badge-primary" style="margin-left: 8px;">System Protected</span>
-                }
-                @if (role.is_active === false) {
-                  <span class="badge" style="margin-left: 8px; font-size: 0.7rem; background: var(--danger, #dc3545); color: white; padding: 2px 6px;">Disabled</span>
-                }
-              </td>
-              <td>
-                <span class="badge badge-secondary" style="font-family: monospace;">{{ role.module_id || 'auth-ms' }}</span>
-              </td>
-              <td>
-                @if (role.app_code) {
-                  <span class="badge badge-primary" style="font-family: monospace; letter-spacing: 0.02em;">{{ role.app_code }}</span>
-                } @else {
-                  <span style="color: var(--text-muted); font-size: 0.85rem;">Global</span>
-                }
-              </td>
-              <td>
-                <span class="badge" [class.badge-secondary]="role.type === 'LDAP'" [class.badge-primary]="role.type === 'Custom'">
-                  {{ role.type || 'Custom' }}
-                </span>
-              </td>
-              <td>{{ role.description || 'No description provided.' }}</td>
-              <td>
-                @if (role.nested_roles && role.nested_roles.length > 0) {
-                  <div style="display: flex; flex-wrap: wrap; gap: 4px;">
-                    @for (nr of role.nested_roles; track nr) {
-                      <span class="badge badge-secondary" style="font-size: 0.8rem; background: var(--border-color); color: var(--text-color);">{{ nr }}</span>
-                    }
-                  </div>
-                } @else {
-                  <span style="color: var(--text-muted); font-size: 0.85rem;">None</span>
-                }
-              </td>
-              <td>
-                <span class="badge badge-secondary">{{ (role.permissions || []).length }} Permissions</span>
-              </td>
-              <td style="text-align: right;" (click)="$event.stopPropagation()">
-                @if (!(role.name === 'admin' && role.module_id === 'auth-ms')) {
-                  <a [routerLink]="['/dashboard/workflow-builder', role.id || role.name]" class="icon-btn" title="Configure Approval Workflow" style="margin-right: 8px; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border-color); color: var(--primary);">
-                    <svg class="lucide-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path d="M4 10h12a4 4 0 0 1 4 4v4"/><path d="M12 14l-4-4 4-4"/></svg>
-                  </a>
-                  <button (click)="deleteRole(role, $event)" class="icon-btn delete" title="Delete Role">
-                    <svg class="lucide-icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-                  </button>
-                } @else {
-                  <span style="font-size: 0.85rem; color: var(--text-muted); padding-right: 8px;">-</span>
-                }
-              </td>
-            </tr>
-          } @empty {
-            <tr>
-              <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 48px;">
-                No roles configured in the system.
-              </td>
-            </tr>
+  <!-- Left Side: Roles Data Grid -->
+  <div class="table-panel animate-fade-in">
+    <talos-data-grid
+      [data]="filteredRoles()"
+      [columns]="columns()"
+      [loading]="isLoading()"
+      [pagination]="true"
+      [pageSize]="10"
+      [pageSizeOptions]="[5, 10, 20, 50]"
+      [filterable]="true"
+      [resizable]="true"
+      [hoverable]="true"
+      [bordered]="true"
+      [emptyMessage]="searchQuery() ? 'No roles match your search query.' : 'No roles configured in the system.'"
+      (rowClick)="onRowClick($event)"
+    />
+
+    <!-- Cell Templates -->
+    <ng-template #nameTmpl let-row="row">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-weight: 700; color: var(--primary);">{{ row.name }}</span>
+        @if (row.name === 'admin' && row.module_id === 'auth-ms') {
+          <span class="badge badge-primary">System Protected</span>
+        }
+        @if (row.is_active === false) {
+          <span class="badge" style="font-size: 0.7rem; background: var(--danger, #dc3545); color: white; padding: 2px 6px;">Disabled</span>
+        }
+      </div>
+    </ng-template>
+
+    <ng-template #moduleTmpl let-row="row">
+      <span class="badge badge-secondary" style="font-family: monospace;">{{ row.module_id || 'auth-ms' }}</span>
+    </ng-template>
+
+    <ng-template #appScopeTmpl let-row="row">
+      @if (row.app_code) {
+        <span class="badge badge-primary" style="font-family: monospace; letter-spacing: 0.02em;">{{ row.app_code }}</span>
+      } @else {
+        <span style="color: var(--text-muted); font-size: 0.85rem;">Global</span>
+      }
+    </ng-template>
+
+    <ng-template #typeTmpl let-row="row">
+      <span class="badge" [class.badge-secondary]="row.type === 'LDAP'" [class.badge-primary]="row.type === 'Custom'">
+        {{ row.type || 'Custom' }}
+      </span>
+    </ng-template>
+
+    <ng-template #nestedRolesTmpl let-row="row">
+      @if (row.nested_roles && row.nested_roles.length > 0) {
+        <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+          @for (nr of row.nested_roles; track nr) {
+            <span class="badge badge-secondary" style="font-size: 0.8rem; background: var(--border-color); color: var(--text-color);">{{ nr }}</span>
           }
-        </tbody>
-      </table>
-    </div>
+        </div>
+      } @else {
+        <span style="color: var(--text-muted); font-size: 0.85rem;">None</span>
+      }
+    </ng-template>
+
+    <ng-template #permissionsTmpl let-row="row">
+      <span class="badge badge-secondary">{{ (row.permissions || []).length }} Permissions</span>
+    </ng-template>
+
+    <ng-template #actionsTmpl let-row="row">
+      <div style="display: flex; justify-content: flex-end; gap: 4px;" (click)="$event.stopPropagation()">
+        @if (!(row.name === 'admin' && row.module_id === 'auth-ms')) {
+          <a
+            [routerLink]="['/dashboard/workflow-builder', row.id || row.name]"
+            talosButton
+            variant="ghost"
+            size="xs"
+            [iconOnly]="true"
+            title="Configure Approval Workflow"
+          >
+            <svg lucideGitBranch [size]="14" style="color: var(--primary);"></svg>
+          </a>
+          <button
+            type="button"
+            talosButton
+            variant="ghost"
+            size="xs"
+            [iconOnly]="true"
+            (click)="deleteRole(row, $event)"
+            title="Delete Role"
+          >
+            <svg lucideTrash2 [size]="14" style="color: var(--danger, #ef4444);"></svg>
+          </button>
+        } @else {
+          <span style="font-size: 0.85rem; color: var(--text-muted); padding-right: 8px;">-</span>
+        }
+      </div>
+    </ng-template>
   </div>
 
   <!-- Right Side: Details/Permissions Checkbox Drawer -->
@@ -250,10 +289,10 @@
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">
-          <button type="button" (click)="closePanel()" class="btn btn-secondary">
+          <button type="button" talosButton variant="secondary" (click)="closePanel()">
             Cancel
           </button>
-          <button type="submit" class="btn btn-primary" [disabled]="formData.name === 'admin' && panelType === 'edit'">
+          <button type="submit" talosButton variant="primary" [disabled]="formData.name === 'admin' && panelType === 'edit'">
             Save Policy
           </button>
         </div>
@@ -261,3 +300,4 @@
     </div>
   }
 </div>
+

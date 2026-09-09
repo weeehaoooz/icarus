@@ -6,9 +6,62 @@ import { RouterLink } from '@angular/router';
 import { WorkflowService, AccessCart, CartItem } from '../../services/workflow.service';
 import { AuthService } from '../../services/auth.service';
 
+// Talos UI
+import { TalosCardComponent, TalosCardBodyComponent } from '@weeehaoooz/talos-ui/layout';
+import { TalosStatusTagComponent } from '@weeehaoooz/talos-ui/data-display/status-tag';
+import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
+import { TalosPrefixDirective, TalosSuffixDirective } from '@weeehaoooz/talos-ui/form/affix';
+import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
+import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+import { TalosAlertComponent } from '@weeehaoooz/talos-ui/feedback/alert';
+import { SelectInputComponent, OptionComponent } from '@weeehaoooz/talos-ui/form/select-input';
+import { TalosCheckboxDirective } from '@weeehaoooz/talos-ui/form/checkbox';
+
+// Lucide Icons
+import {
+  LucideSearch,
+  LucideX,
+  LucideWrench,
+  LucideChevronDown,
+  LucideLayers,
+  LucideCheck,
+  LucideZap,
+  LucideBan,
+  LucideArchive,
+  LucideTrash2,
+  LucideInbox
+} from '@lucide/angular';
+
 @Component({
   selector: 'app-request-management',
-  imports: [FormsModule, DatePipe, RouterLink],
+  imports: [
+    FormsModule,
+    DatePipe,
+    RouterLink,
+    TalosCardComponent,
+    TalosCardBodyComponent,
+    TalosStatusTagComponent,
+    TalosFormFieldComponent,
+    TalosPrefixDirective,
+    TalosSuffixDirective,
+    TalosInputDirective,
+    TalosButtonDirective,
+    TalosAlertComponent,
+    SelectInputComponent,
+    OptionComponent,
+    TalosCheckboxDirective,
+    LucideSearch,
+    LucideX,
+    LucideWrench,
+    LucideChevronDown,
+    LucideLayers,
+    LucideCheck,
+    LucideZap,
+    LucideBan,
+    LucideArchive,
+    LucideTrash2,
+    LucideInbox
+  ],
   templateUrl: './request-management.component.html',
   styleUrl: './request-management.component.scss'
 })
@@ -387,6 +440,29 @@ export class RequestManagementComponent implements OnInit, OnDestroy {
       case 'CANCELLED': return 'status-cancelled';
       case 'ARCHIVED': return 'status-archived';
       default: return 'status-pending';
+    }
+  }
+
+  mapWorkflowStatus(status: string): string {
+    switch (status?.toUpperCase()) {
+      case 'APPROVED':
+      case 'COMPLETED':
+        return 'SUCCESS';
+      case 'REJECTED':
+        return 'ERROR';
+      case 'IN_PROGRESS':
+      case 'IN-PROGRESS':
+        return 'IN-PROGRESS';
+      case 'CANCELLED':
+        return 'TERMINATED';
+      case 'ARCHIVED':
+        return 'SKIPPED';
+      case 'DRAFT':
+        return 'NEW';
+      case 'SUBMITTED':
+      case 'PENDING':
+      default:
+        return 'PENDING';
     }
   }
 }

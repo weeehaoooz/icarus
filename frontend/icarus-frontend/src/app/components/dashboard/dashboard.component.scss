@@ -8,6 +8,14 @@
   display: block;
   height: 100vh;
   height: 100dvh;
+}
+
+talos-main-layout,
+.dashboard-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
   --main-padding: 0px;
   --talos-sidebar-width: 260px;
   --talos-sidebar-collapsed-width: 68px;
@@ -20,6 +28,10 @@
 }
 
 /* Hide duplicate sidebar footer user profile card (profile is in top-nav) */
+:host ::ng-deep .talos-side-nav-host {
+  height: 100vh;
+}
+
 :host ::ng-deep .talos-side-nav-host .user-profile-card {
   display: none !important;
 }
@@ -60,11 +72,13 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 32px 40px;
+  padding: 16px 24px;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 
   @media (max-width: 768px) {
-    padding: 16px;
+    padding: 12px;
   }
 }
 

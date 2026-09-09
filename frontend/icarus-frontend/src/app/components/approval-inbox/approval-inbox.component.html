@@ -1,20 +1,18 @@
-<section class="approval-inbox">
+<section class="approval-inbox animate-fade-in">
   <div class="page-header">
     <h1>Approval Inbox</h1>
     <p class="subtitle">Review and action pending access requests assigned to you.</p>
   </div>
 
   @if (actionSuccess()) {
-    <div class="alert alert-success" role="status">
-      <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+    <talos-alert severity="success" [dismissible]="true" (dismiss)="actionSuccess.set(null)" class="mb-3">
       {{ actionSuccess() }}
-    </div>
+    </talos-alert>
   }
   @if (actionError()) {
-    <div class="alert alert-error" role="alert">
-      <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    <talos-alert severity="error" [dismissible]="true" (dismiss)="actionError.set(null)" class="mb-3">
       {{ actionError() }}
-    </div>
+    </talos-alert>
   }
 
   @if (isLoading()) {
@@ -23,86 +21,107 @@
     <div class="error-state" role="alert">{{ error() }}</div>
   } @else if (items().length === 0) {
     <div class="empty-inbox">
-      <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      <svg lucideInbox [size]="36" class="empty-icon" aria-hidden="true"></svg>
       <p>Your inbox is clear — no pending approvals.</p>
     </div>
   } @else {
     <div class="inbox-list" role="list">
       @for (item of items(); track item.step_id) {
-        <article class="inbox-card" role="listitem">
-          <header class="card-header">
-            <div class="card-title">
-              <span class="role-badge">{{ item.role_requested }}</span>
-              <span class="assignment-type" [class.role-queue]="item.assignment_type === 'ROLE_QUEUE'">
-                {{ item.assignment_type === 'ROLE_QUEUE' ? 'Role Queue' : 'Direct' }}
-              </span>
-            </div>
-            <span class="stage-label">{{ item.stage_name }}</span>
-          </header>
-
-          <div class="card-body">
-            <dl class="card-meta">
-              <dt>Requested by</dt>
-              <dd>{{ item.requester_id }}</dd>
-              <dt>Justification</dt>
-              <dd>{{ item.justification || 'No justification provided.' }}</dd>
-              <dt>Assigned</dt>
-              <dd>{{ item.assigned_at | date:'dd MMM yyyy, HH:mm' }}</dd>
-            </dl>
-
-            <div class="action-area">
-              <label [for]="'comment-' + item.step_id">Comment</label>
-              <textarea
-                [id]="'comment-' + item.step_id"
-                rows="2"
-                placeholder="Add a comment…"
-                [(ngModel)]="activeComments[item.step_id]"
-                aria-label="Decision comment for {{ item.role_requested }}"
-              ></textarea>
-
-              <div class="action-buttons">
-                <button
-                  class="btn-approve"
-                  (click)="approve(item.step_id)"
-                  [disabled]="actioningStepId() === item.step_id"
-                  [attr.aria-label]="'Approve ' + item.role_requested + ' request'"
-                >
-                  @if (actioningStepId() === item.step_id) { Processing… } @else {
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-                    Approve
-                  }
-                </button>
-                <button
-                  class="btn-reject"
-                  (click)="reject(item.step_id)"
-                  [disabled]="actioningStepId() === item.step_id"
-                  [attr.aria-label]="'Reject ' + item.role_requested + ' request'"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                  Reject
-                </button>
+        <talos-card variant="elevated" [padding]="'none'" class="inbox-card" role="listitem">
+          <talos-card-body>
+            <header class="card-header">
+              <div class="card-title">
+                <span class="role-badge">{{ item.role_requested }}</span>
+                <span class="assignment-type" [class.role-queue]="item.assignment_type === 'ROLE_QUEUE'">
+                  {{ item.assignment_type === 'ROLE_QUEUE' ? 'Role Queue' : 'Direct' }}
+                </span>
               </div>
+              <span class="stage-label">{{ item.stage_name }}</span>
+            </header>
 
-              <details class="delegate-section">
-                <summary>Delegate to someone else</summary>
-                <div class="delegate-form">
-                  <input
-                    [id]="'delegate-' + item.step_id"
-                    type="text"
-                    placeholder="User ID to delegate to…"
-                    [(ngModel)]="delegateTargets[item.step_id]"
-                    aria-label="Delegate to user"
-                  />
+            <div class="card-body">
+              <dl class="card-meta">
+                <dt>Requested by</dt>
+                <dd>{{ item.requester_id }}</dd>
+                <dt>Justification</dt>
+                <dd>{{ item.justification || 'No justification provided.' }}</dd>
+                <dt>Assigned</dt>
+                <dd>{{ item.assigned_at | date:'dd MMM yyyy, HH:mm' }}</dd>
+              </dl>
+
+              <div class="action-area">
+                <talos-form-field label="Comment" [forId]="'comment-' + item.step_id" size="sm">
+                  <textarea
+                    [id]="'comment-' + item.step_id"
+                    talosInput
+                    rows="2"
+                    placeholder="Add a comment…"
+                    [(ngModel)]="activeComments[item.step_id]"
+                    [attr.aria-label]="'Decision comment for ' + item.role_requested"
+                  ></textarea>
+                </talos-form-field>
+
+                <div class="action-buttons">
                   <button
-                    class="btn-delegate"
-                    (click)="delegate(item.step_id)"
+                    talosButton
+                    variant="primary"
+                    size="xs"
+                    class="btn-approve"
+                    (click)="approve(item.step_id)"
+                    [loading]="actioningStepId() === item.step_id"
                     [disabled]="actioningStepId() === item.step_id"
-                  >Forward</button>
+                    [attr.aria-label]="'Approve ' + item.role_requested + ' request'"
+                  >
+                    <svg lucideCheck [size]="13" style="margin-right: 4px;"></svg>
+                    Approve
+                  </button>
+                  <button
+                    talosButton
+                    variant="danger"
+                    size="xs"
+                    class="btn-reject"
+                    (click)="reject(item.step_id)"
+                    [loading]="actioningStepId() === item.step_id"
+                    [disabled]="actioningStepId() === item.step_id"
+                    [attr.aria-label]="'Reject ' + item.role_requested + ' request'"
+                  >
+                    <svg lucideX [size]="13" style="margin-right: 4px;"></svg>
+                    Reject
+                  </button>
                 </div>
-              </details>
+
+                <details class="delegate-section">
+                  <summary>Delegate to someone else</summary>
+                  <div class="delegate-form">
+                    <talos-form-field label="Delegate to User ID" [forId]="'delegate-' + item.step_id" size="sm">
+                      <input
+                        [id]="'delegate-' + item.step_id"
+                        type="text"
+                        talosInput
+                        size="sm"
+                        placeholder="User ID to delegate to…"
+                        [(ngModel)]="delegateTargets[item.step_id]"
+                        aria-label="Delegate to user"
+                      />
+                    </talos-form-field>
+                    <button
+                      talosButton
+                      variant="outline"
+                      size="xs"
+                      class="btn-delegate"
+                      (click)="delegate(item.step_id)"
+                      [loading]="actioningStepId() === item.step_id"
+                      [disabled]="actioningStepId() === item.step_id"
+                    >
+                      <svg lucideForward [size]="13" style="margin-right: 4px;"></svg>
+                      Forward
+                    </button>
+                  </div>
+                </details>
+              </div>
             </div>
-          </div>
-        </article>
+          </talos-card-body>
+        </talos-card>
       }
     </div>
   }

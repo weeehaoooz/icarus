@@ -1,4 +1,4 @@
-<section class="request-management">
+<section class="request-management animate-fade-in">
   <div class="page-header">
     <div class="header-content">
       <h1>Request Management</h1>
@@ -11,19 +11,16 @@
 
     @if (isAdmin) {
       <button
-        class="btn btn-secondary housekeeping-toggle-btn"
+        talosButton
+        variant="secondary"
+        size="sm"
+        class="housekeeping-toggle-btn"
         (click)="toggleHousekeepingPanel()"
         [class.active]="isHousekeepingExpanded()"
-        style="display: flex; align-items: center; gap: 6px;"
       >
-        <svg class="lucide-icon" viewBox="0 0 24 24" aria-hidden="true" style="width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2;">
-          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-          <circle cx="12" cy="12" r="3" />
-        </svg>
+        <svg lucideWrench [size]="15" style="margin-right: 6px;"></svg>
         <span>Housekeeping Tools</span>
-        <svg class="lucide-icon chevron-icon" viewBox="0 0 24 24" aria-hidden="true" [class.rotated]="isHousekeepingExpanded()" style="width: 12px; height: 12px; transition: transform 0.2s; fill: none; stroke: currentColor; stroke-width: 2;">
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
+        <svg lucideChevronDown [size]="14" class="chevron-icon" [class.rotated]="isHousekeepingExpanded()" style="margin-left: 6px;"></svg>
       </button>
     }
   </div>
@@ -31,111 +28,141 @@
   <!-- Housekeeping Panel -->
   @if (isAdmin) {
     <div class="housekeeping-panel" [class.expanded]="isHousekeepingExpanded()">
-      <div class="housekeeping-panel-content">
-        <div class="housekeeping-header">
-          <div class="housekeeping-title">
-            <svg class="lucide-icon text-warning" viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2;">
-              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-            </svg>
-            <span>Housekeeping & Bulk Actions</span>
+      <talos-card variant="elevated" class="housekeeping-panel-card">
+        <talos-card-body>
+          <div class="housekeeping-header">
+            <div class="housekeeping-title">
+              <svg lucideLayers [size]="18" class="text-warning"></svg>
+              <span>Housekeeping & Bulk Actions</span>
+            </div>
+            <p class="housekeeping-description">Identify and batch-manage old closed requests. Once selected, use the actions drawer at the bottom to archive or delete.</p>
           </div>
-          <p class="housekeeping-description">Identify and batch-manage old closed requests. Once selected, use the actions drawer at the bottom to archive or delete.</p>
-        </div>
 
-        <div class="housekeeping-form">
-          <div class="housekeeping-inputs">
-            <div class="housekeeping-field">
-              <label for="bulkStatus">Filter Status</label>
-              <select id="bulkStatus" [(ngModel)]="bulkStatus" aria-label="Bulk selection status filter">
-                <option value="ALL">All Closed Carts</option>
-                <option value="DRAFT">Drafts</option>
-                <option value="COMPLETED">Completed</option>
-                <option value="CANCELLED">Cancelled</option>
-                <option value="ARCHIVED">Archived</option>
-              </select>
-            </div>
-            
-            <div class="housekeeping-field">
-              <label for="bulkDays">Older Than</label>
-              <div class="days-input-group">
-                <input
-                  id="bulkDays"
-                  type="number"
-                  min="0"
-                  [(ngModel)]="bulkDays"
-                  aria-label="Bulk selection age cutoff in days"
-                />
-                <span class="days-suffix">days</span>
+          <div class="housekeeping-form">
+            <div class="housekeeping-inputs">
+              <div class="housekeeping-field">
+                <label for="bulkStatus">Filter Status</label>
+                <talos-select-input [(ngModel)]="bulkStatus" size="sm" [searchable]="false" placeholder="Filter status">
+                  <talos-option value="ALL" label="All Closed Carts">All Closed Carts</talos-option>
+                  <talos-option value="DRAFT" label="Drafts">Drafts</talos-option>
+                  <talos-option value="COMPLETED" label="Completed">Completed</talos-option>
+                  <talos-option value="CANCELLED" label="Cancelled">Cancelled</talos-option>
+                  <talos-option value="ARCHIVED" label="Archived">Archived</talos-option>
+                </talos-select-input>
               </div>
-            </div>
-
-            @if (bulkStatus() === 'ALL') {
-              <div class="housekeeping-field checkbox-field">
-                <div class="checkbox-wrapper">
-                  <input 
-                    type="checkbox" 
-                    id="bulkIncludeDrafts" 
-                    [(ngModel)]="bulkIncludeDrafts"
+              
+              <div class="housekeeping-field">
+                <label for="bulkDays">Older Than</label>
+                <div class="days-input-group">
+                  <input
+                    id="bulkDays"
+                    type="number"
+                    min="0"
+                    talosInput
+                    size="sm"
+                    [(ngModel)]="bulkDays"
+                    aria-label="Bulk selection age cutoff in days"
                   />
-                  <label for="bulkIncludeDrafts">Include drafts in selection</label>
+                  <span class="days-suffix">days</span>
                 </div>
               </div>
-            }
+
+              @if (bulkStatus() === 'ALL') {
+                <div class="housekeeping-field checkbox-field">
+                  <label class="checkbox-wrapper" for="bulkIncludeDrafts">
+                    <input
+                      talosCheckbox
+                      type="checkbox"
+                      id="bulkIncludeDrafts"
+                      [(ngModel)]="bulkIncludeDrafts"
+                    />
+                    <span>Include drafts in selection</span>
+                  </label>
+                </div>
+              }
+            </div>
+            
+            <div class="housekeeping-actions">
+              <button
+                talosButton
+                variant="primary"
+                size="sm"
+                class="btn-warning"
+                (click)="selectByDaysAndStatus()"
+              >
+                Apply Selection
+              </button>
+              <button
+                talosButton
+                variant="secondary"
+                size="sm"
+                (click)="clearSelection()"
+                [disabled]="selectedCount() === 0"
+              >
+                Clear Checked
+              </button>
+            </div>
           </div>
-          
-          <div class="housekeeping-actions">
-            <button
-              class="btn btn-warning btn-sm"
-              (click)="selectByDaysAndStatus()"
-            >
-              Apply Selection
-            </button>
-            <button
-              class="btn btn-secondary btn-sm"
-              (click)="clearSelection()"
-              [disabled]="selectedCount() === 0"
-            >
-              Clear Checked
-            </button>
-          </div>
-        </div>
-      </div>
+        </talos-card-body>
+      </talos-card>
     </div>
   }
 
   <!-- Main Action Status Alerts -->
   @if (actionSuccess()) {
-    <div class="alert alert-success animate-fade-in" role="status">✓ {{ actionSuccess() }}</div>
+    <talos-alert severity="success" [dismissible]="true" (dismiss)="actionSuccess.set(null)" class="mb-4">
+      {{ actionSuccess() }}
+    </talos-alert>
   }
   @if (actionError()) {
-    <div class="alert alert-error animate-fade-in" role="alert">✕ {{ actionError() }}</div>
+    <talos-alert severity="error" [dismissible]="true" (dismiss)="actionError.set(null)" class="mb-4">
+      {{ actionError() }}
+    </talos-alert>
   }
 
   <!-- Filters -->
   <div class="filter-bar">
     <div class="search-box">
-      <svg class="lucide-icon search-icon" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2;">
-        <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
-      </svg>
-      <input
-        type="text"
-        [placeholder]="isAdmin ? 'Search by Requester ID, Cart ID, or justification…' : 'Search by Cart ID or justification…'"
-        [(ngModel)]="searchQuery"
-        aria-label="Search requests"
-      />
+      <talos-form-field label="Search requests" [floating]="true" size="sm">
+        <svg talosPrefix lucideSearch [size]="16"></svg>
+        <input
+          type="text"
+          talosInput
+          size="sm"
+          [placeholder]="isAdmin ? 'Search by Requester ID, Cart ID, or justification…' : 'Search by Cart ID or justification…'"
+          [value]="searchQuery()"
+          (input)="searchQuery.set($any($event.target).value)"
+          aria-label="Search requests"
+          autocomplete="off"
+        />
+        @if (searchQuery()) {
+          <button
+            type="button"
+            talosSuffix
+            talosButton
+            variant="ghost"
+            size="xs"
+            class="affix-interactive"
+            (click)="searchQuery.set('')"
+            aria-label="Clear search"
+          >
+            <svg lucideX [size]="14"></svg>
+          </button>
+        }
+      </talos-form-field>
     </div>
     
     <div class="filter-group">
       <label for="statusSelect">Status Filter:</label>
-      <select id="statusSelect" [(ngModel)]="statusFilter" aria-label="Filter by Status">
-        <option value="ALL">All Statuses</option>
-        <option value="DRAFT">Draft</option>
-        <option value="SUBMITTED">Submitted</option>
-        <option value="IN_PROGRESS">In Progress</option>
-        <option value="COMPLETED">Completed</option>
-        <option value="CANCELLED">Cancelled</option>
-        <option value="ARCHIVED">Archived</option>
-      </select>
+      <talos-select-input [(ngModel)]="statusFilter" size="sm" [searchable]="false" placeholder="All Statuses" class="status-select-input">
+        <talos-option value="ALL" label="All Statuses">All Statuses</talos-option>
+        <talos-option value="DRAFT" label="Draft">Draft</talos-option>
+        <talos-option value="SUBMITTED" label="Submitted">Submitted</talos-option>
+        <talos-option value="IN_PROGRESS" label="In Progress">In Progress</talos-option>
+        <talos-option value="COMPLETED" label="Completed">Completed</talos-option>
+        <talos-option value="CANCELLED" label="Cancelled">Cancelled</talos-option>
+        <talos-option value="ARCHIVED" label="Archived">Archived</talos-option>
+      </talos-select-input>
     </div>
   </div>
 
@@ -143,28 +170,30 @@
   @if (isLoading()) {
     <div class="loading-state" aria-busy="true">Loading access requests…</div>
   } @else if (error()) {
-    <div class="error-state" role="alert">{{ error() }}</div>
+    <talos-alert severity="error" [dismissible]="false" class="mb-4">
+      {{ error() }}
+    </talos-alert>
   } @else if (filteredRequests().length === 0) {
     <div class="empty-state">
-      <span class="empty-icon" aria-hidden="true">📋</span>
+      <svg lucideInbox [size]="44" class="empty-icon" aria-hidden="true"></svg>
       <p>No requests found matching current filters.</p>
     </div>
   } @else {
     <!-- List Header for Selection Info -->
     @if (isAdmin) {
-      <div class="list-header" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 12px;">
-        <div class="select-all-wrapper" style="display: flex; align-items: center; gap: 8px;">
-          <input 
-            type="checkbox" 
+      <div class="list-header">
+        <div class="select-all-wrapper">
+          <input
+            talosCheckbox
+            type="checkbox"
             id="selectAllCarts"
             [checked]="areAllSelected()"
             (change)="toggleSelectAll()"
             aria-label="Select all requests"
-            style="width: 16px; height: 16px; cursor: pointer;"
           />
-          <label for="selectAllCarts" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); cursor: pointer; user-select: none;">Select All Shown</label>
+          <label for="selectAllCarts">Select All Shown</label>
         </div>
-        <span class="results-count" style="font-size: 0.8rem; color: var(--text-muted);">
+        <span class="results-count">
           Showing {{ filteredRequests().length }} requests
         </span>
       </div>
@@ -173,23 +202,40 @@
     <!-- Requests Grid / List -->
     <div class="requests-list">
       @for (cart of filteredRequests(); track cart.id) {
-        <article class="request-card" [class.expanded]="isCartExpanded(cart.id)" [class.selected]="selectedRequestIds().has(cart.id)">
+        <talos-card
+          variant="elevated"
+          class="request-card"
+          [class.expanded]="isCartExpanded(cart.id)"
+          [class.selected]="selectedRequestIds().has(cart.id)"
+        >
           <!-- Card Header (Summary) -->
-          <header class="card-summary" (click)="toggleExpandCart(cart.id)" tabindex="0" (keydown.enter)="toggleExpandCart(cart.id)" aria-label="Request details for user account">
+          <div
+            class="card-summary"
+            (click)="toggleExpandCart(cart.id)"
+            tabindex="0"
+            (keydown.enter)="toggleExpandCart(cart.id)"
+            aria-label="Request details for user account"
+          >
             <div class="summary-main">
               @if (isAdmin) {
-                <div class="card-select-checkbox" (click)="$event.stopPropagation()" style="display: flex; align-items: center; margin-right: 12px;">
+                <div class="card-select-checkbox" (click)="$event.stopPropagation()">
                   <input
+                    talosCheckbox
                     type="checkbox"
                     [checked]="selectedRequestIds().has(cart.id)"
                     (change)="toggleSelectRequest(cart.id)"
                     [id]="'select-' + cart.id"
                     aria-label="Select request"
-                    style="width: 16px; height: 16px; cursor: pointer;"
                   />
                 </div>
               }
-              <span class="status-pill {{ statusClass(cart.status) }}">{{ cart.status }}</span>
+              <talos-status-tag
+                [status]="mapWorkflowStatus(cart.status)"
+                [label]="cart.status"
+                size="sm"
+                shape="rounded"
+                [pulse]="cart.status === 'IN_PROGRESS' || cart.status === 'SUBMITTED'"
+              />
               @if (isAdmin) {
                 <span class="requester-label">Requester: <strong>{{ cart.requester_id }}</strong></span>
               }
@@ -197,15 +243,13 @@
             </div>
             <div class="summary-meta">
               <span class="date-label">Created: {{ cart.created_at | date:'dd MMM yyyy, HH:mm' }}</span>
-              <svg class="lucide-icon chevron-icon" viewBox="0 0 24 24" aria-hidden="true" [class.rotated]="isCartExpanded(cart.id)" style="fill: none; stroke: currentColor; stroke-width: 2;">
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
+              <svg lucideChevronDown [size]="18" class="chevron-icon" [class.rotated]="isCartExpanded(cart.id)"></svg>
             </div>
-          </header>
+          </div>
 
           <!-- Card Details (Expanded view) -->
           @if (isCartExpanded(cart.id)) {
-            <div class="card-details animate-slide-down">
+            <talos-card-body class="card-details animate-slide-down">
               <div class="justification-section">
                 <strong>Justification:</strong>
                 <p class="justification-text">{{ cart.justification || 'No justification provided.' }}</p>
@@ -222,7 +266,12 @@
                       <div class="item-card">
                         <div class="item-header">
                           <span class="role-name">{{ item.role_name }}</span>
-                          <span class="status-pill {{ statusClass(item.status) }}">{{ item.status }}</span>
+                          <talos-status-tag
+                            [status]="mapWorkflowStatus(item.status)"
+                            [label]="item.status"
+                            size="xs"
+                            shape="rounded"
+                          />
                         </div>
                         <div class="item-meta">
                           <span>Role ID: <code>{{ item.role_id }}</code></span>
@@ -234,7 +283,6 @@
                         <!-- Step actions if pending steps exist for this item -->
                         @if (cart.pending_steps) {
                           @for (step of cart.pending_steps; track step.step_id) {
-                            <!-- We match pending steps related to this cart -->
                             @if (step.cart_id === cart.id && step.role_name === item.role_name) {
                               <div class="admin-action-box">
                                 <div class="action-box-header">
@@ -252,28 +300,37 @@
                                 
                                 @if (isAdmin) {
                                   <div class="override-inputs">
-                                    <textarea
-                                      [id]="'comment-' + step.step_id"
-                                      rows="2"
-                                      placeholder="Enter reason for administrator override decision..."
-                                      [(ngModel)]="activeComments[step.step_id]"
-                                      aria-label="Override comment"
-                                    ></textarea>
+                                    <talos-form-field label="Override reason" [forId]="'comment-' + step.step_id" size="sm">
+                                      <textarea
+                                        [id]="'comment-' + step.step_id"
+                                        rows="2"
+                                        talosInput
+                                        placeholder="Enter reason for administrator override decision..."
+                                        [(ngModel)]="activeComments[step.step_id]"
+                                        aria-label="Override comment"
+                                      ></textarea>
+                                    </talos-form-field>
                                     
                                     <div class="override-actions">
                                       <button
-                                        class="btn-approve btn-sm"
+                                        talosButton
+                                        variant="primary"
+                                        size="sm"
                                         (click)="approveStep(step.step_id)"
                                         [disabled]="actioningStepId() === step.step_id"
                                       >
-                                        ✓ Override Approve
+                                        <svg lucideCheck [size]="14" style="margin-right: 4px;"></svg>
+                                        Override Approve
                                       </button>
                                       <button
-                                        class="btn-reject btn-sm"
+                                        talosButton
+                                        variant="danger"
+                                        size="sm"
                                         (click)="rejectStep(step.step_id)"
                                         [disabled]="actioningStepId() === step.step_id"
                                       >
-                                        ✕ Override Reject
+                                        <svg lucideX [size]="14" style="margin-right: 4px;"></svg>
+                                        Override Reject
                                       </button>
                                     </div>
                                   </div>
@@ -292,34 +349,32 @@
               @if (!isAdmin && (cart.status === 'SUBMITTED' || cart.status === 'IN_PROGRESS')) {
                 <div class="request-actions">
                   <button
-                    class="btn-action-bump"
-                    [disabled]="actioningStepId() === cart.id"
+                    talosButton
+                    variant="outline"
+                    size="sm"
+                    [loading]="actioningStepId() === cart.id"
                     (click)="bumpRequest(cart.id)"
                     aria-label="Bump approvers"
                   >
-                    @if (actioningStepId() === cart.id) {
-                      <span class="spinner"></span> Bumping…
-                    } @else {
-                      <span>⚡ Bump Approvers</span>
-                    }
+                    <svg lucideZap [size]="14" style="margin-right: 4px;"></svg>
+                    Bump Approvers
                   </button>
                   <button
-                    class="btn-action-withdraw"
-                    [disabled]="actioningStepId() === cart.id"
+                    talosButton
+                    variant="danger"
+                    size="sm"
+                    [loading]="actioningStepId() === cart.id"
                     (click)="withdrawRequest(cart.id)"
                     aria-label="Withdraw request"
                   >
-                    @if (actioningStepId() === cart.id) {
-                      <span class="spinner"></span> Withdrawing…
-                    } @else {
-                      <span>✕ Withdraw Request</span>
-                    }
+                    <svg lucideBan [size]="14" style="margin-right: 4px;"></svg>
+                    Withdraw Request
                   </button>
                 </div>
               }
-            </div>
+            </talos-card-body>
           }
-        </article>
+        </talos-card>
       }
     </div>
   }
@@ -339,21 +394,30 @@
         </div>
         <div class="drawer-actions">
           <button 
-            class="btn btn-warning btn-sm" 
+            talosButton
+            variant="secondary"
+            size="sm"
+            class="btn-warning"
             (click)="runBatchArchive()"
-            [disabled]="isBatchActionLoading()"
+            [loading]="isBatchActionLoading()"
           >
-            @if (isBatchActionLoading()) { Working… } @else { Archive Selected }
+            <svg lucideArchive [size]="14" style="margin-right: 4px;"></svg>
+            Archive Selected
           </button>
           <button 
-            class="btn btn-danger btn-sm" 
+            talosButton
+            variant="danger"
+            size="sm"
             (click)="runBatchDelete()"
-            [disabled]="isBatchActionLoading()"
+            [loading]="isBatchActionLoading()"
           >
-            @if (isBatchActionLoading()) { Working… } @else { Delete Selected }
+            <svg lucideTrash2 [size]="14" style="margin-right: 4px;"></svg>
+            Delete Selected
           </button>
           <button 
-            class="btn btn-secondary btn-sm" 
+            talosButton
+            variant="secondary"
+            size="sm"
             (click)="clearSelection()"
             [disabled]="isBatchActionLoading()"
           >

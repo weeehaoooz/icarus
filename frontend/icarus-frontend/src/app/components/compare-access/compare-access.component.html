@@ -1,107 +1,133 @@
-<section class="compare-access">
+<section class="compare-access animate-fade-in">
   <div class="page-header">
-    <h1>Compare Access</h1>
-    <p class="subtitle">Select a user to compare their roles against yours and request any missing access.</p>
+    <div class="header-content">
+      <h1>Compare Access</h1>
+      <p class="subtitle">Select a user to compare their roles against yours and request any missing access.</p>
+    </div>
   </div>
 
   <!-- Alerts -->
   @if (submitMessage()) {
-    <div class="alert alert-success" role="alert"><span class="alert-icon">✓</span> {{ submitMessage() }}</div>
+    <talos-alert severity="success" [dismissible]="true" (dismiss)="submitMessage.set(null)" class="mb-4">
+      {{ submitMessage() }}
+    </talos-alert>
   }
   @if (submitError()) {
-    <div class="alert alert-error" role="alert"><span class="alert-icon">✕</span> {{ submitError() }}</div>
+    <talos-alert severity="error" [dismissible]="true" (dismiss)="submitError.set(null)" class="mb-4">
+      {{ submitError() }}
+    </talos-alert>
   }
   @if (draftMessage()) {
-    <div class="alert alert-success" role="alert"><span class="alert-icon">✓</span> {{ draftMessage() }}</div>
+    <talos-alert severity="success" [dismissible]="true" (dismiss)="draftMessage.set(null)" class="mb-4">
+      {{ draftMessage() }}
+    </talos-alert>
   }
   @if (draftError()) {
-    <div class="alert alert-error" role="alert"><span class="alert-icon">✕</span> {{ draftError() }}</div>
+    <talos-alert severity="error" [dismissible]="true" (dismiss)="draftError.set(null)" class="mb-4">
+      {{ draftError() }}
+    </talos-alert>
   }
 
-  <!-- User Picker -->
-  <div class="user-picker-panel">
-    <div class="picker-inner">
-      <div class="picker-label-row">
-        <span class="picker-label">Compare against</span>
-        @if (selectedUser()) {
-          <button class="btn-clear-user" (click)="clearSelection()" aria-label="Clear selection">
-            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            Change user
-          </button>
-        }
-      </div>
-
-      @if (selectedUser(); as user) {
-        <div class="selected-user-chip" aria-live="polite">
-          <div class="user-avatar">{{ user.username[0].toUpperCase() }}</div>
-          <div class="user-info">
-            <span class="user-display-name">{{ getDisplayName(user) }}</span>
-            <span class="user-username">&#64;{{ user.username }}</span>
-          </div>
-          @if (isLoadingTargetRoles()) {
-            <span class="loading-spinner" aria-label="Loading roles"></span>
-          } @else {
-            <span class="role-count-badge">{{ targetUserRoles().length }} roles</span>
+  <!-- User Picker Card -->
+  <talos-card variant="elevated" class="user-picker-card mb-4">
+    <talos-card-body>
+      <div class="picker-inner">
+        <div class="picker-label-row">
+          <span class="picker-label">Compare against</span>
+          @if (selectedUser()) {
+            <button
+              talosButton
+              variant="outline"
+              size="xs"
+              class="btn-clear-user"
+              (click)="clearSelection()"
+              aria-label="Clear selection and change user"
+            >
+              <svg lucideX [size]="13" style="margin-right: 4px;"></svg>
+              <span>Change user</span>
+            </button>
           }
         </div>
-      } @else {
-        <div class="user-search-wrapper">
-          <div class="user-search-input-wrap">
-            <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-              <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2" fill="none"/><path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
-            </svg>
-            <input
-              id="user-search"
-              type="search"
-              class="user-search-input"
-              placeholder="Search by name or username…"
-              [value]="userSearchQuery()"
-              (input)="onUserSearchInput($event)"
-              (focus)="isDropdownOpen.set(true)"
-              autocomplete="off"
-              aria-label="Search for a user to compare"
-            />
-            @if (isLoadingUsers()) {
-              <span class="loading-spinner small" aria-label="Loading users"></span>
+
+        @if (selectedUser(); as user) {
+          <div class="selected-user-chip" aria-live="polite">
+            <div class="user-avatar">{{ user.username[0].toUpperCase() }}</div>
+            <div class="user-info">
+              <span class="user-display-name">{{ getDisplayName(user) }}</span>
+              <span class="user-username">&#64;{{ user.username }}</span>
+            </div>
+            @if (isLoadingTargetRoles()) {
+              <span class="loading-spinner" aria-label="Loading roles"></span>
+            } @else {
+              <talos-status-tag
+                status="INFO"
+                [label]="targetUserRoles().length + ' roles'"
+                size="sm"
+                shape="rounded"
+                variant="subtle"
+                [showIcon]="false"
+              />
             }
           </div>
-
-          @if (isDropdownOpen() && filteredUsers().length > 0) {
-            <ul class="user-dropdown" role="listbox" aria-label="User suggestions">
-              @for (user of filteredUsers(); track user.id) {
-                <li class="user-dropdown-item" role="option" tabindex="0"
-                  (click)="selectUser(user)"
-                  (keydown.enter)="selectUser(user)"
-                  (keydown.space)="selectUser(user)">
-                  <div class="user-avatar small">{{ user.username[0].toUpperCase() }}</div>
-                  <div class="dropdown-user-info">
-                    <span class="dropdown-display-name">{{ getDisplayName(user) }}</span>
-                    <span class="dropdown-username">&#64;{{ user.username }}</span>
-                  </div>
-                </li>
+        } @else {
+          <div class="user-search-wrapper">
+            <talos-form-field label="Search by name or username" [floating]="true" size="sm">
+              <svg talosPrefix lucideSearch [size]="16"></svg>
+              <input
+                id="user-search"
+                type="search"
+                talosInput
+                size="sm"
+                placeholder="Search by name or username…"
+                [value]="userSearchQuery()"
+                (input)="onUserSearchInput($event)"
+                (focus)="isDropdownOpen.set(true)"
+                autocomplete="off"
+                aria-label="Search for a user to compare"
+              />
+              @if (isLoadingUsers()) {
+                <span talosSuffix class="loading-spinner small" aria-label="Loading users"></span>
               }
-            </ul>
-          }
-          @if (isDropdownOpen() && !isLoadingUsers() && filteredUsers().length === 0 && userSearchQuery()) {
-            <div class="user-dropdown empty-dropdown" role="status">No users found for "{{ userSearchQuery() }}"</div>
-          }
-        </div>
-      }
-    </div>
-  </div>
+            </talos-form-field>
+
+            @if (isDropdownOpen() && filteredUsers().length > 0) {
+              <ul class="user-dropdown" role="listbox" aria-label="User suggestions">
+                @for (user of filteredUsers(); track user.id) {
+                  <li
+                    class="user-dropdown-item"
+                    role="option"
+                    tabindex="0"
+                    (click)="selectUser(user)"
+                    (keydown.enter)="selectUser(user)"
+                    (keydown.space)="selectUser(user)"
+                  >
+                    <div class="user-avatar small">{{ user.username[0].toUpperCase() }}</div>
+                    <div class="dropdown-user-info">
+                      <span class="dropdown-display-name">{{ getDisplayName(user) }}</span>
+                      <span class="dropdown-username">&#64;{{ user.username }}</span>
+                    </div>
+                  </li>
+                }
+              </ul>
+            }
+            @if (isDropdownOpen() && !isLoadingUsers() && filteredUsers().length === 0 && userSearchQuery()) {
+              <div class="user-dropdown empty-dropdown" role="status">
+                No users found for "{{ userSearchQuery() }}"
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </talos-card-body>
+  </talos-card>
 
   <div class="layout">
     <!-- Comparison Panel -->
-    <div class="comparison-panel">
+    <talos-card variant="elevated" class="comparison-panel-card">
       @if (!selectedUser()) {
         <div class="empty-state-full">
           <div class="empty-state-icon">
-            <svg viewBox="0 0 24 24" width="48" height="48" aria-hidden="true">
-              <circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <path d="M21 21v-2a4 4 0 0 0-3-3.85" stroke="currentColor" stroke-width="1.5" fill="none"/>
-            </svg>
+            <svg lucideUsers [size]="40" class="empty-icon" aria-hidden="true"></svg>
           </div>
           <h2>Select a user to compare</h2>
           <p>Search for a colleague above to see a side-by-side diff of your roles.</p>
@@ -114,299 +140,493 @@
           <div class="skeleton-row"></div>
         </div>
       } @else {
-        <!-- View toggle + legend -->
+        <!-- View toggle + search + legend -->
         <div class="panel-toolbar">
           <div class="legend">
             <span class="legend-item"><span class="legend-dot dot-missing"></span>Missing from you</span>
             <span class="legend-item"><span class="legend-dot dot-shared"></span>Shared</span>
             <span class="legend-item"><span class="legend-dot dot-mine"></span>Only you have</span>
           </div>
-          <div class="view-toggle" role="group" aria-label="View mode">
-            <button class="view-toggle-btn" [class.active]="viewMode() === 'side-by-side'"
-              (click)="viewMode.set('side-by-side')" aria-label="Side-by-side view">
-              <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="8" height="18" rx="1"/><rect x="13" y="3" width="8" height="18" rx="1"/>
-              </svg>
-              Side by Side
-            </button>
-            <button class="view-toggle-btn" [class.active]="viewMode() === 'tabs'"
-              (click)="viewMode.set('tabs')" aria-label="Tabs view">
-              <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="11" width="18" height="10" rx="1"/><path d="M3 11V7a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4"/>
-                <path d="M10 11V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6"/>
-              </svg>
-              Tabs
-            </button>
+
+          <div class="toolbar-right">
+            <div class="comparison-search-wrapper">
+              <talos-form-field label="Filter comparison roles" [floating]="true" size="sm">
+                <svg talosPrefix lucideSearch [size]="15"></svg>
+                <input
+                  type="text"
+                  talosInput
+                  size="sm"
+                  placeholder="Filter roles by name, module, app…"
+                  [value]="roleSearchQuery()"
+                  (input)="roleSearchQuery.set($any($event.target).value)"
+                  autocomplete="off"
+                  aria-label="Filter comparison roles"
+                />
+                @if (roleSearchQuery()) {
+                  <button
+                    type="button"
+                    talosSuffix
+                    talosButton
+                    variant="ghost"
+                    size="xs"
+                    class="affix-interactive"
+                    (click)="roleSearchQuery.set('')"
+                    aria-label="Clear filter"
+                  >
+                    <svg lucideX [size]="13"></svg>
+                  </button>
+                }
+              </talos-form-field>
+            </div>
+
+            <talos-button-group [(value)]="viewMode" variant="segmented" selectionMode="single" size="sm">
+              <button talosButtonGroupItem value="side-by-side" aria-label="Side-by-side view">
+                <svg lucideColumns2 [size]="14" style="margin-right: 5px;"></svg>
+                <span>Side by Side</span>
+              </button>
+              <button talosButtonGroupItem value="tabs" aria-label="Tabs view">
+                <svg lucideLayers [size]="14" style="margin-right: 5px;"></svg>
+                <span>Tabs</span>
+              </button>
+            </talos-button-group>
           </div>
         </div>
 
         <!-- ═══════════════════════════════════════════════════════════════════ -->
-        <!-- SIDE-BY-SIDE VIEW (default)                                        -->
+        <!-- SIDE-BY-SIDE VIEW                                                  -->
         <!-- ═══════════════════════════════════════════════════════════════════ -->
         @if (viewMode() === 'side-by-side') {
           <div class="sbs-header-row">
-            <!-- Add-all shortcut -->
-            @if (missingRoles().length > 0) {
-              <div class="sbs-action-bar">
-                <span class="sbs-summary">
-                  <strong class="count-missing">{{ missingRoles().length }}</strong> missing &nbsp;·&nbsp;
-                  <strong class="count-shared">{{ sharedRoles().length }}</strong> shared &nbsp;·&nbsp;
-                  <strong class="count-mine">{{ onlyMyRoles().length }}</strong> only yours
-                </span>
-                <button class="btn-add-all" (click)="addAllMissing()"
-                  [disabled]="missingRoles().every(r => isInCart(r))"
-                  aria-label="Add all missing roles to cart">
-                  + Add All Missing
-                </button>
+            <div class="sbs-action-bar">
+              <div class="sbs-summary-tags">
+                <talos-status-tag
+                  status="PENDING"
+                  [label]="missingRoles().length + ' missing'"
+                  size="sm"
+                  shape="rounded"
+                  variant="subtle"
+                />
+                <talos-status-tag
+                  status="SUCCESS"
+                  [label]="sharedRoles().length + ' shared'"
+                  size="sm"
+                  shape="rounded"
+                  variant="subtle"
+                />
+                <talos-status-tag
+                  status="NEW"
+                  [label]="onlyMyRoles().length + ' only yours'"
+                  size="sm"
+                  shape="rounded"
+                  variant="subtle"
+                />
               </div>
+
+              @if (missingRoles().length > 0) {
+                <button
+                  talosButton
+                  variant="primary"
+                  size="sm"
+                  class="btn-add-all"
+                  (click)="addAllMissing()"
+                  [disabled]="missingRoles().every(r => isInCart(r))"
+                  aria-label="Add all missing roles to cart"
+                >
+                  <svg lucidePlus [size]="14" style="margin-right: 4px;"></svg>
+                  <span>Add All Missing</span>
+                </button>
+              }
+            </div>
+          </div>
+
+          <div class="grid-container">
+            <talos-data-grid
+              [data]="filteredComparisonRows()"
+              [columns]="sideBySideColumns()"
+              [loading]="isLoadingTargetRoles()"
+              [pagination]="true"
+              [pageSize]="10"
+              [pageSizeOptions]="[5, 10, 20, 50]"
+              [filterable]="true"
+              [resizable]="true"
+              [hoverable]="true"
+              [bordered]="true"
+              density="comfortable"
+              [emptyMessage]="roleSearchQuery() ? 'No comparison roles match your filter.' : 'No roles found to compare.'"
+            />
+          </div>
+        }
+
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+        <!-- TABS VIEW                                                          -->
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+        @if (viewMode() === 'tabs') {
+          <div class="tabs-subnav-row">
+            <talos-button-group [(value)]="activeSection" variant="segmented" selectionMode="single" size="sm">
+              <button talosButtonGroupItem value="missing" id="tab-missing">
+                <span class="tab-dot dot-missing"></span>
+                <span>Roles You're Missing</span>
+                <span class="tab-count-tag">{{ missingRoles().length }}</span>
+              </button>
+              <button talosButtonGroupItem value="shared" id="tab-shared">
+                <span class="tab-dot dot-shared"></span>
+                <span>Shared Roles</span>
+                <span class="tab-count-tag">{{ sharedRoles().length }}</span>
+              </button>
+              <button talosButtonGroupItem value="mine" id="tab-mine">
+                <span class="tab-dot dot-mine"></span>
+                <span>Only You Have</span>
+                <span class="tab-count-tag">{{ onlyMyRoles().length }}</span>
+              </button>
+            </talos-button-group>
+
+            @if (activeSection() === 'missing' && missingRoles().length > 0) {
+              <button
+                talosButton
+                variant="primary"
+                size="sm"
+                class="btn-add-all"
+                (click)="addAllMissing()"
+                [disabled]="missingRoles().every(r => isInCart(r))"
+              >
+                <svg lucidePlus [size]="14" style="margin-right: 4px;"></svg>
+                <span>Add All to Cart</span>
+              </button>
             }
           </div>
 
-          <div class="roles-table-container">
-            <table class="roles-table sbs-table" aria-label="Role comparison">
-              <thead>
-                <tr>
-                  <th class="col-name">Role Name</th>
-                  <th class="col-module">Module</th>
-                  <th class="col-app">Application</th>
-                  <th class="col-you">
-                    <div class="col-user-header">
-                      <div class="user-avatar tiny me-avatar">M</div>
-                      <span>You</span>
-                    </div>
-                  </th>
-                  <th class="col-target">
-                    <div class="col-user-header">
-                      <div class="user-avatar tiny target-avatar">{{ selectedUser()!.username[0].toUpperCase() }}</div>
-                      <span>{{ getDisplayName(selectedUser()!) }}</span>
-                    </div>
-                  </th>
-                  <th class="col-action">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (row of comparisonRows(); track row.role.id ?? row.role.name) {
-                  <tr [class]="'diff-row diff-' + rowStatus(row)">
-                    <td class="col-name font-semibold">{{ row.role.name }}</td>
-                    <td class="col-module">
-                      <span class="badge badge-module">{{ getModuleName(row.role.module_id) }}</span>
-                    </td>
-                    <td class="col-app">
-                      @if (row.role.app_code) {
-                        <span class="badge badge-app">{{ getAppName(row.role.app_code) }}</span>
-                      } @else {
-                        <span class="text-muted small">—</span>
-                      }
-                    </td>
-                    <td class="col-you presence-cell">
-                      @if (row.iHave) {
-                        <span class="presence-badge present" aria-label="You have this role">✓</span>
-                      } @else {
-                        <span class="presence-badge absent" aria-label="You do not have this role">—</span>
-                      }
-                    </td>
-                    <td class="col-target presence-cell">
-                      @if (row.targetHas) {
-                        <span class="presence-badge present" aria-label="Target user has this role">✓</span>
-                      } @else {
-                        <span class="presence-badge absent" aria-label="Target user does not have this role">—</span>
-                      }
-                    </td>
-                    <td class="col-action">
-                      @if (!row.iHave && row.targetHas && row.role.id) {
-                        <button class="btn-add-grid"
-                          [disabled]="isInCart(row.role)"
-                          (click)="addToCart(row.role)"
-                          [attr.aria-label]="'Add ' + row.role.name + ' to cart'">
-                          @if (isInCart(row.role)) { <span>✓ Added</span> } @else { <span>+ Add</span> }
-                        </button>
-                      } @else {
-                        <span class="text-muted small">—</span>
-                      }
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        }
-
-        <!-- ═══════════════════════════════════════════════════════════════════ -->
-        <!-- TABS VIEW (alternative)                                             -->
-        <!-- ═══════════════════════════════════════════════════════════════════ -->
-        @if (viewMode() === 'tabs') {
-          <div class="section-tabs" role="tablist" aria-label="Comparison sections">
-            <button class="section-tab tab-missing" [class.active]="activeSection() === 'missing'"
-              (click)="activeSection.set('missing')" role="tab" [attr.aria-selected]="activeSection() === 'missing'" id="tab-missing">
-              <span class="tab-dot dot-missing"></span>
-              Roles You're Missing
-              <span class="tab-count">{{ missingRoles().length }}</span>
-            </button>
-            <button class="section-tab tab-shared" [class.active]="activeSection() === 'shared'"
-              (click)="activeSection.set('shared')" role="tab" [attr.aria-selected]="activeSection() === 'shared'" id="tab-shared">
-              <span class="tab-dot dot-shared"></span>
-              Shared Roles
-              <span class="tab-count">{{ sharedRoles().length }}</span>
-            </button>
-            <button class="section-tab tab-mine" [class.active]="activeSection() === 'mine'"
-              (click)="activeSection.set('mine')" role="tab" [attr.aria-selected]="activeSection() === 'mine'" id="tab-mine">
-              <span class="tab-dot dot-mine"></span>
-              Only You Have
-              <span class="tab-count">{{ onlyMyRoles().length }}</span>
-            </button>
-          </div>
-
-          <!-- Missing Roles -->
+          <!-- Missing Roles Tab -->
           @if (activeSection() === 'missing') {
-            <div class="section-body" role="tabpanel" aria-labelledby="tab-missing">
-              @if (missingRoles().length === 0) {
-                <div class="section-empty"><span class="section-empty-icon">✓</span><p>You already have all of {{ getDisplayName(selectedUser()!) }}'s roles.</p></div>
-              } @else {
-                <div class="section-header-row">
-                  <p class="section-description">{{ getDisplayName(selectedUser()!) }} has <strong>{{ missingRoles().length }}</strong> role(s) you don't have.</p>
-                  <button class="btn-add-all" (click)="addAllMissing()" [disabled]="missingRoles().every(r => isInCart(r))">+ Add All to Cart</button>
-                </div>
-                <div class="roles-table-container">
-                  <table class="roles-table" aria-label="Missing roles">
-                    <thead><tr>
-                      <th class="col-name">Role Name</th><th class="col-module">Module</th>
-                      <th class="col-app">Application</th><th class="col-desc">Description</th><th class="col-action">Action</th>
-                    </tr></thead>
-                    <tbody>
-                      @for (role of missingRoles(); track role.id) {
-                        <tr [class.in-cart]="isInCart(role)" class="missing-row">
-                          <td class="col-name font-semibold">{{ role.name }}</td>
-                          <td class="col-module"><span class="badge badge-module">{{ getModuleName(role.module_id) }}</span></td>
-                          <td class="col-app">@if (role.app_code) { <span class="badge badge-app">{{ getAppName(role.app_code) }}</span> } @else { <span class="text-muted small">—</span> }</td>
-                          <td class="col-desc">{{ role.description || 'No description available.' }}</td>
-                          <td class="col-action">
-                            <button class="btn-add-grid" [disabled]="isInCart(role)" (click)="addToCart(role)" [attr.aria-label]="'Add ' + role.name + ' to cart'">
-                              @if (isInCart(role)) { <span>✓ In Cart</span> } @else { <span>+ Add</span> }
-                            </button>
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              }
-            </div>
+            @if (missingRoles().length === 0) {
+              <div class="section-empty">
+                <span class="section-empty-icon">✓</span>
+                <p>You already have all of {{ getDisplayName(selectedUser()!) }}'s roles.</p>
+              </div>
+            } @else {
+              <div class="grid-container">
+                <talos-data-grid
+                  [data]="filteredMissingRoles()"
+                  [columns]="missingColumns()"
+                  [loading]="isLoadingTargetRoles()"
+                  [pagination]="true"
+                  [pageSize]="10"
+                  [pageSizeOptions]="[5, 10, 20, 50]"
+                  [filterable]="true"
+                  [resizable]="true"
+                  [hoverable]="true"
+                  [bordered]="true"
+                  density="comfortable"
+                  [emptyMessage]="roleSearchQuery() ? 'No missing roles match your filter.' : 'No missing roles.'"
+                />
+              </div>
+            }
           }
 
-          <!-- Shared Roles -->
+          <!-- Shared Roles Tab -->
           @if (activeSection() === 'shared') {
-            <div class="section-body" role="tabpanel" aria-labelledby="tab-shared">
-              @if (sharedRoles().length === 0) {
-                <div class="section-empty"><p>You share no roles with {{ getDisplayName(selectedUser()!) }}.</p></div>
-              } @else {
-                <div class="roles-table-container">
-                  <table class="roles-table" aria-label="Shared roles">
-                    <thead><tr>
-                      <th class="col-status"></th><th class="col-name">Role Name</th>
-                      <th class="col-module">Module</th><th class="col-app">Application</th><th class="col-desc">Description</th>
-                    </tr></thead>
-                    <tbody>
-                      @for (role of sharedRoles(); track role.id) {
-                        <tr class="shared-row">
-                          <td class="col-status"><span class="check-icon">✓</span></td>
-                          <td class="col-name font-semibold">{{ role.name }}</td>
-                          <td class="col-module"><span class="badge badge-module">{{ getModuleName(role.module_id) }}</span></td>
-                          <td class="col-app">@if (role.app_code) { <span class="badge badge-app">{{ getAppName(role.app_code) }}</span> } @else { <span class="text-muted small">—</span> }</td>
-                          <td class="col-desc">{{ role.description || 'No description available.' }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              }
-            </div>
+            @if (sharedRoles().length === 0) {
+              <div class="section-empty">
+                <p>You share no roles with {{ getDisplayName(selectedUser()!) }}.</p>
+              </div>
+            } @else {
+              <div class="grid-container">
+                <talos-data-grid
+                  [data]="filteredSharedRoles()"
+                  [columns]="sharedAndMineColumns()"
+                  [loading]="isLoadingTargetRoles()"
+                  [pagination]="true"
+                  [pageSize]="10"
+                  [pageSizeOptions]="[5, 10, 20, 50]"
+                  [filterable]="true"
+                  [resizable]="true"
+                  [hoverable]="true"
+                  [bordered]="true"
+                  density="comfortable"
+                  [emptyMessage]="roleSearchQuery() ? 'No shared roles match your filter.' : 'No shared roles.'"
+                />
+              </div>
+            }
           }
 
-          <!-- Only My Roles -->
+          <!-- Only My Roles Tab -->
           @if (activeSection() === 'mine') {
-            <div class="section-body" role="tabpanel" aria-labelledby="tab-mine">
-              @if (onlyMyRoles().length === 0) {
-                <div class="section-empty"><p>{{ getDisplayName(selectedUser()!) }} has all the roles you have.</p></div>
+            @if (onlyMyRoles().length === 0) {
+              <div class="section-empty">
+                <p>{{ getDisplayName(selectedUser()!) }} has all the roles you have.</p>
+              </div>
+            } @else {
+              <div class="grid-container">
+                <talos-data-grid
+                  [data]="filteredOnlyMyRoles()"
+                  [columns]="sharedAndMineColumns()"
+                  [loading]="isLoadingTargetRoles()"
+                  [pagination]="true"
+                  [pageSize]="10"
+                  [pageSizeOptions]="[5, 10, 20, 50]"
+                  [filterable]="true"
+                  [resizable]="true"
+                  [hoverable]="true"
+                  [bordered]="true"
+                  density="comfortable"
+                  [emptyMessage]="roleSearchQuery() ? 'No unique roles match your filter.' : 'No roles unique to you.'"
+                />
+              </div>
+            }
+          }
+        }
+      }
+
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <!-- TEMPLATES FOR DATA GRID CELLS                                       -->
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <!-- Side-by-Side Cell Templates -->
+      <ng-template #nameTmpl let-row="row">
+        <div class="role-name-cell">
+          <span class="role-status-dot" [class]="'dot-' + rowStatus(row)"></span>
+          <span class="font-semibold">{{ row.role.name }}</span>
+        </div>
+      </ng-template>
+
+      <ng-template #moduleTmpl let-row="row">
+        <talos-status-tag
+          status="INFO"
+          [label]="getModuleName(row.role.module_id)"
+          variant="subtle"
+          size="xs"
+          shape="rounded"
+          [showIcon]="false"
+        />
+      </ng-template>
+
+      <ng-template #appTmpl let-row="row">
+        @if (row.role.app_code) {
+          <talos-status-tag
+            status="NEW"
+            [label]="getAppName(row.role.app_code)"
+            variant="subtle"
+            size="xs"
+            shape="rounded"
+            [showIcon]="false"
+          />
+        } @else {
+          <span class="text-muted small">—</span>
+        }
+      </ng-template>
+
+      <ng-template #youTmpl let-row="row">
+        <div class="presence-cell-wrapper">
+          <span class="presence-badge" [class.present]="row.iHave" [class.absent]="!row.iHave" [attr.aria-label]="row.iHave ? 'You have this role' : 'You do not have this role'">
+            {{ row.iHave ? '✓' : '—' }}
+          </span>
+        </div>
+      </ng-template>
+
+      <ng-template #targetTmpl let-row="row">
+        <div class="presence-cell-wrapper">
+          <span class="presence-badge" [class.present]="row.targetHas" [class.absent]="!row.targetHas" [attr.aria-label]="row.targetHas ? 'Target user has this role' : 'Target user does not have this role'">
+            {{ row.targetHas ? '✓' : '—' }}
+          </span>
+        </div>
+      </ng-template>
+
+      <ng-template #sbsActionTmpl let-row="row">
+        <div class="action-cell-wrapper">
+          @if (!row.iHave && row.targetHas && row.role.id) {
+            <button
+              talosButton
+              [variant]="isInCart(row.role) ? 'secondary' : 'primary'"
+              size="xs"
+              [disabled]="isInCart(row.role)"
+              (click)="addToCart(row.role)"
+              [attr.aria-label]="'Add ' + row.role.name + ' to cart'"
+            >
+              @if (isInCart(row.role)) {
+                <svg lucideCheck [size]="12" style="margin-right: 3px;"></svg>
+                <span>Added</span>
               } @else {
-                <div class="roles-table-container">
-                  <table class="roles-table" aria-label="Roles only you have">
-                    <thead><tr>
-                      <th class="col-name">Role Name</th><th class="col-module">Module</th>
-                      <th class="col-app">Application</th><th class="col-desc">Description</th>
-                    </tr></thead>
-                    <tbody>
-                      @for (role of onlyMyRoles(); track role.id) {
-                        <tr class="mine-row">
-                          <td class="col-name font-semibold">{{ role.name }}</td>
-                          <td class="col-module"><span class="badge badge-module">{{ getModuleName(role.module_id) }}</span></td>
-                          <td class="col-app">@if (role.app_code) { <span class="badge badge-app">{{ getAppName(role.app_code) }}</span> } @else { <span class="text-muted small">—</span> }</td>
-                          <td class="col-desc">{{ role.description || 'No description available.' }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
+                <svg lucidePlus [size]="12" style="margin-right: 3px;"></svg>
+                <span>Add</span>
               }
-            </div>
+            </button>
+          } @else {
+            <span class="text-muted small">—</span>
           }
+        </div>
+      </ng-template>
+
+      <!-- Tabs View Cell Templates -->
+      <ng-template #tabNameTmpl let-row="row">
+        <span class="font-semibold">{{ row.name }}</span>
+      </ng-template>
+
+      <ng-template #tabModuleTmpl let-row="row">
+        <talos-status-tag
+          status="INFO"
+          [label]="getModuleName(row.module_id)"
+          variant="subtle"
+          size="xs"
+          shape="rounded"
+          [showIcon]="false"
+        />
+      </ng-template>
+
+      <ng-template #tabAppTmpl let-row="row">
+        @if (row.app_code) {
+          <talos-status-tag
+            status="NEW"
+            [label]="getAppName(row.app_code)"
+            variant="subtle"
+            size="xs"
+            shape="rounded"
+            [showIcon]="false"
+          />
+        } @else {
+          <span class="text-muted small">—</span>
         }
-      }
-    </div>
+      </ng-template>
 
-    <!-- Cart Sidebar -->
-    <aside class="cart" aria-label="Access request cart">
-      <div class="cart-header">
-        <h2>Your Cart</h2>
-        <span class="cart-badge" aria-label="{{ cartItemCount() }} items in cart">{{ cartItemCount() }}</span>
-      </div>
+      <ng-template #tabActionTmpl let-row="row">
+        <div class="action-cell-wrapper">
+          <button
+            talosButton
+            [variant]="isInCart(row) ? 'secondary' : 'primary'"
+            size="xs"
+            [disabled]="isInCart(row)"
+            (click)="addToCart(row)"
+            [attr.aria-label]="'Add ' + row.name + ' to cart'"
+          >
+            @if (isInCart(row)) {
+              <svg lucideCheck [size]="12" style="margin-right: 3px;"></svg>
+              <span>In Cart</span>
+            } @else {
+              <svg lucidePlus [size]="12" style="margin-right: 3px;"></svg>
+              <span>Add</span>
+            }
+          </button>
+        </div>
+      </ng-template>
+    </talos-card>
 
-      @if (hasSavedDraft()) {
-        <div class="draft-indicator"><span class="draft-badge">📝 Draft saved</span></div>
-      }
+    <!-- Cart Sidebar Card -->
+    <talos-card variant="elevated" class="cart-card" aria-label="Access request cart">
+      <talos-card-header title="Your Cart" [bordered]="true">
+        <div talosCardAvatar>
+          <svg lucideShoppingCart [size]="18" class="text-primary"></svg>
+        </div>
+        <div class="cart-header-badge">
+          <talos-status-tag
+            status="NEW"
+            [label]="cartItemCount().toString()"
+            size="sm"
+            shape="pill"
+            [showIcon]="false"
+          />
+        </div>
+      </talos-card-header>
 
-      @if (cartItemCount() === 0) {
-        <p class="cart-empty">No roles added yet. Select a user and add missing roles to get started.</p>
-      } @else if (currentCart()?.items?.length) {
-        <ul class="cart-items" role="list">
-          @for (item of currentCart()!.items; track item.id) {
-            <li class="cart-item">
-              <span class="cart-role-name">{{ item.role_name }}</span>
-              <button class="btn-remove" (click)="removeFromCart(item)" [attr.aria-label]="'Remove ' + item.role_name + ' from cart'">✕</button>
-            </li>
-          }
-        </ul>
-      } @else {
-        <ul class="cart-items" role="list">
-          @for (role of pendingRoles(); track role.id) {
-            <li class="cart-item">
-              <span class="cart-role-name">{{ role.name }}</span>
-              <button class="btn-remove" (click)="removePendingRole(role)" [attr.aria-label]="'Remove ' + role.name + ' from cart'">✕</button>
-            </li>
-          }
-        </ul>
-      }
-
-      <div class="justification-field">
-        <label for="justification">Justification <span class="required">*</span></label>
-        <textarea id="justification" rows="4"
-          placeholder="Explain why you need this access (min 10 characters)…"
-          [(ngModel)]="justification" aria-required="true"></textarea>
+      <talos-card-body>
         @if (hasSavedDraft()) {
-          <p class="justification-hint">Justification changes are applied when you submit.</p>
+          <div class="draft-indicator">
+            <talos-status-tag
+              status="PENDING"
+              label="Draft saved"
+              size="sm"
+              variant="subtle"
+              shape="rounded"
+            />
+          </div>
         }
-      </div>
 
-      <div class="cart-actions">
-        <button id="save-draft" class="btn-save-draft" [disabled]="isSavingDraft() || cartItemCount() === 0" (click)="saveDraft()" aria-live="polite">
-          @if (isSavingDraft()) { <span>Saving…</span> }
-          @else if (hasSavedDraft()) { <span>✓ Draft Saved</span> }
-          @else { <span>Save Draft</span> }
-        </button>
-        <button id="submit-cart" class="btn-submit" [disabled]="isSubmitting() || cartItemCount() === 0" (click)="submitCart()" aria-live="polite">
-          @if (isSubmitting()) { <span>Submitting…</span> }
-          @else { <span>Submit Request ({{ cartItemCount() }})</span> }
-        </button>
-      </div>
-    </aside>
+        @if (cartItemCount() === 0) {
+          <p class="cart-empty">No roles added yet. Select a user and add missing roles to get started.</p>
+        } @else if (currentCart()?.items?.length) {
+          <ul class="cart-items" role="list">
+            @for (item of currentCart()!.items; track item.id) {
+              <li class="cart-item">
+                <span class="cart-role-name">{{ item.role_name }}</span>
+                <button
+                  talosButton
+                  variant="ghost"
+                  size="xs"
+                  class="btn-remove-item"
+                  (click)="removeFromCart(item)"
+                  [attr.aria-label]="'Remove ' + item.role_name + ' from cart'"
+                >
+                  <svg lucideTrash2 [size]="14" class="text-danger"></svg>
+                </button>
+              </li>
+            }
+          </ul>
+        } @else {
+          <ul class="cart-items" role="list">
+            @for (role of pendingRoles(); track role.id) {
+              <li class="cart-item">
+                <span class="cart-role-name">{{ role.name }}</span>
+                <button
+                  talosButton
+                  variant="ghost"
+                  size="xs"
+                  class="btn-remove-item"
+                  (click)="removePendingRole(role)"
+                  [attr.aria-label]="'Remove ' + role.name + ' from cart'"
+                >
+                  <svg lucideTrash2 [size]="14" class="text-danger"></svg>
+                </button>
+              </li>
+            }
+          </ul>
+        }
+
+        <div class="justification-field">
+          <talos-form-field label="Justification" for="justification" size="sm">
+            <textarea
+              id="justification"
+              rows="4"
+              talosInput
+              size="sm"
+              placeholder="Explain why you need this access (min 10 characters)…"
+              [(ngModel)]="justification"
+              aria-required="true"
+            ></textarea>
+          </talos-form-field>
+          @if (hasSavedDraft()) {
+            <p class="justification-hint">Justification changes are applied when you submit.</p>
+          }
+        </div>
+
+        <div class="cart-actions">
+          <button
+            id="save-draft"
+            talosButton
+            variant="secondary"
+            [fullWidth]="true"
+            [loading]="isSavingDraft()"
+            [disabled]="isSavingDraft() || cartItemCount() === 0"
+            (click)="saveDraft()"
+            aria-live="polite"
+          >
+            <svg lucideSave [size]="15" style="margin-right: 6px;"></svg>
+            @if (hasSavedDraft()) {
+              <span>Draft Saved</span>
+            } @else {
+              <span>Save Draft</span>
+            }
+          </button>
+          <button
+            id="submit-cart"
+            talosButton
+            variant="primary"
+            [fullWidth]="true"
+            [loading]="isSubmitting()"
+            [disabled]="isSubmitting() || cartItemCount() === 0"
+            (click)="submitCart()"
+            aria-live="polite"
+          >
+            <svg lucideSend [size]="15" style="margin-right: 6px;"></svg>
+            <span>Submit Request ({{ cartItemCount() }})</span>
+          </button>
+        </div>
+      </talos-card-body>
+    </talos-card>
   </div>
 </section>

@@ -1,8 +1,19 @@
-import { Component, signal, computed, inject, OnInit } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, viewChild, TemplateRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { PlatformService } from '../../services/platform.service';
 import { forkJoin } from 'rxjs';
+
+// Talos UI
+import { TalosDataGridComponent, type TalosGridColDef } from '@weeehaoooz/talos-ui/data-display/data-grid';
+import { TalosStatusTagComponent } from '@weeehaoooz/talos-ui/data-display/status-tag';
+import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
+import { TalosPrefixDirective, TalosSuffixDirective } from '@weeehaoooz/talos-ui/form/affix';
+import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
+import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+
+// Lucide Icons
+import { LucideSearch, LucideX, LucidePlus, LucideTrash2 } from '@lucide/angular';
 
 interface Tenant {
   id: string;
@@ -14,17 +25,39 @@ interface Tenant {
 
 @Component({
   selector: 'app-tenants',
-  imports: [FormsModule, DatePipe],
+  imports: [
+    FormsModule,
+    DatePipe,
+    TalosDataGridComponent,
+    TalosFormFieldComponent,
+    TalosPrefixDirective,
+    TalosSuffixDirective,
+    TalosInputDirective,
+    TalosButtonDirective,
+    TalosStatusTagComponent,
+    LucideSearch,
+    LucideX,
+    LucidePlus,
+    LucideTrash2
+  ],
   templateUrl: './tenants.component.html',
   styleUrl: './tenants.component.scss'
 })
 export class TenantsComponent implements OnInit {
   private readonly platformService = inject(PlatformService);
 
+  // Template Refs
+  readonly selectTmpl = viewChild<TemplateRef<any>>('selectTmpl');
+  readonly codeTmpl = viewChild<TemplateRef<any>>('codeTmpl');
+  readonly statusTmpl = viewChild<TemplateRef<any>>('statusTmpl');
+  readonly dateTmpl = viewChild<TemplateRef<any>>('dateTmpl');
+  readonly actionsTmpl = viewChild<TemplateRef<any>>('actionsTmpl');
+
   // Data Signals
   readonly tenants = signal<Tenant[]>([]);
   readonly searchQuery = signal('');
   readonly isSearching = signal(false);
+  readonly isLoading = signal(false);
   private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Selection & Bulk Signals
@@ -55,6 +88,16 @@ export class TenantsComponent implements OnInit {
     );
   });
 
+  // Columns definition for talos-data-grid
+  readonly columns = computed<TalosGridColDef<Tenant>[]>(() => [
+    { field: 'select', header: '', width: '48px', minWidth: '48px', sortable: false, filterable: false, cellTemplate: this.selectTmpl() },
+    { field: 'name', header: 'Name', sortType: 'string', filterMode: 'set', minWidth: '180px' },
+    { field: 'code', header: 'Tenant Code', sortType: 'string', filterMode: 'set', minWidth: '150px', cellTemplate: this.codeTmpl() },
+    { field: 'status', header: 'Status', minWidth: '120px', width: '130px', cellTemplate: this.statusTmpl() },
+    { field: 'created_at', header: 'Onboarded At', sortType: 'date', minWidth: '160px', cellTemplate: this.dateTmpl() },
+    { field: 'actions', header: 'Actions', width: '100px', minWidth: '100px', align: 'right', sortable: false, filterable: false, cellTemplate: this.actionsTmpl() }
+  ]);
+
   // Is everything selected
   readonly isAllSelected = computed(() => {
     const list = this.filteredTenants();
@@ -63,14 +106,25 @@ export class TenantsComponent implements OnInit {
     return list.every(t => selected.has(t.id));
   });
 
+  onRowClick(event: { row: Tenant; index: number }): void {
+    this.openEditPanel(event.row);
+  }
+
   ngOnInit(): void {
     this.loadData();
   }
 
   loadData(): void {
+    this.isLoading.set(true);
     this.platformService.listTenants().subscribe({
-      next: (data) => this.tenants.set((data as Tenant[]) || []),
-      error: (err) => console.error('Failed to load tenants:', err)
+      next: (data) => {
+        this.tenants.set((data as Tenant[]) || []);
+        this.isLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to load tenants:', err);
+        this.isLoading.set(false);
+      }
     });
   }
 

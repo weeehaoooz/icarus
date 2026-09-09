@@ -36,48 +36,51 @@
 
           <form (ngSubmit)="updateProfile()" #profileEditForm="ngForm" class="form-grid mt-4">
             <div class="form-group">
-              <label for="pf-firstname" class="form-label">First Name</label>
-              <input 
-                talosInput
-                type="text" 
-                id="pf-firstname" 
-                name="firstName" 
-                [(ngModel)]="profileForm.firstName" 
-                placeholder="Enter first name"
-                required
-              />
+              <talos-form-field label="First Name" for="pf-firstname">
+                <input
+                  talosInput
+                  type="text"
+                  id="pf-firstname"
+                  name="firstName"
+                  [(ngModel)]="profileForm.firstName"
+                  placeholder="Enter first name"
+                  required
+                />
+              </talos-form-field>
             </div>
 
             <div class="form-group">
-              <label for="pf-lastname" class="form-label">Last Name</label>
-              <input 
-                talosInput
-                type="text" 
-                id="pf-lastname" 
-                name="lastName" 
-                [(ngModel)]="profileForm.lastName" 
-                placeholder="Enter last name"
-                required
-              />
+              <talos-form-field label="Last Name" for="pf-lastname">
+                <input
+                  talosInput
+                  type="text"
+                  id="pf-lastname"
+                  name="lastName"
+                  [(ngModel)]="profileForm.lastName"
+                  placeholder="Enter last name"
+                  required
+                />
+              </talos-form-field>
             </div>
 
             <div class="form-group">
-              <label for="pf-email" class="form-label">Email Address</label>
-              <input 
-                talosInput
-                type="email" 
-                id="pf-email" 
-                name="email" 
-                [(ngModel)]="profileForm.email" 
-                placeholder="user@example.com"
-                required
-              />
+              <talos-form-field label="Email Address" for="pf-email">
+                <input
+                  talosInput
+                  type="email"
+                  id="pf-email"
+                  name="email"
+                  [(ngModel)]="profileForm.email"
+                  placeholder="user@example.com"
+                  required
+                />
+              </talos-form-field>
             </div>
 
-            <button 
-              talosButton 
-              variant="primary" 
-              type="submit" 
+            <button
+              talosButton
+              variant="primary"
+              type="submit"
               [loading]="isUpdatingProfile()"
               [disabled]="!profileEditForm.form.valid || isUpdatingProfile()"
               class="mt-4"
@@ -146,10 +149,10 @@
               />
             </div>
 
-            <button 
-              talosButton 
-              variant="secondary" 
-              type="submit" 
+            <button
+              talosButton
+              variant="secondary"
+              type="submit"
               [loading]="isChangingPassword()"
               [disabled]="!passForm.form.valid || !passwordForm.newPassword || passwordForm.newPassword.length < 6 || passwordForm.newPassword !== passwordForm.confirmPassword || isChangingPassword()"
               class="mt-4"

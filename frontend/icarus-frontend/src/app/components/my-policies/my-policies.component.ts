@@ -5,8 +5,7 @@ import { AuthService } from '../../services/auth.service';
 import { AdminService } from '../../services/admin.service';
 
 // Talos UI
-import { TalosDataGridComponent } from '@weeehaoooz/talos-ui/data-display/data-grid';
-import type { TalosGridColDef } from '@weeehaoooz/talos-ui/data-display/data-grid';
+import { TalosDataGridComponent, type TalosGridColDef } from '@weeehaoooz/talos-ui/data-display/data-grid';
 import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
 import { TalosPrefixDirective, TalosSuffixDirective } from '@weeehaoooz/talos-ui/form/affix';
 import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';

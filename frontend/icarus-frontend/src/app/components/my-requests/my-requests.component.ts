@@ -4,10 +4,62 @@ import { DatePipe } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { WorkflowService, AccessCart } from '../../services/workflow.service';
+import { TalosCardComponent, TalosCardBodyComponent } from '@weeehaoooz/talos-ui/layout';
+import { TalosAlertComponent } from '@weeehaoooz/talos-ui/feedback/alert';
+import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
+import { TalosPrefixDirective, TalosSuffixDirective } from '@weeehaoooz/talos-ui/form/affix';
+import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
+import { TalosStatusTagComponent } from '@weeehaoooz/talos-ui/data-display/status-tag';
+import {
+  LucideSearch,
+  LucideX,
+  LucideFileText,
+  LucideClock,
+  LucideAlertCircle,
+  LucideInbox,
+  LucideChevronDown,
+  LucideTrash2,
+  LucideRotateCcw,
+  LucideZap,
+  LucideBan,
+  LucideEye,
+  LucideUser,
+  LucideUsers,
+  LucideArrowRight
+} from '@lucide/angular';
 
 @Component({
   selector: 'app-my-requests',
-  imports: [FormsModule, DatePipe, RouterLink],
+  imports: [
+    FormsModule,
+    DatePipe,
+    RouterLink,
+    TalosCardComponent,
+    TalosCardBodyComponent,
+    TalosAlertComponent,
+    TalosButtonDirective,
+    TalosFormFieldComponent,
+    TalosPrefixDirective,
+    TalosSuffixDirective,
+    TalosInputDirective,
+    TalosStatusTagComponent,
+    LucideSearch,
+    LucideX,
+    LucideFileText,
+    LucideClock,
+    LucideAlertCircle,
+    LucideInbox,
+    LucideChevronDown,
+    LucideTrash2,
+    LucideRotateCcw,
+    LucideZap,
+    LucideBan,
+    LucideEye,
+    LucideUser,
+    LucideUsers,
+    LucideArrowRight
+  ],
   templateUrl: './my-requests.component.html',
   styleUrl: './my-requests.component.scss',
   host: {
@@ -224,6 +276,25 @@ export class MyRequestsComponent implements OnInit, OnDestroy {
   }
 
   // ── Status Helpers ────────────────────────────────────────────────────────────
+
+  mapStatus(status: string): 'success' | 'warning' | 'danger' | 'info' | 'neutral' {
+    switch (status) {
+      case 'APPROVED':
+      case 'COMPLETED':
+        return 'success';
+      case 'REJECTED':
+      case 'CANCELLED':
+        return 'danger';
+      case 'IN_PROGRESS':
+      case 'SUBMITTED':
+        return 'warning';
+      case 'DRAFT':
+      case 'ARCHIVED':
+        return 'info';
+      default:
+        return 'neutral';
+    }
+  }
 
   statusClass(status: string): string {
     switch (status) {

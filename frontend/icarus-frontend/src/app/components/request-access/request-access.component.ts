@@ -7,6 +7,28 @@ import { AdminService } from '../../services/admin.service';
 import { WorkflowService, AccessCart, CartItem } from '../../services/workflow.service';
 import { PlatformService } from '../../services/platform.service';
 
+// Talos UI
+import { TalosCardComponent, TalosCardBodyComponent } from '@weeehaoooz/talos-ui/layout';
+import { TalosAlertComponent } from '@weeehaoooz/talos-ui/feedback/alert';
+import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
+import { TalosPrefixDirective, TalosSuffixDirective } from '@weeehaoooz/talos-ui/form/affix';
+import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
+import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+
+// Lucide Icons
+import {
+  LucideSearch,
+  LucideX,
+  LucideCheck,
+  LucideLayers,
+  LucidePlus,
+  LucideShoppingCart,
+  LucideFileText,
+  LucideChevronDown,
+  LucideSend,
+  LucideInbox
+} from '@lucide/angular';
+
 interface Role {
   id?: string;
   module_id: string;
@@ -27,7 +49,27 @@ interface TableRow {
 
 @Component({
   selector: 'app-request-access',
-  imports: [FormsModule],
+  imports: [
+    FormsModule,
+    TalosCardComponent,
+    TalosCardBodyComponent,
+    TalosAlertComponent,
+    TalosFormFieldComponent,
+    TalosPrefixDirective,
+    TalosSuffixDirective,
+    TalosInputDirective,
+    TalosButtonDirective,
+    LucideSearch,
+    LucideX,
+    LucideCheck,
+    LucideLayers,
+    LucidePlus,
+    LucideShoppingCart,
+    LucideFileText,
+    LucideChevronDown,
+    LucideSend,
+    LucideInbox
+  ],
   templateUrl: './request-access.component.html',
   styleUrl: './request-access.component.scss'
 })

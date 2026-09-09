@@ -1,10 +1,20 @@
-import { Component, signal, computed, inject, OnInit } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, viewChild, TemplateRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DatePipe } from '@angular/common';
 import { PlatformService } from '../../services/platform.service';
 import { AdminService } from '../../services/admin.service';
 import { AuthService } from '../../services/auth.service';
 import { forkJoin } from 'rxjs';
+
+// Talos UI
+import { TalosDataGridComponent, type TalosGridColDef } from '@weeehaoooz/talos-ui/data-display/data-grid';
+import { TalosStatusTagComponent } from '@weeehaoooz/talos-ui/data-display/status-tag';
+import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
+import { TalosPrefixDirective, TalosSuffixDirective } from '@weeehaoooz/talos-ui/form/affix';
+import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
+import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+
+// Lucide Icons
+import { LucideSearch, LucideX, LucidePlus, LucideEdit, LucideTrash2 } from '@lucide/angular';
 
 interface Module {
   id: string;
@@ -32,7 +42,21 @@ const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'
 
 @Component({
   selector: 'app-modules',
-  imports: [FormsModule, DatePipe],
+  imports: [
+    FormsModule,
+    TalosDataGridComponent,
+    TalosFormFieldComponent,
+    TalosPrefixDirective,
+    TalosSuffixDirective,
+    TalosInputDirective,
+    TalosButtonDirective,
+    TalosStatusTagComponent,
+    LucideSearch,
+    LucideX,
+    LucidePlus,
+    LucideEdit,
+    LucideTrash2
+  ],
   templateUrl: './modules.component.html',
   styleUrl: './modules.component.scss'
 })
@@ -52,6 +76,14 @@ export class ModulesComponent implements OnInit {
     return user?.owned_modules?.includes(moduleCode) || false;
   }
 
+  // Template Refs
+  readonly selectTmpl = viewChild<TemplateRef<any>>('selectTmpl');
+  readonly nameTmpl = viewChild<TemplateRef<any>>('nameTmpl');
+  readonly codeTmpl = viewChild<TemplateRef<any>>('codeTmpl');
+  readonly baseUrlTmpl = viewChild<TemplateRef<any>>('baseUrlTmpl');
+  readonly statusTmpl = viewChild<TemplateRef<any>>('statusTmpl');
+  readonly actionsTmpl = viewChild<TemplateRef<any>>('actionsTmpl');
+
   // Data Signals
   readonly modules = signal<Module[]>([]);
   readonly systemRoles = signal<any[]>([]);
@@ -61,6 +93,7 @@ export class ModulesComponent implements OnInit {
 
   readonly searchQuery = signal('');
   readonly isSearching = signal(false);
+  readonly isLoading = signal(false);
   private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Selection & Bulk Signals
@@ -141,6 +174,17 @@ export class ModulesComponent implements OnInit {
     return this.applications().filter(app => !onboarded.has(app.code));
   });
 
+  // Columns definition for talos-data-grid
+  readonly columns = computed<TalosGridColDef<Module>[]>(() => [
+    { field: 'select', header: '', width: '48px', minWidth: '48px', sortable: false, filterable: false, cellTemplate: this.selectTmpl() },
+    { field: 'name', header: 'Name', sortType: 'string', filterMode: 'set', minWidth: '180px', cellTemplate: this.nameTmpl() },
+    { field: 'code', header: 'Module Code', sortType: 'string', filterMode: 'set', minWidth: '140px', cellTemplate: this.codeTmpl() },
+    { field: 'base_url', header: 'Base URL', sortType: 'string', filterMode: 'set', minWidth: '200px', cellTemplate: this.baseUrlTmpl() },
+    { field: 'is_active', header: 'Status', minWidth: '120px', width: '130px', cellTemplate: this.statusTmpl() },
+    { field: 'created_at', header: 'Onboarded At', sortType: 'date', filterMode: 'condition', minWidth: '150px', formatter: (v) => v ? new Date(v).toLocaleString() : '-' },
+    { field: 'actions', header: 'Actions', width: '90px', minWidth: '90px', align: 'right', sortable: false, filterable: false, cellTemplate: this.actionsTmpl() }
+  ]);
+
   // Is everything selected
   readonly isAllSelected = computed(() => {
     const list = this.filteredModules();
@@ -162,9 +206,16 @@ export class ModulesComponent implements OnInit {
   }
 
   loadData(): void {
+    this.isLoading.set(true);
     this.platformService.listModules().subscribe({
-      next: (data) => this.modules.set((data as Module[]) || []),
-      error: (err) => console.error('Failed to load modules:', err)
+      next: (data) => {
+        this.modules.set((data as Module[]) || []);
+        this.isLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to load modules:', err);
+        this.isLoading.set(false);
+      }
     });
 
     this.adminService.listRoles().subscribe({
@@ -176,6 +227,10 @@ export class ModulesComponent implements OnInit {
       next: (data) => this.applications.set(data || []),
       error: (err) => console.error('Failed to load applications:', err)
     });
+  }
+
+  onRowClick(event: { row: Module; index: number }): void {
+    this.openEditPanel(event.row);
   }
 
   onSearchInput(event: Event): void {

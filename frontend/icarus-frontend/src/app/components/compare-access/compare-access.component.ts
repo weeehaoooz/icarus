@@ -1,4 +1,4 @@
-import { Component, signal, computed, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, OnDestroy, viewChild, TemplateRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Subscription, Subject, forkJoin, of } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
@@ -6,6 +6,32 @@ import { AuthService, UserSummary } from '../../services/auth.service';
 import { AdminService } from '../../services/admin.service';
 import { WorkflowService, AccessCart, CartItem } from '../../services/workflow.service';
 import { PlatformService } from '../../services/platform.service';
+
+// Talos UI
+import { TalosCardComponent, TalosCardBodyComponent, TalosCardHeaderComponent } from '@weeehaoooz/talos-ui/layout';
+import { TalosDataGridComponent, type TalosGridColDef } from '@weeehaoooz/talos-ui/data-display/data-grid';
+import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+import { TalosButtonGroupComponent, TalosButtonGroupItemDirective } from '@weeehaoooz/talos-ui/button/button-group';
+import { TalosStatusTagComponent } from '@weeehaoooz/talos-ui/data-display/status-tag';
+import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
+import { TalosPrefixDirective, TalosSuffixDirective } from '@weeehaoooz/talos-ui/form/affix';
+import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
+import { TalosAlertComponent } from '@weeehaoooz/talos-ui/feedback/alert';
+
+// Lucide Icons
+import {
+  LucideSearch,
+  LucideX,
+  LucidePlus,
+  LucideCheck,
+  LucideTrash2,
+  LucideUsers,
+  LucideColumns2,
+  LucideLayers,
+  LucideSave,
+  LucideSend,
+  LucideShoppingCart
+} from '@lucide/angular';
 
 interface Role {
   id?: string;
@@ -23,7 +49,33 @@ interface ComparisonRow {
 
 @Component({
   selector: 'app-compare-access',
-  imports: [FormsModule],
+  imports: [
+    FormsModule,
+    TalosCardComponent,
+    TalosCardBodyComponent,
+    TalosCardHeaderComponent,
+    TalosDataGridComponent,
+    TalosButtonDirective,
+    TalosButtonGroupComponent,
+    TalosButtonGroupItemDirective,
+    TalosStatusTagComponent,
+    TalosFormFieldComponent,
+    TalosPrefixDirective,
+    TalosSuffixDirective,
+    TalosInputDirective,
+    TalosAlertComponent,
+    LucideSearch,
+    LucideX,
+    LucidePlus,
+    LucideCheck,
+    LucideTrash2,
+    LucideUsers,
+    LucideColumns2,
+    LucideLayers,
+    LucideSave,
+    LucideSend,
+    LucideShoppingCart
+  ],
   templateUrl: './compare-access.component.html',
   styleUrl: './compare-access.component.scss',
   host: {
@@ -36,12 +88,28 @@ export class CompareAccessComponent implements OnInit, OnDestroy {
   private readonly workflowService = inject(WorkflowService);
   private readonly platformService = inject(PlatformService);
 
+  // ── Template Refs for Talos Data Grid ────────────────────────────────────────
+  readonly nameTmpl = viewChild<TemplateRef<any>>('nameTmpl');
+  readonly moduleTmpl = viewChild<TemplateRef<any>>('moduleTmpl');
+  readonly appTmpl = viewChild<TemplateRef<any>>('appTmpl');
+  readonly youTmpl = viewChild<TemplateRef<any>>('youTmpl');
+  readonly targetTmpl = viewChild<TemplateRef<any>>('targetTmpl');
+  readonly sbsActionTmpl = viewChild<TemplateRef<any>>('sbsActionTmpl');
+
+  readonly tabNameTmpl = viewChild<TemplateRef<any>>('tabNameTmpl');
+  readonly tabModuleTmpl = viewChild<TemplateRef<any>>('tabModuleTmpl');
+  readonly tabAppTmpl = viewChild<TemplateRef<any>>('tabAppTmpl');
+  readonly tabActionTmpl = viewChild<TemplateRef<any>>('tabActionTmpl');
+
   // ── User directory & search ─────────────────────────────────────────────────
   readonly allUsers = signal<UserSummary[]>([]);
   readonly isLoadingUsers = signal(false);
   readonly userSearchQuery = signal('');
   readonly selectedUser = signal<UserSummary | null>(null);
   readonly isDropdownOpen = signal(false);
+
+  // ── Search within comparison roles ──────────────────────────────────────────
+  readonly roleSearchQuery = signal('');
 
   readonly filteredUsers = computed(() => {
     const q = this.userSearchQuery().toLowerCase().trim();
@@ -153,6 +221,83 @@ export class CompareAccessComponent implements OnInit, OnDestroy {
       return diff !== 0 ? diff : a.role.name.localeCompare(b.role.name);
     });
   });
+
+  // ── Filtered role subsets (driven by roleSearchQuery) ────────────────────────
+  readonly filteredComparisonRows = computed(() => {
+    const q = this.roleSearchQuery().toLowerCase().trim();
+    const rows = this.comparisonRows();
+    if (!q) return rows;
+    return rows.filter(r =>
+      r.role.name.toLowerCase().includes(q) ||
+      (r.role.description && r.role.description.toLowerCase().includes(q)) ||
+      (r.role.module_id && r.role.module_id.toLowerCase().includes(q)) ||
+      (r.role.app_code && r.role.app_code.toLowerCase().includes(q))
+    );
+  });
+
+  readonly filteredMissingRoles = computed(() => {
+    const q = this.roleSearchQuery().toLowerCase().trim();
+    const list = this.missingRoles();
+    if (!q) return list;
+    return list.filter(r =>
+      r.name.toLowerCase().includes(q) ||
+      (r.description && r.description.toLowerCase().includes(q)) ||
+      (r.module_id && r.module_id.toLowerCase().includes(q)) ||
+      (r.app_code && r.app_code.toLowerCase().includes(q))
+    );
+  });
+
+  readonly filteredSharedRoles = computed(() => {
+    const q = this.roleSearchQuery().toLowerCase().trim();
+    const list = this.sharedRoles();
+    if (!q) return list;
+    return list.filter(r =>
+      r.name.toLowerCase().includes(q) ||
+      (r.description && r.description.toLowerCase().includes(q)) ||
+      (r.module_id && r.module_id.toLowerCase().includes(q)) ||
+      (r.app_code && r.app_code.toLowerCase().includes(q))
+    );
+  });
+
+  readonly filteredOnlyMyRoles = computed(() => {
+    const q = this.roleSearchQuery().toLowerCase().trim();
+    const list = this.onlyMyRoles();
+    if (!q) return list;
+    return list.filter(r =>
+      r.name.toLowerCase().includes(q) ||
+      (r.description && r.description.toLowerCase().includes(q)) ||
+      (r.module_id && r.module_id.toLowerCase().includes(q)) ||
+      (r.app_code && r.app_code.toLowerCase().includes(q))
+    );
+  });
+
+  // ── Data Grid Column Configurations ──────────────────────────────────────────
+  readonly sideBySideColumns = computed<TalosGridColDef<ComparisonRow>[]>(() => {
+    const targetName = this.selectedUser() ? this.getDisplayName(this.selectedUser()!) : 'Target User';
+    return [
+      { field: 'role.name' as any, header: 'Role Name', sortType: 'string', filterMode: 'set', minWidth: '180px', cellTemplate: this.nameTmpl() },
+      { field: 'role.module_id' as any, header: 'Module', sortType: 'string', filterMode: 'set', width: '150px', cellTemplate: this.moduleTmpl() },
+      { field: 'role.app_code' as any, header: 'Application', sortType: 'string', filterMode: 'set', width: '150px', cellTemplate: this.appTmpl() },
+      { field: 'iHave' as any, header: 'You', align: 'center', width: '100px', filterMode: 'set', cellTemplate: this.youTmpl() },
+      { field: 'targetHas' as any, header: targetName, align: 'center', width: '150px', filterMode: 'set', cellTemplate: this.targetTmpl() },
+      { field: 'action' as any, header: 'Action', align: 'right', width: '120px', sortable: false, filterable: false, cellTemplate: this.sbsActionTmpl() }
+    ];
+  });
+
+  readonly missingColumns = computed<TalosGridColDef<Role>[]>(() => [
+    { field: 'name', header: 'Role Name', sortType: 'string', filterMode: 'set', minWidth: '180px', cellTemplate: this.tabNameTmpl() },
+    { field: 'module_id', header: 'Module', sortType: 'string', filterMode: 'set', width: '150px', cellTemplate: this.tabModuleTmpl() },
+    { field: 'app_code', header: 'Application', sortType: 'string', filterMode: 'set', width: '150px', cellTemplate: this.tabAppTmpl() },
+    { field: 'description', header: 'Description', minWidth: '220px', formatter: (v: any) => v || 'No description available.' },
+    { field: 'action' as any, header: 'Action', align: 'right', width: '120px', sortable: false, filterable: false, cellTemplate: this.tabActionTmpl() }
+  ]);
+
+  readonly sharedAndMineColumns = computed<TalosGridColDef<Role>[]>(() => [
+    { field: 'name', header: 'Role Name', sortType: 'string', filterMode: 'set', minWidth: '180px', cellTemplate: this.tabNameTmpl() },
+    { field: 'module_id', header: 'Module', sortType: 'string', filterMode: 'set', width: '150px', cellTemplate: this.tabModuleTmpl() },
+    { field: 'app_code', header: 'Application', sortType: 'string', filterMode: 'set', width: '150px', cellTemplate: this.tabAppTmpl() },
+    { field: 'description', header: 'Description', minWidth: '240px', formatter: (v: any) => v || 'No description available.' }
+  ]);
 
   rowStatus(row: ComparisonRow): 'missing' | 'shared' | 'mine' {
     if (!row.iHave && row.targetHas) return 'missing';

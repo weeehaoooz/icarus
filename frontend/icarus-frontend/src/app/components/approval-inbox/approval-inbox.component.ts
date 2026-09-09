@@ -3,10 +3,34 @@ import { Subscription } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { WorkflowService, InboxItem } from '../../services/workflow.service';
+import { TalosCardComponent, TalosCardBodyComponent } from '@weeehaoooz/talos-ui/layout';
+import { TalosAlertComponent } from '@weeehaoooz/talos-ui/feedback/alert';
+import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
+import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
+import {
+  LucideCheck,
+  LucideX,
+  LucideInbox,
+  LucideForward
+} from '@lucide/angular';
 
 @Component({
   selector: 'app-approval-inbox',
-  imports: [FormsModule, DatePipe],
+  imports: [
+    FormsModule,
+    DatePipe,
+    TalosCardComponent,
+    TalosCardBodyComponent,
+    TalosAlertComponent,
+    TalosButtonDirective,
+    TalosInputDirective,
+    TalosFormFieldComponent,
+    LucideCheck,
+    LucideX,
+    LucideInbox,
+    LucideForward
+  ],
   templateUrl: './approval-inbox.component.html',
   styleUrl: './approval-inbox.component.scss'
 })

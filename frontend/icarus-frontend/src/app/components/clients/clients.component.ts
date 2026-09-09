@@ -1,8 +1,17 @@
-import { Component, signal, computed, inject, OnInit } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, viewChild, TemplateRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DatePipe } from '@angular/common';
 import { AdminService } from '../../services/admin.service';
 import { forkJoin, of } from 'rxjs';
+
+// Talos UI
+import { TalosDataGridComponent, type TalosGridColDef } from '@weeehaoooz/talos-ui/data-display/data-grid';
+import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
+import { TalosPrefixDirective, TalosSuffixDirective } from '@weeehaoooz/talos-ui/form/affix';
+import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
+import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+
+// Lucide Icons
+import { LucideSearch, LucideX, LucidePlus, LucideTrash2, LucideKey, LucideCopy, LucideCheck } from '@lucide/angular';
 
 interface Client {
   client_id: string;
@@ -18,18 +27,38 @@ interface Role {
 
 @Component({
   selector: 'app-clients',
-  imports: [FormsModule, DatePipe],
+  imports: [
+    FormsModule,
+    TalosDataGridComponent,
+    TalosFormFieldComponent,
+    TalosPrefixDirective,
+    TalosSuffixDirective,
+    TalosInputDirective,
+    TalosButtonDirective,
+    LucideSearch,
+    LucideX,
+    LucidePlus,
+    LucideTrash2
+  ],
   templateUrl: './clients.component.html',
   styleUrl: './clients.component.scss'
 })
 export class ClientsComponent implements OnInit {
   private readonly adminService = inject(AdminService);
 
+  // Template Refs
+  readonly selectTmpl = viewChild<TemplateRef<any>>('selectTmpl');
+  readonly clientIdTmpl = viewChild<TemplateRef<any>>('clientIdTmpl');
+  readonly publicKeyTmpl = viewChild<TemplateRef<any>>('publicKeyTmpl');
+  readonly rolesTmpl = viewChild<TemplateRef<any>>('rolesTmpl');
+  readonly actionsTmpl = viewChild<TemplateRef<any>>('actionsTmpl');
+
   // Data Signals
   readonly clients = signal<Client[]>([]);
   readonly availableRoles = signal<Role[]>([]);
   readonly searchQuery = signal('');
   readonly isSearching = signal(false);
+  readonly isLoading = signal(false);
   private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Selection & Bulk Signals
@@ -52,10 +81,20 @@ export class ClientsComponent implements OnInit {
     const query = this.searchQuery().toLowerCase().trim();
     const allClients = this.clients();
     if (!query) return allClients;
-    return allClients.filter(c => 
+    return allClients.filter(c =>
       c.client_id.toLowerCase().includes(query)
     );
   });
+
+  // Columns definition for talos-data-grid
+  readonly columns = computed<TalosGridColDef<Client>[]>(() => [
+    { field: 'select', header: '', width: '48px', minWidth: '48px', sortable: false, filterable: false, cellTemplate: this.selectTmpl() },
+    { field: 'client_id', header: 'Client ID', sortType: 'string', filterMode: 'set', minWidth: '180px', cellTemplate: this.clientIdTmpl() },
+    { field: 'public_key', header: 'Public Key Preview', minWidth: '240px', cellTemplate: this.publicKeyTmpl() },
+    { field: 'roles', header: 'Roles', minWidth: '180px', cellTemplate: this.rolesTmpl() },
+    { field: 'created_at', header: 'Created At', sortType: 'date', filterMode: 'condition', minWidth: '160px', formatter: (v) => v ? new Date(v).toLocaleString() : '-' },
+    { field: 'actions', header: 'Actions', width: '90px', minWidth: '90px', align: 'right', sortable: false, filterable: false, cellTemplate: this.actionsTmpl() }
+  ]);
 
   // Is everything selected
   readonly isAllSelected = computed(() => {
@@ -70,11 +109,16 @@ export class ClientsComponent implements OnInit {
   }
 
   loadData(): void {
+    this.isLoading.set(true);
     this.adminService.listClients().subscribe({
-      next: (data) => this.clients.set((data as Client[]) || []),
+      next: (data) => {
+        this.clients.set((data as Client[]) || []);
+        this.isLoading.set(false);
+      },
       error: (err) => {
         console.error('Failed to load clients:', err);
         this.clients.set([]);
+        this.isLoading.set(false);
       }
     });
 
@@ -128,6 +172,10 @@ export class ClientsComponent implements OnInit {
 
   clearSelection(): void {
     this.selectedIds.set(new Set());
+  }
+
+  onRowClick(event: { row: Client; index: number }): void {
+    this.openEditPanel(event.row);
   }
 
   // Edit / Details panel logic
@@ -265,3 +313,4 @@ export class ClientsComponent implements OnInit {
     }
   }
 }
+

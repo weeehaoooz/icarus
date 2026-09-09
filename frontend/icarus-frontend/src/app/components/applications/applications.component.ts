@@ -1,8 +1,17 @@
-import { Component, signal, computed, inject, OnInit } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, viewChild, TemplateRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DatePipe } from '@angular/common';
 import { PlatformService } from '../../services/platform.service';
 import { forkJoin } from 'rxjs';
+
+// Talos UI
+import { TalosDataGridComponent, type TalosGridColDef } from '@weeehaoooz/talos-ui/data-display/data-grid';
+import { TalosFormFieldComponent } from '@weeehaoooz/talos-ui/form/form-field';
+import { TalosPrefixDirective, TalosSuffixDirective } from '@weeehaoooz/talos-ui/form/affix';
+import { TalosInputDirective } from '@weeehaoooz/talos-ui/form/input';
+import { TalosButtonDirective } from '@weeehaoooz/talos-ui/button/button';
+
+// Lucide Icons
+import { LucideSearch, LucideX, LucidePlus, LucideTrash2 } from '@lucide/angular';
 
 interface Application {
   id: string;
@@ -14,17 +23,35 @@ interface Application {
 
 @Component({
   selector: 'app-applications',
-  imports: [FormsModule, DatePipe],
+  imports: [
+    FormsModule,
+    TalosDataGridComponent,
+    TalosFormFieldComponent,
+    TalosPrefixDirective,
+    TalosSuffixDirective,
+    TalosInputDirective,
+    TalosButtonDirective,
+    LucideSearch,
+    LucideX,
+    LucidePlus,
+    LucideTrash2
+  ],
   templateUrl: './applications.component.html',
   styleUrl: './applications.component.scss'
 })
 export class ApplicationsComponent implements OnInit {
   private readonly platformService = inject(PlatformService);
 
+  // Template Refs
+  readonly selectTmpl = viewChild<TemplateRef<any>>('selectTmpl');
+  readonly codeTmpl = viewChild<TemplateRef<any>>('codeTmpl');
+  readonly actionsTmpl = viewChild<TemplateRef<any>>('actionsTmpl');
+
   // Data Signals
   readonly applications = signal<Application[]>([]);
   readonly searchQuery = signal('');
   readonly isSearching = signal(false);
+  readonly isLoading = signal(false);
   private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Selection & Bulk Signals
@@ -55,6 +82,16 @@ export class ApplicationsComponent implements OnInit {
     );
   });
 
+  // Columns definition for talos-data-grid
+  readonly columns = computed<TalosGridColDef<Application>[]>(() => [
+    { field: 'select', header: '', width: '48px', minWidth: '48px', sortable: false, filterable: false, cellTemplate: this.selectTmpl() },
+    { field: 'code', header: 'App Code', sortType: 'string', filterMode: 'set', minWidth: '150px', cellTemplate: this.codeTmpl() },
+    { field: 'name', header: 'Team Name', sortType: 'string', filterMode: 'set', minWidth: '180px' },
+    { field: 'description', header: 'Description', sortType: 'string', filterMode: 'set', minWidth: '220px', formatter: (v) => v || 'No description provided.' },
+    { field: 'created_at', header: 'Created At', sortType: 'date', filterMode: 'condition', minWidth: '150px', formatter: (v) => v ? new Date(v).toLocaleDateString() : '-' },
+    { field: 'actions', header: 'Actions', width: '90px', minWidth: '90px', align: 'right', sortable: false, filterable: false, cellTemplate: this.actionsTmpl() }
+  ]);
+
   // Is everything selected
   readonly isAllSelected = computed(() => {
     const list = this.filteredApplications();
@@ -68,9 +105,16 @@ export class ApplicationsComponent implements OnInit {
   }
 
   loadData(): void {
+    this.isLoading.set(true);
     this.platformService.listApplications().subscribe({
-      next: (data) => this.applications.set((data as Application[]) || []),
-      error: (err) => console.error('Failed to load applications:', err)
+      next: (data) => {
+        this.applications.set((data as Application[]) || []);
+        this.isLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to load applications:', err);
+        this.isLoading.set(false);
+      }
     });
   }
 
@@ -115,6 +159,10 @@ export class ApplicationsComponent implements OnInit {
 
   clearSelection(): void {
     this.selectedIds.set(new Set());
+  }
+
+  onRowClick(event: { row: Application; index: number }): void {
+    this.openEditPanel(event.row);
   }
 
   // Edit / Details panel logic
@@ -219,3 +267,4 @@ export class ApplicationsComponent implements OnInit {
     }
   }
 }
+
